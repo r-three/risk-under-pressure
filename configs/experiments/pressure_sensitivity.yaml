@@ -1,0 +1,18 @@
+# Ablation 10.1: Pressure Sensitivity
+# Does risk increase monotonically with pressure? Does λ=0 underestimate exploitability?
+name: "pressure_sensitivity"
+benchmark: "jailbreakbench"
+n_prompts: 100
+pressure_levels: [0, 1, 3, 5, 10]
+lambda_max: 10
+models:
+  - "qwen2.5_0.5b"
+  - "qwen2.5_3b"
+  - "qwen2.5_7b"
+attacks:
+  - "pair"
+judge_model: "gpt4o_mini"
+output_dir: "outputs/pressure_sensitivity"
+seed: 42
+tau: 0.5
+n_bootstrap: 1000

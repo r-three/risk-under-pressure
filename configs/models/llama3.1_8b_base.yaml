@@ -1,0 +1,11 @@
+model_id: "llama3.1-8b-base"
+backend: "huggingface"
+hf_name: "meta-llama/Llama-3.1-8B"
+model_type: "base"
+quantization: "4bit"
+device: "cuda"
+generation:
+  max_new_tokens: 512
+  temperature: 0.7
+  do_sample: true
+  top_p: 0.9

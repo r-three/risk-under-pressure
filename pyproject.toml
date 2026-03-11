@@ -1,0 +1,52 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "prisk-pressure"
+version = "0.1.0"
+description = "pRisk-Pressure: A Pressure-Conditioned Probabilistic Metric for Evaluating LLM Safety"
+requires-python = ">=3.10"
+dependencies = [
+    # Core ML
+    "torch>=2.1.0",
+    "transformers>=4.40.0",
+    "accelerate>=0.27.0",
+    "bitsandbytes>=0.43.0",
+    # API clients
+    "openai>=1.30.0",
+    "anthropic>=0.28.0",
+    "google-generativeai>=0.5.0",
+    # Benchmarks
+    "jailbreakbench>=1.0.0",
+    "datasets>=2.19.0",
+    # Attack framework
+    "easyjailbreak>=0.1.0",
+    # Config and utilities
+    "pydantic>=2.0.0",
+    "pyyaml>=6.0",
+    "tenacity>=8.2.0",
+    "python-dotenv>=1.0.0",
+    # Metrics and numerics
+    "numpy>=1.26.0",
+    "scipy>=1.13.0",
+    "pandas>=2.2.0",
+    "statsmodels>=0.14.0",
+    # Plotting
+    "matplotlib>=3.8.0",
+    "seaborn>=0.13.0",
+    # CLI and progress
+    "tqdm>=4.66.0",
+    "jsonlines>=4.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/prisk"]
+
+[tool.uv]
+package = true

@@ -1,0 +1,21 @@
+# Ablation 10.5: Open vs. Closed Systems
+# Do closed-source models exhibit structurally different risk-pressure profiles?
+name: "open_vs_closed"
+benchmark: "jailbreakbench"
+n_prompts: 100
+pressure_levels: [0, 1, 3, 5, 10]
+lambda_max: 10
+models:
+  - "qwen2.5_7b"
+  - "llama3.1_8b_instruct"
+  - "gpt4o_mini"
+  - "claude35_sonnet"
+  - "gemini_flash_lite"
+attacks:
+  - "pair"
+  - "jailbroken"
+judge_model: "gpt4o_mini"
+output_dir: "outputs/open_vs_closed"
+seed: 42
+tau: 0.5
+n_bootstrap: 1000
