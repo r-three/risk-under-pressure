@@ -6,8 +6,11 @@ module load gcc arrow/19.0.1 python/3.11
 
 source .venv/bin/activate
 
-export HF_HOME=~/.cache/huggingface
-export HF_DATASETS_CACHE=~/.cache/huggingface/datasets
+export SCRATCH=/home/ehghaghi/scratch/ehghaghi
+export HF_HOME=$SCRATCH/huggingface
+export HF_DATASETS_CACHE=$SCRATCH/huggingface/datasets
+export TRANSFORMERS_CACHE=$SCRATCH/huggingface
+export TORCH_HOME=$SCRATCH/torch
 
 # Load API keys from .env if present
 if [ -f .env ]; then

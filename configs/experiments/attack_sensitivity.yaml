@@ -12,7 +12,7 @@ attacks:
   - "pair"
   - "jailbroken"
 judge_model: "gpt4o_mini"
-output_dir: "outputs/attack_sensitivity"
+output_dir: "/home/ehghaghi/scratch/ehghaghi/outputs/attack_sensitivity"
 seed: 42
 tau: 0.5
 n_bootstrap: 1000
