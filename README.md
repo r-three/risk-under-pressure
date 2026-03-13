@@ -25,11 +25,12 @@ where $\lambda$ is the adversarial optimization pressure (refinement budget). Ra
 9. [Step 8 — Run evaluation (Phase 2)](#step-8--run-evaluation-phase-2)
 10. [Step 9 — Understand the outputs](#step-9--understand-the-outputs)
 11. [Step 10 — Run all ablation experiments](#step-10--run-all-ablation-experiments)
-12. [Reference: Models](#reference-models)
-13. [Reference: Attacks](#reference-attacks)
-14. [Reference: Metrics](#reference-metrics)
-15. [Programmatic Usage](#programmatic-usage)
-16. [Citation](#citation)
+12. [Running on Killarney (SLURM)](#running-on-killarney-slurm)
+13. [Reference: Models](#reference-models)
+14. [Reference: Attacks](#reference-attacks)
+15. [Reference: Metrics](#reference-metrics)
+16. [Programmatic Usage](#programmatic-usage)
+17. [Citation](#citation)
 
 ---
 
@@ -487,6 +488,78 @@ for exp in pressure_sensitivity attack_sensitivity training_stage open_vs_closed
         --output outputs/$exp/metrics.csv
 done
 ```
+
+---
+
+## Running on Killarney (SLURM)
+
+The `setup/` directory contains scripts for running experiments on the Killarney cluster (L40S GPUs, SLURM). All scripts should be run from the **project root**.
+
+### One-time environment setup
+
+Submit a job to build the virtual environment on a compute node:
+
+```bash
+sbatch setup/create_env_killarney_uv.sh
+```
+
+This loads the required modules (`cuda/12.6`, `gcc`, `arrow/19.0.1`, `python/3.11`), installs UV if needed, and runs `uv sync`. Check progress with `squeue -u $USER`.
+
+### API keys and HuggingFace token
+
+Copy `.env.example` to `.env` and fill in your keys — `setup/start_env.sh` sources it automatically before every job:
+
+```bash
+cp .env.example .env
+# edit .env: set OPENAI_API_KEY, ANTHROPIC_API_KEY, GOOGLE_API_KEY, HF_TOKEN
+```
+
+For the HuggingFace token you can also place it in `~/hf_token.txt` as a fallback (the script calls `huggingface_hub.login()` with it).
+
+### Submit all experiments (batch)
+
+```bash
+bash run_experiments.sh
+```
+
+This sources `setup/start_env.sh` and calls `submit()` for each of the four ablation experiments. Jobs that are already running, pending, or completed in the past two days are skipped automatically. Check the queue with:
+
+```bash
+squeue -u $USER
+```
+
+Logs are written to `logs/<jobid>_<jobname>.out`.
+
+### Run a single experiment interactively
+
+```bash
+bash run_interactive.sh configs/experiments/pressure_sensitivity.yaml
+```
+
+This launches an `srun` session on an L40S node (2 h time limit), sources the environment, and runs inference with `--resume`. Pass additional flags after the config path:
+
+```bash
+# Smoke test: 5 prompts, one model
+bash run_interactive.sh configs/experiments/pressure_sensitivity.yaml --n-prompts 5 --model qwen2.5_7b
+```
+
+### After inference: compute metrics
+
+```bash
+python scripts/run_evaluation.py \
+    --results-dir outputs/pressure_sensitivity \
+    --print-table
+```
+
+### SLURM resource summary
+
+| Script | Time | GPUs | CPUs | RAM |
+|--------|------|------|------|-----|
+| `setup/create_env_killarney_uv.sh` | 1 h | 1×L40S | 8 | 32 GB |
+| `setup/submit_killarney.sbatch` (batch jobs) | 23 h | 1×L40S | 8 | 128 GB |
+| `run_interactive.sh` (srun) | 2 h | 1×L40S | 8 | 128 GB |
+
+All jobs use `--partition=gpubase_l40s_b3 --account=aip-craffel`.
 
 ---
 
