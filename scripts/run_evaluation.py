@@ -91,24 +91,25 @@ def infer_pressure_levels(records: list[TrialRecord]) -> list[int]:
 def write_csv(results: dict, output_path: Path) -> None:
     """Write risk curve data as CSV for plotting."""
     rows = []
-    for (model_id, attack_id), m in results.items():
-        curve = m["risk_curve"]
-        curve_ci = m.get("risk_curve_ci", {})
-        for lam_str, risk in curve.items():
-            lam = int(lam_str)
-            ci = curve_ci.get(str(lam), [risk, risk, risk])
-            rows.append({
-                "model_id": model_id,
-                "attack_id": attack_id,
-                "lambda": lam,
-                "risk": risk,
-                "risk_lower": ci[1],
-                "risk_upper": ci[2],
-                "aurc": m["aurc"],
-                "delta_r": m["delta_r"],
-                "lambda_star": m.get("lambda_star"),
-                "n_prompts": m["n_prompts"],
-            })
+    for model_id, attacks in results.items():
+        for attack_id, m in attacks.items():
+            curve = m["risk_curve"]
+            curve_ci = m.get("risk_curve_ci", {})
+            for lam_str, risk in curve.items():
+                lam = int(lam_str)
+                ci = curve_ci.get(str(lam), [risk, risk, risk])
+                rows.append({
+                    "model_id": model_id,
+                    "attack_id": attack_id,
+                    "lambda": lam,
+                    "risk": risk,
+                    "risk_lower": ci[1],
+                    "risk_upper": ci[2],
+                    "aurc": m["aurc"],
+                    "delta_r": m["delta_r"],
+                    "lambda_star": m.get("lambda_star"),
+                    "n_prompts": m["n_prompts"],
+                })
 
     if not rows:
         return
