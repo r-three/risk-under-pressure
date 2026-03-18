@@ -124,8 +124,14 @@ def main():
             # Output path: outputs/{experiment}/{model_id}/{attack_id}/results.jsonl
             out_path = output_dir / model_config.model_id / attack_config.attack_id / "results.jsonl"
 
-            # Resume: skip already-completed prompts
-            done_ids = load_completed_ids(out_path) if args.resume else set()
+            # Determine completed IDs (resume) or clear the file (fresh run)
+            if args.resume:
+                done_ids = load_completed_ids(out_path)
+            else:
+                done_ids = set()
+                if out_path.exists():
+                    out_path.unlink()
+                    logger.info(f"Cleared existing results: {out_path}")
             remaining = [p for p in prompts if p.prompt_id not in done_ids]
 
             if done_ids:

@@ -10,7 +10,7 @@ from typing import List
 from .base import Benchmark, BenchmarkPrompt
 
 _BEHAVIORS_URL = (
-    "https://raw.githubusercontent.com/JailbreakBench/jailbreakbench/main/"
+    "https://raw.githubusercontent.com/JailbreakBench/jailbreakbench/v1.0.0/"
     "src/jailbreakbench/data/behaviors.csv"
 )
 
@@ -32,15 +32,27 @@ class JailbreakBench(Benchmark):
             return self._load_via_csv()
 
     def _load_via_package(self) -> List[BenchmarkPrompt]:
-        import jailbreakbench as jbb  # type: ignore
+        import importlib.util
 
-        dataset = jbb.read_dataset()
+        spec = importlib.util.find_spec("jailbreakbench")
+        if spec is None or spec.origin is None:
+            raise ImportError("jailbreakbench not installed")
+
+        dataset_path = Path(spec.origin).parent / "dataset.py"
+        ds_spec = importlib.util.spec_from_file_location("_jbb_dataset_direct", dataset_path)
+        ds_mod = importlib.util.module_from_spec(ds_spec)
+        ds_spec.loader.exec_module(ds_mod)  # loads pandas + datasets, NOT __init__.py
+
+        dataset = ds_mod.read_dataset()
         prompts = []
-        for item in dataset.behaviors:
+        for i, goal in enumerate(dataset.goals):
+            behavior = dataset.behaviors[i] if i < len(dataset.behaviors) else str(i)
+            category = dataset.categories[i] if i < len(dataset.categories) else "unknown"
+            behavior_id = behavior.lower().replace(" ", "_")[:50]
             prompts.append(BenchmarkPrompt(
-                prompt_id=f"jbb_{item.BehaviorID}",
-                text=item.Behavior,
-                category=getattr(item, "SemanticCategory", "unknown"),
+                prompt_id=f"jbb_{behavior_id}",
+                text=goal,
+                category=category,
                 source="jailbreakbench",
             ))
         return prompts

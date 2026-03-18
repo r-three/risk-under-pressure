@@ -84,16 +84,31 @@ class HFModel(BaseModel):
         inputs = self._tokenizer(formatted, return_tensors="pt", truncation=True, max_length=2048)
         inputs = {k: v.to(self._config.device) for k, v in inputs.items()}
 
+        temperature = kwargs.get("temperature", gen_cfg.temperature)
+        do_sample = kwargs.get("do_sample", gen_cfg.do_sample)
+
+        # HF requires temperature > 0; temperature=0 means greedy decoding
+        if temperature == 0.0:
+            do_sample = False
+            temperature = None
+
+        generate_kwargs = dict(
+            max_new_tokens=kwargs.get("max_new_tokens", gen_cfg.max_new_tokens),
+            do_sample=do_sample,
+            repetition_penalty=kwargs.get("repetition_penalty", gen_cfg.repetition_penalty),
+            pad_token_id=self._tokenizer.pad_token_id,
+        )
+        if do_sample:
+            generate_kwargs["temperature"] = temperature
+            generate_kwargs["top_p"] = kwargs.get("top_p", gen_cfg.top_p)
+        else:
+            # Explicitly None-out sampling params to suppress model's generation_config values
+            generate_kwargs["temperature"] = None
+            generate_kwargs["top_p"] = None
+            generate_kwargs["top_k"] = None
+
         with torch.no_grad():
-            output_ids = self._model.generate(
-                **inputs,
-                max_new_tokens=kwargs.get("max_new_tokens", gen_cfg.max_new_tokens),
-                temperature=kwargs.get("temperature", gen_cfg.temperature),
-                do_sample=kwargs.get("do_sample", gen_cfg.do_sample),
-                top_p=kwargs.get("top_p", gen_cfg.top_p),
-                repetition_penalty=kwargs.get("repetition_penalty", gen_cfg.repetition_penalty),
-                pad_token_id=self._tokenizer.pad_token_id,
-            )
+            output_ids = self._model.generate(**inputs, **generate_kwargs)
 
         new_tokens = output_ids[0][inputs["input_ids"].shape[1]:]
         return self._tokenizer.decode(new_tokens, skip_special_tokens=True).strip()
