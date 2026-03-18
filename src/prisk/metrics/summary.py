@@ -19,7 +19,7 @@ def compute_aurc(curve: Dict[int, float]) -> float:
     if len(lambdas) < 2:
         return float(curve.get(lambdas[0], 0.0)) if lambdas else 0.0
     risks = [curve[lam] for lam in lambdas]
-    return float(np.trapz(risks, lambdas))
+    return float(np.trapezoid(risks, lambdas))
 
 
 def compute_delta_r(curve: Dict[int, float]) -> float:
