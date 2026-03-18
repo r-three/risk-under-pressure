@@ -18,14 +18,150 @@ logger = get_logger(__name__)
 _GCG_SUFFIX_INIT = "! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! !"
 
 
+class _EJModelAdapter:
+    """Wraps HFModel as an EasyJailbreak WhiteBoxModelBase."""
+
+    def __init__(self, hf_model):
+        from easyjailbreak.models import WhiteBoxModelBase  # type: ignore
+        super().__init__(hf_model._model, hf_model._tokenizer)
+        self.model_name = "adapter"
+
+        tokenizer = hf_model._tokenizer
+        if hasattr(tokenizer, "chat_template") and tokenizer.chat_template:
+            msgs = [{"role": "user", "content": "{prompt}"}]
+            prefix = tokenizer.apply_chat_template(
+                msgs, tokenize=False, add_generation_prompt=True
+            )
+            self.format_str = prefix + "{response}"
+        else:
+            self.format_str = "### Instruction:\n{prompt}\n\n### Response:\n{response}"
+
+    @property
+    def device(self):
+        return next(self.model.parameters()).device
+
+    @property
+    def embed_layer(self):
+        return self.model.get_input_embeddings()
+
+    @property
+    def vocab_size(self):
+        return self.model.config.vocab_size
+
+    @property
+    def bos_token_id(self):
+        return self.tokenizer.bos_token_id
+
+    @property
+    def eos_token_id(self):
+        return self.tokenizer.eos_token_id
+
+    @property
+    def pad_token_id(self):
+        return self.tokenizer.pad_token_id
+
+    @property
+    def dtype(self):
+        return next(self.model.parameters()).dtype
+
+    def batch_encode(self, texts, **kwargs):
+        return self.tokenizer(texts, return_tensors="pt", padding=True, **kwargs)
+
+    def batch_decode(self, token_ids, **kwargs):
+        return self.tokenizer.batch_decode(token_ids, **kwargs)
+
+    def tokenize(self, text, **kwargs):
+        return self.tokenizer(text, return_tensors="pt", **kwargs)
+
+    def generate(self, *args, **kwargs):
+        return self.model.generate(*args, **kwargs)
+
+    def __call__(self, *args, **kwargs):
+        return self.model(*args, **kwargs)
+
+
+# Patch _EJModelAdapter to inherit from WhiteBoxModelBase at import time
+def _make_adapter_class():
+    try:
+        from easyjailbreak.models import WhiteBoxModelBase  # type: ignore
+
+        class _Adapter(WhiteBoxModelBase):
+            def __init__(self, hf_model):
+                super().__init__(hf_model._model, hf_model._tokenizer)
+                self.model_name = "adapter"
+
+                tokenizer = hf_model._tokenizer
+                if hasattr(tokenizer, "chat_template") and tokenizer.chat_template:
+                    msgs = [{"role": "user", "content": "{prompt}"}]
+                    prefix = tokenizer.apply_chat_template(
+                        msgs, tokenize=False, add_generation_prompt=True
+                    )
+                    self.format_str = prefix + "{response}"
+                else:
+                    self.format_str = (
+                        "### Instruction:\n{prompt}\n\n### Response:\n{response}"
+                    )
+
+            @property
+            def device(self):
+                return next(self.model.parameters()).device
+
+            @property
+            def embed_layer(self):
+                return self.model.get_input_embeddings()
+
+            @property
+            def vocab_size(self):
+                return self.model.config.vocab_size
+
+            @property
+            def bos_token_id(self):
+                return self.tokenizer.bos_token_id
+
+            @property
+            def eos_token_id(self):
+                return self.tokenizer.eos_token_id
+
+            @property
+            def pad_token_id(self):
+                return self.tokenizer.pad_token_id
+
+            @property
+            def dtype(self):
+                return next(self.model.parameters()).dtype
+
+            def batch_encode(self, texts, **kwargs):
+                return self.tokenizer(
+                    texts, return_tensors="pt", padding=True, **kwargs
+                )
+
+            def batch_decode(self, token_ids, **kwargs):
+                return self.tokenizer.batch_decode(token_ids, **kwargs)
+
+            def tokenize(self, text, **kwargs):
+                return self.tokenizer(text, return_tensors="pt", **kwargs)
+
+            def generate(self, *args, **kwargs):
+                return self.model.generate(*args, **kwargs)
+
+            def __call__(self, *args, **kwargs):
+                return self.model(*args, **kwargs)
+
+        return _Adapter
+    except ImportError:
+        return None
+
+
+_EJModelAdapter = _make_adapter_class()
+
+
 class GCGAttack(AttackPolicy):
     """
     GCG attack: appends an adversarial suffix that is iteratively optimized
     via greedy coordinate gradient descent.
 
-    Wraps EasyJailbreak's GCG implementation when available. The EasyJailbreak
-    attacker is configured with n_steps=1 per call so Algorithm 1 controls
-    the budget.
+    Uses EasyJailbreak's MutationTokenGradient and ReferenceLossSelector
+    directly (one step per call) so Algorithm 1 controls the budget.
 
     NOTE: Requires a HuggingFace (local) model. Raises NotImplementedError
     for API-based models.
@@ -36,7 +172,9 @@ class GCGAttack(AttackPolicy):
         self._target_model = target_model
         self._current_suffix: str = _GCG_SUFFIX_INIT
         self._base_prompt: Optional[str] = None
-        self._gcg_attacker = None
+        self._ej_model = None   # _EJModelAdapter, initialized lazily
+        self._mutator = None    # MutationTokenGradient
+        self._selector = None   # ReferenceLossSelector
 
     @property
     def attack_id(self) -> str:
@@ -45,22 +183,12 @@ class GCGAttack(AttackPolicy):
     def _check_model_compatible(self) -> None:
         if self._target_model is None:
             return
-        # Check that this is a HuggingFace model
         from ..models.hf_model import HFModel
         if not isinstance(self._target_model, HFModel):
             raise NotImplementedError(
                 "GCG is a white-box attack and requires a local HuggingFace model. "
                 f"Got: {type(self._target_model).__name__}"
             )
-
-    def _try_init_easyjailbreak(self) -> bool:
-        try:
-            # EasyJailbreak GCG integration placeholder
-            # Actual integration depends on EasyJailbreak API version
-            import easyjailbreak  # type: ignore  # noqa: F401
-            return True
-        except ImportError:
-            return False
 
     def initialize(self, base_prompt: str) -> str:
         self._check_model_compatible()
@@ -72,36 +200,58 @@ class GCGAttack(AttackPolicy):
         if judgment == 1:
             return prompt  # already succeeded
 
-        # Update suffix via one gradient step
         self._current_suffix = self._gradient_step(step)
         return f"{self._base_prompt} {self._current_suffix}"
 
     def _gradient_step(self, step: int) -> str:
         """
-        Perform one GCG gradient step.
-
-        When EasyJailbreak is installed and a compatible model is provided,
-        delegates to its GCG implementation. Otherwise returns the current suffix
-        (no-op fallback for testing without GPU).
+        Perform one GCG gradient step using EasyJailbreak's lower-level components:
+        MutationTokenGradient generates candidates, ReferenceLossSelector picks the best.
+        Falls back to the current suffix (no-op) on any error.
         """
         if self._target_model is None:
             return self._current_suffix
 
         try:
-            from easyjailbreak.attacker import GCG  # type: ignore
+            from easyjailbreak.mutation.gradient.token_gradient import (  # type: ignore
+                MutationTokenGradient,
+            )
+            from easyjailbreak.selector import ReferenceLossSelector  # type: ignore
+            from easyjailbreak.datasets import JailbreakDataset, Instance  # type: ignore
 
-            # Initialize EasyJailbreak GCG on first step
-            if self._gcg_attacker is None:
-                self._gcg_attacker = GCG(
-                    attack_model=self._target_model._model,
-                    tokenizer=self._target_model._tokenizer,
-                    num_steps=1,
+            # Lazy init of adapter and EJ components
+            if self._ej_model is None:
+                if _EJModelAdapter is None:
+                    raise ImportError("EasyJailbreak WhiteBoxModelBase not available")
+                self._ej_model = _EJModelAdapter(self._target_model)
+                self._mutator = MutationTokenGradient(
+                    self._ej_model, num_turb_sample=512, top_k=256
                 )
-            updated = self._gcg_attacker.step(self._base_prompt, self._current_suffix)
-            return updated
-        except (ImportError, AttributeError):
+                self._selector = ReferenceLossSelector(self._ej_model)
+
+            # Build EJ dataset; jailbreak_prompt uses {query} placeholder
+            jailbreak_prompt = "{query} " + self._current_suffix
+            instance = Instance(
+                query=self._base_prompt,
+                jailbreak_prompt=jailbreak_prompt,
+                reference_responses=["Sure, here is"],
+            )
+            dataset = JailbreakDataset([instance])
+
+            # One GCG step: mutate → select best candidate
+            mutated = self._mutator(dataset)
+            best = self._selector.select(mutated)
+
+            # Extract updated suffix from jailbreak_prompt ("{query} <suffix>")
+            new_jbp = best[0].jailbreak_prompt
+            prefix = "{query} "
+            if new_jbp.startswith(prefix):
+                return new_jbp[len(prefix):]
+            return new_jbp
+
+        except Exception as e:
             logger.warning(
-                "EasyJailbreak GCG not available or incompatible API. "
+                f"GCG gradient step failed ({type(e).__name__}): {e}. "
                 "Using static suffix (no gradient updates)."
             )
             return self._current_suffix
