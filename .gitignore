@@ -209,3 +209,5 @@ __marimo__/
 .venv/*
 uv.lock
 logs/*
+
+.claude/*

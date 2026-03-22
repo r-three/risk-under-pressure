@@ -77,11 +77,21 @@ def discover_results(results_dir: Path) -> dict[tuple[str, str], Path]:
 
 
 def infer_pressure_levels(records: list[TrialRecord]) -> list[int]:
-    """Infer pressure levels from max budget in records: 0, 1, ..., lambda_max."""
+    """Infer pressure levels from records.
+
+    New format: each record has a distinct budget (one trial per pressure level),
+    so the budgets themselves are the pressure levels.
+    Legacy format: all records share the same budget (lambda_max), so fall back
+    to default pressure levels up to that max.
+    """
     if not records:
         return [0]
-    lambda_max = max(r.budget for r in records)
-    # Default levels from the paper
+    budgets = sorted({r.budget for r in records})
+    if len(budgets) > 1:
+        # New format: budgets are the pressure levels
+        return budgets
+    # Legacy format: single budget, use default grid
+    lambda_max = budgets[0]
     defaults = [lam for lam in [0, 1, 3, 5, 10, 15, 20, 25, 50] if lam <= lambda_max]
     if lambda_max not in defaults:
         defaults.append(lambda_max)

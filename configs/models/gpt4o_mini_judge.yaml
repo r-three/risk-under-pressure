@@ -3,6 +3,8 @@ backend: "openai"
 hf_name: "gpt-4o-mini"
 model_type: "instruct"
 generation:
-  max_new_tokens: 128
-  temperature: 0.7
-  do_sample: true
+  max_new_tokens: 64
+  temperature: 0.0
+  do_sample: false
+  top_p: 1.0
+

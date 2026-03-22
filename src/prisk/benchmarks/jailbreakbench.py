@@ -38,21 +38,18 @@ class JailbreakBench(Benchmark):
         if spec is None or spec.origin is None:
             raise ImportError("jailbreakbench not installed")
 
-        dataset_path = Path(spec.origin).parent / "dataset.py"
-        ds_spec = importlib.util.spec_from_file_location("_jbb_dataset_direct", dataset_path)
-        ds_mod = importlib.util.module_from_spec(ds_spec)
-        ds_spec.loader.exec_module(ds_mod)  # loads pandas + datasets, NOT __init__.py
+        # Load directly (not via the package wrapper) to retain the Index column,
+        # which the wrapper drops before exposing the dataset.
+        from datasets import load_dataset
+        dataset = load_dataset("dedeswim/JBB-Behaviors", "behaviors", split="harmful")
 
-        dataset = ds_mod.read_dataset()
         prompts = []
-        for i, goal in enumerate(dataset.goals):
-            behavior = dataset.behaviors[i] if i < len(dataset.behaviors) else str(i)
-            category = dataset.categories[i] if i < len(dataset.categories) else "unknown"
-            behavior_id = behavior.lower().replace(" ", "_")[:50]
+        for row in dataset:
+            behavior_id = row["Behavior"].lower().replace(" ", "_")[:50]
             prompts.append(BenchmarkPrompt(
-                prompt_id=f"jbb_{behavior_id}",
-                text=goal,
-                category=category,
+                prompt_id=f"jbb_{row['Index']:04d}_{behavior_id}",
+                text=row["Goal"],
+                category=row["Category"],
                 source="jailbreakbench",
             ))
         return prompts
@@ -68,7 +65,7 @@ class JailbreakBench(Benchmark):
             reader = csv.DictReader(f)
             for row in reader:
                 prompts.append(BenchmarkPrompt(
-                    prompt_id=f"jbb_{row.get('BehaviorID', len(prompts))}",
+                    prompt_id=f"jbb_{len(prompts):04d}_{row.get('BehaviorID', len(prompts))}",
                     text=row.get("Behavior", ""),
                     category=row.get("SemanticCategory", "unknown"),
                     source="jailbreakbench",

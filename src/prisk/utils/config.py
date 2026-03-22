@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 
 
 class GenerationConfig(BaseModel):
-    max_new_tokens: int = 512
+    max_new_tokens: int = 128
     temperature: float = 0.7
     do_sample: bool = True
     top_p: float = 0.9

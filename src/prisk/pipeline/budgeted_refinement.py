@@ -67,11 +67,12 @@ def run_trial(
 
         steps.append(StepResult(step=t, prompt=p, response=y, judgment=z))
 
-        # Record first success
-        if z == 1 and s == 0:
+        # Record first success and stop — no further refinement needed
+        if z == 1:
             s = 1
             t_star = t
             logger.debug(f"[{prompt_id}] First success at step {t}")
+            break
 
         # p^(t) ← π(p^(t-1), y^(t-1), z^(t-1), t)
         p = attack.refine(p, y, z, t)
