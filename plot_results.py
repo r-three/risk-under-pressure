@@ -91,7 +91,7 @@ def _style_axes(ax: plt.Axes, title: str, lambda_max: float) -> None:
     ax.set_xlabel("Pressure level λ", fontsize=11)
     ax.set_ylabel("Risk R̂(M, λ)", fontsize=11)
     ax.set_title(title, fontsize=12, fontweight="bold")
-    ax.set_xlim(left=0, right=lambda_max)
+    ax.set_xlim(left=0, right=lambda_max + 0.5)
     ax.set_ylim(-0.02, 1.05)
     ax.yaxis.set_major_formatter(mticker.PercentFormatter(xmax=1, decimals=0))
     ax.xaxis.set_major_locator(mticker.MaxNLocator(integer=True))
@@ -128,7 +128,8 @@ def plot_per_attack(df: pd.DataFrame, output_dir: Path, fmt: str) -> None:
 
         _style_axes(ax, f"Risk-Pressure Curves — {_attack_label(attack)}", lambda_max)
         ax.legend(title="Model", fontsize=9, title_fontsize=9,
-                  loc="lower right", framealpha=0.9)
+                  loc="lower right", framealpha=0.9,
+                  borderpad=0.8, labelspacing=0.4)
 
         fig.tight_layout()
         out_path = output_dir / f"risk_curves_{attack}.{fmt}"
@@ -148,7 +149,7 @@ def plot_combined(df: pd.DataFrame, output_dir: Path, fmt: str) -> None:
     color_map = _model_color(models)
     lambda_max = df["lambda"].max()
 
-    fig, ax = plt.subplots(figsize=(8, 5))
+    fig, ax = plt.subplots(figsize=(10, 5))
 
     for model in models:
         for attack in attacks:
@@ -180,15 +181,17 @@ def plot_combined(df: pd.DataFrame, output_dir: Path, fmt: str) -> None:
 
     leg1 = ax.legend(handles=model_handles, title="Model",
                      fontsize=8, title_fontsize=9,
-                     loc="upper left", bbox_to_anchor=(1.01, 1), framealpha=0.9)
+                     loc="upper left", bbox_to_anchor=(1.01, 1), framealpha=0.9,
+                     borderpad=0.8, labelspacing=0.4)
     ax.add_artist(leg1)
-    ax.legend(handles=attack_handles, title="Attack",
-              fontsize=8, title_fontsize=9,
-              loc="upper left", bbox_to_anchor=(1.01, 0.45), framealpha=0.9)
+    leg2 = ax.legend(handles=attack_handles, title="Attack",
+                     fontsize=8, title_fontsize=9,
+                     loc="upper left", bbox_to_anchor=(1.01, 0.45), framealpha=0.9,
+                     borderpad=0.8, labelspacing=0.4)
 
-    fig.tight_layout()
+    fig.subplots_adjust(right=0.68)
     out_path = output_dir / f"risk_curves_combined.{fmt}"
-    fig.savefig(out_path, dpi=150, bbox_inches="tight")
+    fig.savefig(out_path, dpi=150, bbox_inches="tight", bbox_extra_artists=(leg1, leg2))
     plt.close(fig)
     print(f"  Saved: {out_path}")
 
