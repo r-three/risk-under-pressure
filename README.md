@@ -23,14 +23,15 @@ where $\lambda$ is the adversarial optimization pressure (refinement budget). Ra
 7. [Step 6 — Choose an experiment](#step-6--choose-an-experiment)
 8. [Step 7 — Run inference (Phase 1)](#step-7--run-inference-phase-1)
 9. [Step 8 — Run evaluation (Phase 2)](#step-8--run-evaluation-phase-2)
-10. [Step 9 — Understand the outputs](#step-9--understand-the-outputs)
-11. [Step 10 — Run all ablation experiments](#step-10--run-all-ablation-experiments)
-12. [Running on Killarney (SLURM)](#running-on-killarney-slurm)
-13. [Reference: Models](#reference-models)
-14. [Reference: Attacks](#reference-attacks)
-15. [Reference: Metrics](#reference-metrics)
-16. [Programmatic Usage](#programmatic-usage)
-17. [Citation](#citation)
+10. [Step 9 — Plot results (Phase 3)](#step-9--plot-results-phase-3)
+11. [Step 10 — Understand the outputs](#step-10--understand-the-outputs)
+12. [Step 11 — Run all ablation experiments](#step-11--run-all-ablation-experiments)
+13. [Running on Killarney (SLURM)](#running-on-killarney-slurm)
+14. [Reference: Models](#reference-models)
+15. [Reference: Attacks](#reference-attacks)
+16. [Reference: Metrics](#reference-metrics)
+17. [Programmatic Usage](#programmatic-usage)
+18. [Citation](#citation)
 
 ---
 
@@ -57,6 +58,7 @@ prisk-pressure/
 │   └── run_evaluation.py        # Phase 2: compute metrics from saved results
 │
 ├── outputs/                     # All results written here
+├── plot_results.py              # Phase 3: generate risk-pressure curve plots
 ├── pyproject.toml               # Dependencies and package config
 └── .env.example                 # API key template
 ```
@@ -401,7 +403,49 @@ qwen2.5-7b-instruct                 pair           2.1800   0.4200      5   100
 
 ---
 
-## Step 9 — Understand the outputs
+## Step 9 — Plot results (Phase 3)
+
+This phase reads the `metrics.csv` produced by Step 8 and generates risk-pressure curve figures. **No model calls are made** — it runs in seconds.
+
+### Basic usage
+
+```bash
+uv run python plot_results.py \
+    --metrics-csv outputs/pressure_sensitivity/metrics.csv
+```
+
+Plots are saved to `outputs/pressure_sensitivity/plots/` by default.
+
+### Specify an output directory
+
+```bash
+uv run python plot_results.py \
+    --metrics-csv outputs/pressure_sensitivity/metrics.csv \
+    --output-dir outputs/pressure_sensitivity/plots
+```
+
+### Change the output format
+
+```bash
+uv run python plot_results.py \
+    --metrics-csv outputs/pressure_sensitivity/metrics.csv \
+    --format pdf   # png (default) | pdf | svg
+```
+
+### Output files
+
+| File | Contents |
+|------|----------|
+| `plots/risk_curves_gcg.png` | Risk curves for all models under the GCG attack |
+| `plots/risk_curves_pair.png` | Risk curves for all models under the PAIR attack |
+| `plots/risk_curves_jailbroken.png` | Risk curves for all models under the Jailbroken attack |
+| `plots/risk_curves_combined.png` | All (model, attack) pairs in one figure |
+
+One figure is generated per attack (colour = model), plus a combined figure where colour encodes the model and line style encodes the attack. Confidence interval bands are drawn automatically when bootstrap intervals are non-trivial (i.e. `risk_lower ≠ risk_upper`).
+
+---
+
+## Step 10 — Understand the outputs
 
 ### Output files
 
@@ -410,6 +454,8 @@ qwen2.5-7b-instruct                 pair           2.1800   0.4200      5   100
 | `outputs/<exp>/<model>/<attack>/results.jsonl` | Raw trial records from inference |
 | `outputs/<exp>/metrics.json` | Metrics dict keyed by `"model_id/attack_id"` |
 | `outputs/<exp>/metrics.csv` | Flat CSV, one row per `(model, attack, λ)` |
+| `outputs/<exp>/plots/risk_curves_<attack>.png` | Per-attack risk-pressure curve plot |
+| `outputs/<exp>/plots/risk_curves_combined.png` | Combined plot of all (model, attack) pairs |
 
 ### Metrics JSON structure
 
@@ -448,7 +494,7 @@ Each entry in `risk_curve_ci` is `[point_estimate, lower_95_ci, upper_95_ci]`.
 
 ---
 
-## Step 10 — Run all ablation experiments
+## Step 11 — Run all ablation experiments
 
 The full experimental pipeline from the paper — run each ablation sequentially, with `--resume` so you can stop and restart at any point:
 
@@ -478,7 +524,7 @@ uv run python scripts/run_evaluation.py \
     --results-dir outputs/open_vs_closed --print-table
 ```
 
-Export all results to CSV for plotting:
+Export all results to CSV and generate plots:
 
 ```bash
 for exp in pressure_sensitivity attack_sensitivity training_stage open_vs_closed; do
@@ -486,6 +532,9 @@ for exp in pressure_sensitivity attack_sensitivity training_stage open_vs_closed
         --results-dir outputs/$exp \
         --format csv \
         --output outputs/$exp/metrics.csv
+    uv run python plot_results.py \
+        --metrics-csv outputs/$exp/metrics.csv \
+        --output-dir outputs/$exp/plots
 done
 ```
 

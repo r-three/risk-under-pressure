@@ -107,7 +107,7 @@ def write_csv(results: dict, output_path: Path) -> None:
             curve_ci = m.get("risk_curve_ci", {})
             for lam_str, risk in curve.items():
                 lam = int(lam_str)
-                ci = curve_ci.get(str(lam), [risk, risk, risk])
+                ci = curve_ci.get(lam, [risk, risk, risk])
                 rows.append({
                     "model_id": model_id,
                     "attack_id": attack_id,
