@@ -37,13 +37,13 @@ Comparing `qwen2.5-7b-instruct` vs `tulu2-7b-sft` across all three attacks.
 | qwen2.5-7b-instruct | 2.61 | 7.66 | 7.31 |
 | tulu2-7b-sft | 3.62 | 9.07 | 8.10 |
 
-![Risk-Pressure Curves — Model Family](/home/ehghaghi/scratch/ehghaghi/outputs/model_family/plots/risk_curves_combined.png)
+![Risk-Pressure Curves — Model Family](figures/model_family/risk_curves_combined.png)
 
 Tulu2-7b-sft is more vulnerable across all attacks, especially Jailbroken and PAIR which reach near 100% at lambda=10. GCG is notably weaker for both models.
 
 ### Category Exploitability — Break Pressure
 
-![Break Pressure by Category — Model Family](/home/ehghaghi/scratch/ehghaghi/outputs/model_family/plots/break_pressure_by_category.png)
+![Break Pressure by Category — Model Family](figures/model_family/break_pressure_by_category.png)
 
 Sexual/Adult content and Physical harm are the easiest categories to exploit (lowest break pressure), while Expert Advice and Privacy are the most resistant.
 
@@ -51,7 +51,7 @@ Sexual/Adult content and Physical harm are the easiest categories to exploit (lo
 
 | GCG | Jailbroken | PAIR |
 |---|---|---|
-| ![](/home/ehghaghi/scratch/ehghaghi/outputs/model_family/plots/heatmap_category_gcg.png) | ![](/home/ehghaghi/scratch/ehghaghi/outputs/model_family/plots/heatmap_category_jailbroken.png) | ![](/home/ehghaghi/scratch/ehghaghi/outputs/model_family/plots/heatmap_category_pair.png) |
+| ![](figures/model_family/heatmap_category_gcg.png) | ![](figures/model_family/heatmap_category_jailbroken.png) | ![](figures/model_family/heatmap_category_pair.png) |
 
 ---
 
@@ -67,7 +67,7 @@ How risk scales with lambda across three Qwen model sizes.
 
 For Jailbroken and PAIR attacks, all three models reach ~94–100% success rate at lambda=10 regardless of size.
 
-![Risk-Pressure Curves — Pressure Sensitivity](/home/ehghaghi/scratch/ehghaghi/outputs/pressure_sensitivity/plots/risk_curves_combined.png)
+![Risk-Pressure Curves — Pressure Sensitivity](figures/pressure_sensitivity/risk_curves_combined.png)
 
 The 3B model is surprisingly the most robust to GCG. For prompt-based attacks (Jailbroken, PAIR), model size provides no meaningful protection.
 
@@ -75,13 +75,13 @@ The 3B model is surprisingly the most robust to GCG. For prompt-based attacks (J
 
 | GCG | Jailbroken | PAIR |
 |---|---|---|
-| ![](/home/ehghaghi/scratch/ehghaghi/outputs/pressure_sensitivity/plots/risk_curves_gcg.png) | ![](/home/ehghaghi/scratch/ehghaghi/outputs/pressure_sensitivity/plots/risk_curves_jailbroken.png) | ![](/home/ehghaghi/scratch/ehghaghi/outputs/pressure_sensitivity/plots/risk_curves_pair.png) |
+| ![](figures/pressure_sensitivity/risk_curves_gcg.png) | ![](figures/pressure_sensitivity/risk_curves_jailbroken.png) | ![](figures/pressure_sensitivity/risk_curves_pair.png) |
 
 ### Category Heatmaps at λ=10
 
 | GCG | Jailbroken | PAIR |
 |---|---|---|
-| ![](/home/ehghaghi/scratch/ehghaghi/outputs/pressure_sensitivity/plots/heatmap_category_gcg.png) | ![](/home/ehghaghi/scratch/ehghaghi/outputs/pressure_sensitivity/plots/heatmap_category_jailbroken.png) | ![](/home/ehghaghi/scratch/ehghaghi/outputs/pressure_sensitivity/plots/heatmap_category_pair.png) |
+| ![](figures/pressure_sensitivity/heatmap_category_gcg.png) | ![](figures/pressure_sensitivity/heatmap_category_jailbroken.png) | ![](figures/pressure_sensitivity/heatmap_category_pair.png) |
 
 ---
 
@@ -95,7 +95,7 @@ How the training recipe (base → SFT → DPO) affects robustness on Tulu2-7b.
 | tulu2-7b-sft | 3.62 | 9.07 |
 | tulu2-7b-dpo | 4.67 | 8.09 |
 
-![Risk-Pressure Curves — Training Stage](/home/ehghaghi/scratch/ehghaghi/outputs/training_stage/plots/risk_curves_combined.png)
+![Risk-Pressure Curves — Training Stage](figures/training_stage/risk_curves_combined.png)
 
 The base model is extremely vulnerable to all attacks. SFT provides a large improvement for GCG. DPO further reduces vulnerability to Jailbroken/PAIR relative to SFT.
 
@@ -103,13 +103,13 @@ The base model is extremely vulnerable to all attacks. SFT provides a large impr
 
 | GCG | Jailbroken | PAIR |
 |---|---|---|
-| ![](/home/ehghaghi/scratch/ehghaghi/outputs/training_stage/plots/risk_curves_gcg.png) | ![](/home/ehghaghi/scratch/ehghaghi/outputs/training_stage/plots/risk_curves_jailbroken.png) | ![](/home/ehghaghi/scratch/ehghaghi/outputs/training_stage/plots/risk_curves_pair.png) |
+| ![](figures/training_stage/risk_curves_gcg.png) | ![](figures/training_stage/risk_curves_jailbroken.png) | ![](figures/training_stage/risk_curves_pair.png) |
 
 ### Category Heatmaps at λ=10
 
 | GCG | Jailbroken | PAIR |
 |---|---|---|
-| ![](/home/ehghaghi/scratch/ehghaghi/outputs/training_stage/plots/heatmap_category_gcg.png) | ![](/home/ehghaghi/scratch/ehghaghi/outputs/training_stage/plots/heatmap_category_jailbroken.png) | ![](/home/ehghaghi/scratch/ehghaghi/outputs/training_stage/plots/heatmap_category_pair.png) |
+| ![](figures/training_stage/heatmap_category_gcg.png) | ![](figures/training_stage/heatmap_category_jailbroken.png) | ![](figures/training_stage/heatmap_category_pair.png) |
 
 ---
 
