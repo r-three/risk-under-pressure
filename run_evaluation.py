@@ -36,6 +36,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from prisk.metrics import compute_all_metrics, format_metrics_table
+from prisk.metrics.risk_curve import bootstrap_risk_curve, build_risk_curve
 from prisk.utils.io import TrialRecord, read_jsonl
 from prisk.utils.logging import get_logger
 
@@ -131,6 +132,56 @@ def write_csv(results: dict, output_path: Path) -> None:
         writer.writerows(rows)
 
 
+def write_csv_by_category(
+    category_records: dict[tuple[str, str], list[TrialRecord]],
+    pressure_levels_map: dict[tuple[str, str], list[int]],
+    output_path: Path,
+    n_bootstrap: int = 1000,
+    seed: int = 42,
+) -> None:
+    """Write per-category risk curve data as CSV for plotting.
+
+    Args:
+        category_records: maps (model_id, attack_id) -> list of TrialRecords
+        pressure_levels_map: maps (model_id, attack_id) -> pressure levels used
+        output_path: destination CSV path
+    """
+    rows = []
+    for (model_id, attack_id), records in category_records.items():
+        pressure_levels = pressure_levels_map[(model_id, attack_id)]
+        categories = sorted({r.category for r in records})
+        for category in categories:
+            cat_records = [r for r in records if r.category == category]
+            if not cat_records:
+                continue
+            curve = build_risk_curve(cat_records, pressure_levels)
+            curve_ci = bootstrap_risk_curve(
+                cat_records, pressure_levels, n_bootstrap=n_bootstrap, seed=seed
+            )
+            for lam in sorted(pressure_levels):
+                risk = curve[lam]
+                ci = curve_ci.get(lam, (risk, risk, risk))
+                rows.append({
+                    "model_id": model_id,
+                    "attack_id": attack_id,
+                    "category": category,
+                    "lambda": lam,
+                    "risk": risk,
+                    "risk_lower": ci[1],
+                    "risk_upper": ci[2],
+                    "n_prompts": len(cat_records),
+                })
+
+    if not rows:
+        return
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(output_path, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=rows[0].keys())
+        writer.writeheader()
+        writer.writerows(rows)
+
+
 def main():
     args = parse_args()
     results_dir = Path(args.results_dir)
@@ -148,6 +199,8 @@ def main():
 
     all_metrics: dict[str, dict[str, dict]] = {}
     nested_results: dict[str, dict[str, dict]] = {}  # for format_metrics_table
+    all_records: dict[tuple[str, str], list[TrialRecord]] = {}
+    all_pressure_levels: dict[tuple[str, str], list[int]] = {}
 
     for (model_id, attack_id), path in sorted(result_files.items()):
         records = list(read_jsonl(path))
@@ -160,6 +213,9 @@ def main():
         # Clamp pressure levels to max budget in records
         max_budget = max(r.budget for r in records)
         pressure_levels = [lam for lam in pressure_levels if lam <= max_budget]
+
+        all_records[(model_id, attack_id)] = records
+        all_pressure_levels[(model_id, attack_id)] = pressure_levels
 
         logger.info(
             f"[{model_id}/{attack_id}] {len(records)} records | "
@@ -206,6 +262,12 @@ def main():
     if args.format == "csv":
         write_csv(nested_results, output_path)
         logger.info(f"CSV metrics written to {output_path}")
+        cat_output_path = output_path.parent / "metrics_by_category.csv"
+        write_csv_by_category(
+            all_records, all_pressure_levels, cat_output_path,
+            n_bootstrap=args.n_bootstrap, seed=args.seed,
+        )
+        logger.info(f"Per-category CSV metrics written to {cat_output_path}")
     else:
         with open(output_path, "w") as f:
             json.dump(all_metrics, f, indent=2)

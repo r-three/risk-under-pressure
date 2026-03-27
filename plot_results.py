@@ -197,6 +197,149 @@ def plot_combined(df: pd.DataFrame, output_dir: Path, fmt: str) -> None:
 
 
 # --------------------------------------------------------------------------- #
+# Category-level plots
+# --------------------------------------------------------------------------- #
+
+def _category_color(categories: list[str]) -> dict[str, str]:
+    return {c: PALETTE[i % len(PALETTE)] for i, c in enumerate(categories)}
+
+
+def plot_category_curves(df_cat: pd.DataFrame, output_dir: Path, fmt: str) -> None:
+    """One figure per attack: per-category risk curves, one subplot per model."""
+    attacks = sorted(df_cat["attack_id"].unique())
+    models = sorted(df_cat["model_id"].unique())
+    categories = sorted(df_cat["category"].unique())
+    color_map = _category_color(categories)
+    lambda_max = df_cat["lambda"].max()
+
+    for attack in attacks:
+        df_a = df_cat[df_cat["attack_id"] == attack]
+        n_models = len(models)
+        fig, axes = plt.subplots(1, n_models, figsize=(5.5 * n_models, 4.5), sharey=True)
+        if n_models == 1:
+            axes = [axes]
+
+        for ax, model in zip(axes, models):
+            df_m = df_a[df_a["model_id"] == model]
+            for cat in categories:
+                df_pair = df_m[df_m["category"] == cat].sort_values("lambda")
+                if df_pair.empty:
+                    continue
+                ax.plot(df_pair["lambda"], df_pair["risk"],
+                        color=color_map[cat], label=cat,
+                        marker="o", linestyle="-", linewidth=1.6, markersize=4)
+            _style_axes(ax, model, lambda_max)
+            ax.set_title(model, fontsize=9, fontweight="bold")
+
+        axes[0].set_ylabel("Risk R̂(M, λ)", fontsize=11)
+        for ax in axes[1:]:
+            ax.set_ylabel("")
+
+        # Shared legend on the right
+        handles = [plt.Line2D([0], [0], color=color_map[c], linewidth=2, label=c)
+                   for c in categories]
+        fig.legend(handles=handles, title="Category", fontsize=7, title_fontsize=8,
+                   loc="center right", bbox_to_anchor=(1.0, 0.5),
+                   borderpad=0.8, labelspacing=0.4)
+        fig.suptitle(f"Risk by Category — {_attack_label(attack)}", fontsize=12,
+                     fontweight="bold", y=1.01)
+        fig.tight_layout()
+        out_path = output_dir / f"risk_curves_by_category_{attack}.{fmt}"
+        fig.savefig(out_path, dpi=150, bbox_inches="tight", bbox_extra_artists=fig.legends)
+        plt.close(fig)
+        print(f"  Saved: {out_path}")
+
+
+def plot_category_heatmap(df_cat: pd.DataFrame, output_dir: Path, fmt: str) -> None:
+    """One heatmap per attack: rows=categories, columns=models, value=risk at lambda_max."""
+    import seaborn as sns
+
+    attacks = sorted(df_cat["attack_id"].unique())
+    lambda_max = df_cat["lambda"].max()
+    df_max = df_cat[df_cat["lambda"] == lambda_max]
+
+    for attack in attacks:
+        df_a = df_max[df_max["attack_id"] == attack]
+        pivot = df_a.pivot_table(index="category", columns="model_id", values="risk")
+        pivot = pivot.sort_index()
+
+        fig, ax = plt.subplots(figsize=(max(5, len(pivot.columns) * 2.2), max(4, len(pivot) * 0.65)))
+        sns.heatmap(
+            pivot, ax=ax, vmin=0, vmax=1, cmap="YlOrRd",
+            annot=pivot.applymap(lambda v: f"{v:.0%}"),
+            fmt="", linewidths=0.5, linecolor="white",
+            cbar_kws={"label": "Risk", "shrink": 1.0,
+                      "format": mticker.PercentFormatter(xmax=1, decimals=0)},
+        )
+        ax.set_title(f"Risk at λ={lambda_max:.0f} — {_attack_label(attack)}",
+                     fontsize=12, fontweight="bold")
+        ax.set_xlabel("Model", fontsize=10)
+        ax.set_ylabel("Category", fontsize=10)
+        ax.tick_params(axis="x", rotation=25, labelsize=9)
+        ax.tick_params(axis="y", rotation=0)
+        fig.tight_layout()
+        out_path = output_dir / f"heatmap_category_{attack}.{fmt}"
+        fig.savefig(out_path, dpi=150, bbox_inches="tight")
+        plt.close(fig)
+        print(f"  Saved: {out_path}")
+
+
+def plot_break_pressure(df_cat: pd.DataFrame, output_dir: Path, fmt: str,
+                        tau: float = 0.5) -> None:
+    """Horizontal bar chart: min lambda to reach tau risk per category, grouped by model."""
+    models = sorted(df_cat["model_id"].unique())
+    categories = sorted(df_cat["category"].unique())
+    color_map = _model_color(models)
+
+    # For each (model, attack, category) find min lambda where risk >= tau
+    rows = []
+    for (model, attack, cat), grp in df_cat.groupby(["model_id", "attack_id", "category"]):
+        grp = grp.sort_values("lambda")
+        hit = grp[grp["risk"] >= tau]
+        bp = hit["lambda"].iloc[0] if not hit.empty else None
+        rows.append({"model_id": model, "attack_id": attack, "category": cat, "break_pressure": bp})
+
+    df_bp = pd.DataFrame(rows)
+    # Average across attacks per (model, category); None -> lambda_max + 1 (never broken)
+    lambda_max = df_cat["lambda"].max()
+    df_bp["break_pressure"] = df_bp["break_pressure"].fillna(lambda_max + 1)
+    df_mean = df_bp.groupby(["category", "model_id"])["break_pressure"].mean().reset_index()
+
+    # Sort categories by mean break pressure across all models
+    cat_order = (df_mean.groupby("category")["break_pressure"].mean()
+                 .sort_values().index.tolist())
+
+    n_cats = len(cat_order)
+    n_models = len(models)
+    bar_height = 0.7 / n_models
+    fig, ax = plt.subplots(figsize=(8, max(4, n_cats * 0.55)))
+
+    for i, model in enumerate(models):
+        df_m = df_mean[df_mean["model_id"] == model].set_index("category")
+        values = [df_m.loc[c, "break_pressure"] if c in df_m.index else lambda_max + 1
+                  for c in cat_order]
+        y_pos = np.arange(n_cats) + (i - (n_models - 1) / 2) * bar_height
+        ax.barh(y_pos, values, height=bar_height * 0.9,
+                color=color_map[model], label=model, alpha=0.85)
+
+    ax.set_yticks(np.arange(n_cats))
+    ax.set_yticklabels(cat_order, fontsize=9)
+    ax.set_xlabel("Break pressure λ (min λ to reach ≥50% risk)", fontsize=10)
+    ax.set_title("Category Exploitability — Break Pressure", fontsize=12, fontweight="bold")
+    ax.axvline(lambda_max + 1, color="gray", linestyle="--", linewidth=0.8, alpha=0.5)
+    ax.set_xlim(left=0, right=lambda_max + 1.5)
+    ax.xaxis.set_major_locator(mticker.MaxNLocator(integer=True))
+    ax.legend(title="Model", fontsize=8, title_fontsize=9,
+              borderpad=0.8, labelspacing=0.4)
+    ax.spines[["top", "right"]].set_visible(False)
+    fig.tight_layout()
+    out_path = output_dir / f"break_pressure_by_category.{fmt}"
+    fig.savefig(out_path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  Saved: {out_path}")
+
+
+# --------------------------------------------------------------------------- #
 # Entry point
 # --------------------------------------------------------------------------- #
 
@@ -204,6 +347,8 @@ def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Plot pRisk-Pressure curves from metrics CSV")
     p.add_argument("--metrics-csv", required=True,
                    help="Path to metrics.csv produced by run_evaluation.py")
+    p.add_argument("--category-metrics-csv", default=None,
+                   help="Path to metrics_by_category.csv (optional; enables category plots)")
     p.add_argument("--output-dir", default=None,
                    help="Directory to save plot files (default: same directory as metrics CSV)")
     p.add_argument("--format", default="png", choices=["png", "pdf", "svg"],
@@ -236,6 +381,23 @@ def main() -> None:
 
     print("\nGenerating combined plot...")
     plot_combined(df, output_dir, args.format)
+
+    if args.category_metrics_csv:
+        cat_path = Path(args.category_metrics_csv)
+        if not cat_path.exists():
+            raise FileNotFoundError(f"Category metrics CSV not found: {cat_path}")
+        df_cat = pd.read_csv(cat_path)
+        print(f"\nLoaded {len(df_cat)} category rows — "
+              f"{df_cat['category'].nunique()} categories")
+
+        print("\nGenerating per-category risk curves...")
+        plot_category_curves(df_cat, output_dir, args.format)
+
+        print("\nGenerating category heatmaps...")
+        plot_category_heatmap(df_cat, output_dir, args.format)
+
+        print("\nGenerating break-pressure chart...")
+        plot_break_pressure(df_cat, output_dir, args.format)
 
     print(f"\nDone. Plots saved to: {output_dir}")
 

@@ -351,7 +351,15 @@ uv run python scripts/run_evaluation.py \
     --output outputs/pressure_sensitivity/metrics.csv
 ```
 
-The CSV has one row per `(model, attack, λ)` with columns: `model_id`, `attack_id`, `lambda`, `risk`, `risk_lower`, `risk_upper`, `aurc`, `delta_r`, `lambda_star`, `n_prompts`.
+This writes two CSV files:
+
+| File | Contents |
+|------|----------|
+| `metrics.csv` | One row per `(model, attack, λ)` — aggregate risk across all categories |
+| `metrics_by_category.csv` | One row per `(model, attack, category, λ)` — per-category risk curves with bootstrap CIs |
+
+`metrics.csv` columns: `model_id`, `attack_id`, `lambda`, `risk`, `risk_lower`, `risk_upper`, `aurc`, `delta_r`, `lambda_star`, `n_prompts`.
+`metrics_by_category.csv` columns: `model_id`, `attack_id`, `category`, `lambda`, `risk`, `risk_lower`, `risk_upper`, `n_prompts`.
 
 ### Adjust the risk tolerance τ for λ*
 
@@ -416,6 +424,17 @@ uv run python plot_results.py \
 
 Plots are saved to `outputs/pressure_sensitivity/plots/` by default.
 
+### Include category-level analyses
+
+Pass `--category-metrics-csv` to also generate the three category-level plots. This file is produced automatically by `run_evaluation.py --format csv`.
+
+```bash
+uv run python plot_results.py \
+    --metrics-csv outputs/pressure_sensitivity/metrics.csv \
+    --category-metrics-csv outputs/pressure_sensitivity/metrics_by_category.csv \
+    --output-dir outputs/pressure_sensitivity/plots
+```
+
 ### Specify an output directory
 
 ```bash
@@ -434,6 +453,8 @@ uv run python plot_results.py \
 
 ### Output files
 
+**Aggregate plots** (always generated):
+
 | File | Contents |
 |------|----------|
 | `plots/risk_curves_gcg.png` | Risk curves for all models under the GCG attack |
@@ -441,7 +462,15 @@ uv run python plot_results.py \
 | `plots/risk_curves_jailbroken.png` | Risk curves for all models under the Jailbroken attack |
 | `plots/risk_curves_combined.png` | All (model, attack) pairs in one figure |
 
-One figure is generated per attack (colour = model), plus a combined figure where colour encodes the model and line style encodes the attack. Confidence interval bands are drawn automatically when bootstrap intervals are non-trivial (i.e. `risk_lower ≠ risk_upper`).
+**Category-level plots** (generated when `--category-metrics-csv` is provided):
+
+| File | Contents |
+|------|----------|
+| `plots/risk_curves_by_category_<attack>.png` | Per-category risk curves, one subplot per model |
+| `plots/heatmap_category_<attack>.png` | Category × model risk heatmap at max λ |
+| `plots/break_pressure_by_category.png` | Minimum λ to reach ≥50% risk, ranked by category |
+
+One aggregate figure is generated per attack (colour = model), plus a combined figure where colour encodes the model and line style encodes the attack. Confidence interval error bars are drawn automatically. Category plots further break down risk by the 10 JailbreakBench semantic harm categories.
 
 ---
 
@@ -453,9 +482,13 @@ One figure is generated per attack (colour = model), plus a combined figure wher
 |------|----------|
 | `outputs/<exp>/<model>/<attack>/results.jsonl` | Raw trial records from inference |
 | `outputs/<exp>/metrics.json` | Metrics dict keyed by `"model_id/attack_id"` |
-| `outputs/<exp>/metrics.csv` | Flat CSV, one row per `(model, attack, λ)` |
+| `outputs/<exp>/metrics.csv` | Aggregate CSV, one row per `(model, attack, λ)` |
+| `outputs/<exp>/metrics_by_category.csv` | Per-category CSV, one row per `(model, attack, category, λ)` |
 | `outputs/<exp>/plots/risk_curves_<attack>.png` | Per-attack risk-pressure curve plot |
 | `outputs/<exp>/plots/risk_curves_combined.png` | Combined plot of all (model, attack) pairs |
+| `outputs/<exp>/plots/risk_curves_by_category_<attack>.png` | Per-category risk curves, one subplot per model |
+| `outputs/<exp>/plots/heatmap_category_<attack>.png` | Category × model risk heatmap at max λ |
+| `outputs/<exp>/plots/break_pressure_by_category.png` | Category exploitability ranking by break pressure |
 
 ### Metrics JSON structure
 
@@ -524,7 +557,7 @@ uv run python scripts/run_evaluation.py \
     --results-dir outputs/open_vs_closed --print-table
 ```
 
-Export all results to CSV and generate plots:
+Export all results to CSV and generate plots (including category-level analyses):
 
 ```bash
 for exp in pressure_sensitivity attack_sensitivity training_stage open_vs_closed; do
@@ -534,6 +567,7 @@ for exp in pressure_sensitivity attack_sensitivity training_stage open_vs_closed
         --output outputs/$exp/metrics.csv
     uv run python plot_results.py \
         --metrics-csv outputs/$exp/metrics.csv \
+        --category-metrics-csv outputs/$exp/metrics_by_category.csv \
         --output-dir outputs/$exp/plots
 done
 ```
