@@ -120,6 +120,7 @@ def main():
                 attacker_model=attacker_model,
                 target_model=target_model,
             )
+            attack_target = target_model
 
             # Output path: outputs/{experiment}/{model_id}/{attack_id}/results.jsonl
             out_path = output_dir / model_config.model_id / attack_config.attack_id / "results.jsonl"
@@ -154,7 +155,7 @@ def main():
                     behavior=prompt.text,
                     category=prompt.category,
                     source=prompt.source,
-                    model=target_model,
+                    model=attack_target,
                     judge=judge,
                     attack=attack,
                     budget=config.lambda_max,

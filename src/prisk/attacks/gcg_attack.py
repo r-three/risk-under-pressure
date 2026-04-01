@@ -65,13 +65,16 @@ class _EJModelAdapter:
         return next(self.model.parameters()).dtype
 
     def batch_encode(self, texts, **kwargs):
-        return self.tokenizer(texts, return_tensors="pt", padding=True, **kwargs)
+        kwargs.setdefault("return_tensors", "pt")
+        kwargs.setdefault("padding", True)
+        return self.tokenizer(texts, **kwargs)
 
     def batch_decode(self, token_ids, **kwargs):
         return self.tokenizer.batch_decode(token_ids, **kwargs)
 
     def tokenize(self, text, **kwargs):
-        return self.tokenizer(text, return_tensors="pt", **kwargs)
+        kwargs.setdefault("return_tensors", "pt")
+        return self.tokenizer(text, **kwargs)
 
     def generate(self, *args, **kwargs):
         return self.model.generate(*args, **kwargs)
@@ -131,15 +134,16 @@ def _make_adapter_class():
                 return next(self.model.parameters()).dtype
 
             def batch_encode(self, texts, **kwargs):
-                return self.tokenizer(
-                    texts, return_tensors="pt", padding=True, **kwargs
-                )
+                kwargs.setdefault("return_tensors", "pt")
+                kwargs.setdefault("padding", True)
+                return self.tokenizer(texts, **kwargs)
 
             def batch_decode(self, token_ids, **kwargs):
                 return self.tokenizer.batch_decode(token_ids, **kwargs)
 
             def tokenize(self, text, **kwargs):
-                return self.tokenizer(text, return_tensors="pt", **kwargs)
+                kwargs.setdefault("return_tensors", "pt")
+                return self.tokenizer(text, **kwargs)
 
             def generate(self, *args, **kwargs):
                 return self.model.generate(*args, **kwargs)
@@ -225,7 +229,7 @@ class GCGAttack(AttackPolicy):
                     raise ImportError("EasyJailbreak WhiteBoxModelBase not available")
                 self._ej_model = _EJModelAdapter(self._target_model)
                 self._mutator = MutationTokenGradient(
-                    self._ej_model, num_turb_sample=512, top_k=256
+                    self._ej_model, num_turb_sample=128, top_k=256
                 )
                 self._selector = ReferenceLossSelector(self._ej_model)
 
@@ -250,8 +254,10 @@ class GCGAttack(AttackPolicy):
             return new_jbp
 
         except Exception as e:
-            logger.warning(
+            logger.error(
                 f"GCG gradient step failed ({type(e).__name__}): {e}. "
-                "Using static suffix (no gradient updates)."
+                "Using static suffix (no gradient updates). "
+                "Common cause: model loaded with quantization (4bit/8bit) which disables "
+                "gradient computation — load the model with quantization=none for GCG."
             )
             return self._current_suffix
