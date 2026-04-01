@@ -1,0 +1,27 @@
+# Ablation: Attacker Model Comparison
+# Does the choice of PAIR attacker model affect the risk-pressure profile?
+name: "attacker_comparison"
+benchmark: "jailbreakbench"
+n_prompts: 100
+pressure_levels: [0, 1, 2, 4, 6, 8, 10]
+lambda_max: 10
+models:
+  - "qwen2.5_7b"
+  - "llama3.1_8b_instruct"
+  - "tulu2_7b_dpo"
+attacks:
+  - "pair"
+# attacker_models: compare multiple PAIR attackers in one experiment.
+# Results are stored per attacker as pair__{attacker_name}/ so they appear
+# as separate conditions in metrics and plots.
+# Options: qwen2.5_7b | qwen2.5_3b | llama3.1_8b_instruct | llama3.2_1b_instruct
+#          tulu2_7b_dpo | gpt4o_mini | claude35_sonnet | gemini_flash | gemini_flash_lite
+attacker_models:
+  # - "llama3.1_8b_instruct"
+  # - "qwen2.5_7b"
+  - "gemini_flash"
+judge_model: "llama3.1_8b_instruct_judge"
+output_dir: "/home/ehghaghi/scratch/ehghaghi/outputs/attacker_comparison"
+seed: 42
+tau: 0.5
+n_bootstrap: 1000

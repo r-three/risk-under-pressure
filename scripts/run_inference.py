@@ -109,60 +109,69 @@ def main():
         for attack_name in config.attacks:
             attack_config = load_attack_config(attack_name, configs_dir)
 
-            # Load attacker model for PAIR (may be same as judge model → cached)
-            attacker_model = None
-            if attack_config.attacker_model:
-                att_model_config = load_model_config(attack_config.attacker_model, configs_dir)
-                attacker_model = load_model(att_model_config)
-
-            attack = load_attack(
-                attack_config,
-                attacker_model=attacker_model,
-                target_model=target_model,
-            )
-            attack_target = target_model
-
-            # Output path: outputs/{experiment}/{model_id}/{attack_id}/results.jsonl
-            out_path = output_dir / model_config.model_id / attack_config.attack_id / "results.jsonl"
-
-            # Determine completed IDs (resume) or clear the file (fresh run)
-            if args.resume:
-                done_ids = load_completed_ids(out_path)
+            # Resolve list of attacker models to iterate over
+            if config.attacker_models:
+                attacker_names = config.attacker_models
             else:
-                done_ids = set()
-                if out_path.exists():
-                    out_path.unlink()
-                    logger.info(f"Cleared existing results: {out_path}")
-            remaining = [p for p in prompts if p.prompt_id not in done_ids]
+                single = config.attacker_model or attack_config.attacker_model
+                attacker_names = [single]  # may be None (no attacker needed)
 
-            if done_ids:
-                logger.info(
-                    f"[{model_config.model_id}/{attack_config.attack_id}] "
-                    f"Resuming: {len(done_ids)} done, {len(remaining)} remaining"
+            for attacker_name in attacker_names:
+                # Load attacker model if specified
+                attacker_model = None
+                if attacker_name:
+                    att_model_config = load_model_config(attacker_name, configs_dir)
+                    attacker_model = load_model(att_model_config)
+
+                attack = load_attack(
+                    attack_config,
+                    attacker_model=attacker_model,
+                    target_model=target_model,
                 )
 
-            if not remaining:
-                logger.info(
-                    f"[{model_config.model_id}/{attack_config.attack_id}] All prompts complete."
-                )
-                continue
+                # Encode attacker name in folder when comparing multiple attackers
+                if config.attacker_models:
+                    folder_id = f"{attack_config.attack_id}__{attacker_name}"
+                else:
+                    folder_id = attack_config.attack_id
 
-            desc = f"{model_config.model_id}/{attack_config.attack_id}"
-            for prompt in tqdm(remaining, desc=desc, unit="prompt"):
-                record = run_trial(
-                    base_prompt=prompt.text,
-                    prompt_id=prompt.prompt_id,
-                    behavior=prompt.text,
-                    category=prompt.category,
-                    source=prompt.source,
-                    model=attack_target,
-                    judge=judge,
-                    attack=attack,
-                    budget=config.lambda_max,
-                )
-                append_jsonl(record, out_path)
+                # Output path: outputs/{experiment}/{model_id}/{folder_id}/results.jsonl
+                out_path = output_dir / model_config.model_id / folder_id / "results.jsonl"
 
-            logger.info(f"[{desc}] Done. Results: {out_path}")
+                # Determine completed IDs (resume) or clear the file (fresh run)
+                if args.resume:
+                    done_ids = load_completed_ids(out_path)
+                else:
+                    done_ids = set()
+                    if out_path.exists():
+                        out_path.unlink()
+                        logger.info(f"Cleared existing results: {out_path}")
+                remaining = [p for p in prompts if p.prompt_id not in done_ids]
+
+                desc = f"{model_config.model_id}/{folder_id}"
+
+                if done_ids:
+                    logger.info(f"[{desc}] Resuming: {len(done_ids)} done, {len(remaining)} remaining")
+
+                if not remaining:
+                    logger.info(f"[{desc}] All prompts complete.")
+                    continue
+
+                for prompt in tqdm(remaining, desc=desc, unit="prompt"):
+                    record = run_trial(
+                        base_prompt=prompt.text,
+                        prompt_id=prompt.prompt_id,
+                        behavior=prompt.text,
+                        category=prompt.category,
+                        source=prompt.source,
+                        model=target_model,
+                        judge=judge,
+                        attack=attack,
+                        budget=config.lambda_max,
+                    )
+                    append_jsonl(record, out_path)
+
+                logger.info(f"[{desc}] Done. Results: {out_path}")
 
     logger.info("Inference complete.")
 

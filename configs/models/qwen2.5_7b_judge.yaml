@@ -6,6 +6,6 @@ quantization: "4bit"
 device: "cuda"
 generation:
   max_new_tokens: 64
-  temperature: 0.0
+  temperature: 0.2
   do_sample: false
   top_p: 1.0

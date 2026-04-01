@@ -110,8 +110,8 @@ def _plot_risk_curve(
 
 
 def _style_axes(ax: plt.Axes, title: str, lambda_max: float) -> None:
-    ax.set_xlabel("Pressure level λ")
-    ax.set_ylabel("Risk R̂(M, λ)")
+    ax.set_xlabel(r"Pressure level $\lambda$")
+    ax.set_ylabel(r"Risk $\hat{R}(M, \lambda)$")
     ax.set_title(title, fontweight="bold")
     ax.set_xlim(left=0, right=lambda_max + 0.5)
     ax.set_ylim(-0.02, 1.05)
@@ -229,22 +229,24 @@ def _category_color(categories: list[str]) -> dict[str, str]:
 
 
 def plot_category_curves(df_cat: pd.DataFrame, output_dir: Path, fmt: str) -> None:
-    """One figure per attack: per-category risk curves, one subplot per model."""
+    """One figure per (attack, model): per-category risk curves."""
     attacks = sorted(df_cat["attack_id"].unique())
     models = sorted(df_cat["model_id"].unique())
     categories = sorted(df_cat["category"].unique())
     color_map = _category_color(categories)
     lambda_max = df_cat["lambda"].max()
 
+    handles = [plt.Line2D([0], [0], color=color_map[c], linewidth=2, label=c)
+               for c in categories]
+
     for attack in attacks:
         df_a = df_cat[df_cat["attack_id"] == attack]
-        n_models = len(models)
-        fig, axes = plt.subplots(1, n_models, figsize=(5.5 * n_models, 4.5), sharey=True)
-        if n_models == 1:
-            axes = [axes]
-
-        for ax, model in zip(axes, models):
+        for model in models:
             df_m = df_a[df_a["model_id"] == model]
+            if df_m.empty:
+                continue
+
+            fig, ax = plt.subplots(figsize=(6, 4.5))
             for cat in categories:
                 df_pair = df_m[df_m["category"] == cat].sort_values("lambda")
                 if df_pair.empty:
@@ -252,26 +254,16 @@ def plot_category_curves(df_cat: pd.DataFrame, output_dir: Path, fmt: str) -> No
                 ax.plot(df_pair["lambda"], df_pair["risk"],
                         color=color_map[cat], label=cat,
                         marker="o", linestyle="-", linewidth=1.6, markersize=4)
-            _style_axes(ax, model, lambda_max)
-            ax.set_title(model, fontweight="bold")
-
-        axes[0].set_ylabel("Risk R̂(M, λ)", fontsize=11)
-        for ax in axes[1:]:
-            ax.set_ylabel("")
-
-        # Shared legend on the right
-        handles = [plt.Line2D([0], [0], color=color_map[c], linewidth=2, label=c)
-                   for c in categories]
-        fig.legend(handles=handles, title="Category", fontsize=7, title_fontsize=8,
-                   loc="center right", bbox_to_anchor=(1.0, 0.5),
-                   borderpad=0.8, labelspacing=0.4)
-        fig.suptitle(f"Risk by Category — {_attack_label(attack)}", fontsize=12,
-                     fontweight="bold", y=1.01)
-        fig.tight_layout(pad=0.5)
-        out_path = output_dir / f"risk_curves_by_category_{attack}.{fmt}"
-        fig.savefig(out_path, dpi=150, bbox_inches="tight", pad_inches=0, bbox_extra_artists=fig.legends)
-        plt.close(fig)
-        print(f"  Saved: {out_path}")
+            _style_axes(ax, f"{model} — {_attack_label(attack)}", lambda_max)
+            ax.legend(handles=handles, title="Category",
+                      fontsize=7, title_fontsize=8,
+                      loc="lower right", framealpha=0.9,
+                      borderpad=0.8, labelspacing=0.4)
+            fig.tight_layout(pad=0.5)
+            out_path = output_dir / f"risk_curves_by_category_{attack}_{model}.{fmt}"
+            fig.savefig(out_path, dpi=150, bbox_inches="tight", pad_inches=0)
+            plt.close(fig)
+            print(f"  Saved: {out_path}")
 
 
 def plot_category_heatmap(df_cat: pd.DataFrame, output_dir: Path, fmt: str) -> None:

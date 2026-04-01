@@ -46,6 +46,8 @@ class ExperimentConfig(BaseModel):
     models: List[str]                        # model config filenames (without .yaml)
     attacks: List[str]                       # attack config filenames (without .yaml)
     judge_model: str = "gpt4o_mini"          # references a model config
+    attacker_model: Optional[str] = None     # overrides attack config's attacker_model when set
+    attacker_models: Optional[List[str]] = None  # compare multiple attackers; overrides attacker_model
     output_dir: str = "outputs/"
     seed: int = 42
     tau: float = 0.5                         # risk tolerance for lambda* computation

@@ -38,6 +38,7 @@ dependencies = [
     # CLI and progress
     "tqdm>=4.66.0",
     "jsonlines>=4.0.0",
+    "google-genai>=1.70.0",
 ]
 
 [project.optional-dependencies]

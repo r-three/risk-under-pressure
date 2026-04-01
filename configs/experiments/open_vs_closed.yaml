@@ -15,6 +15,9 @@ attacks:
   - "pair"
   - "jailbroken"
 judge_model: "llama3.1_8b_instruct_judge"
+# attacker_model: overrides the attacker LLM used by PAIR (optional; defaults to pair.yaml value)
+#   options: qwen2.5_7b | qwen2.5_3b | qwen2.5_0.5b | llama3.1_8b_instruct | llama3.2_1b_instruct
+#            tulu2_7b_dpo | gpt4o_mini | claude35_sonnet | gemini_flash | gemini_flash_lite
 output_dir: "/home/ehghaghi/scratch/ehghaghi/outputs/open_vs_closed"
 seed: 42
 tau: 0.5
