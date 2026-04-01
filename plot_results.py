@@ -20,20 +20,32 @@ Usage:
 import argparse
 from pathlib import Path
 
+import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import numpy as np
 import pandas as pd
+import seaborn as sns
+
+# --------------------------------------------------------------------------- #
+# Style
+# --------------------------------------------------------------------------- #
+
+def _setup_style() -> None:
+    sns.set_style("white")
+    sns.set_style("ticks")
+    sns.set_context("notebook", font_scale=1.3)
+    font_path = Path("AtkinsonHyperlegible-Regular.ttf")
+    if font_path.exists():
+        matplotlib.font_manager.fontManager.addfont(str(font_path))
+        plt.rcParams.update({"font.family": "Atkinson Hyperlegible"})
+
 
 # --------------------------------------------------------------------------- #
 # Aesthetics
 # --------------------------------------------------------------------------- #
 
-PALETTE = [
-    "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728",
-    "#9467bd", "#8c564b", "#e377c2", "#7f7f7f",
-    "#bcbd22", "#17becf",
-]
+PALETTE = ["#f6511d", "#ffb400", "#00a6ed", "#7fb800", "#8338ec", "#ff4365", "#06d6a0", "#0d2c54"]
 
 ATTACK_MARKERS = {"gcg": "o", "pair": "s", "jailbroken": "^"}
 ATTACK_LINESTYLES = {"gcg": "-", "pair": "--", "jailbroken": ":"}
@@ -88,15 +100,16 @@ def _plot_risk_curve(
 
 
 def _style_axes(ax: plt.Axes, title: str, lambda_max: float) -> None:
-    ax.set_xlabel("Pressure level λ", fontsize=11)
-    ax.set_ylabel("Risk R̂(M, λ)", fontsize=11)
-    ax.set_title(title, fontsize=12, fontweight="bold")
+    ax.set_xlabel("Pressure level λ")
+    ax.set_ylabel("Risk R̂(M, λ)")
+    ax.set_title(title, fontweight="bold")
     ax.set_xlim(left=0, right=lambda_max + 0.5)
     ax.set_ylim(-0.02, 1.05)
     ax.yaxis.set_major_formatter(mticker.PercentFormatter(xmax=1, decimals=0))
     ax.xaxis.set_major_locator(mticker.MaxNLocator(integer=True))
     ax.grid(axis="y", linestyle="--", linewidth=0.5, alpha=0.6)
-    ax.spines[["top", "right"]].set_visible(False)
+    sns.despine(ax=ax)
+    ax.tick_params(direction="out", which="both")
 
 
 # --------------------------------------------------------------------------- #
@@ -131,9 +144,9 @@ def plot_per_attack(df: pd.DataFrame, output_dir: Path, fmt: str) -> None:
                   loc="lower right", framealpha=0.9,
                   borderpad=0.8, labelspacing=0.4)
 
-        fig.tight_layout()
+        fig.tight_layout(pad=0.5)
         out_path = output_dir / f"risk_curves_{attack}.{fmt}"
-        fig.savefig(out_path, dpi=150, bbox_inches="tight")
+        fig.savefig(out_path, dpi=150, bbox_inches="tight", pad_inches=0)
         plt.close(fig)
         print(f"  Saved: {out_path}")
 
@@ -191,7 +204,7 @@ def plot_combined(df: pd.DataFrame, output_dir: Path, fmt: str) -> None:
 
     fig.subplots_adjust(right=0.68)
     out_path = output_dir / f"risk_curves_combined.{fmt}"
-    fig.savefig(out_path, dpi=150, bbox_inches="tight", bbox_extra_artists=(leg1, leg2))
+    fig.savefig(out_path, dpi=150, bbox_inches="tight", pad_inches=0, bbox_extra_artists=(leg1, leg2))
     plt.close(fig)
     print(f"  Saved: {out_path}")
 
@@ -229,7 +242,7 @@ def plot_category_curves(df_cat: pd.DataFrame, output_dir: Path, fmt: str) -> No
                         color=color_map[cat], label=cat,
                         marker="o", linestyle="-", linewidth=1.6, markersize=4)
             _style_axes(ax, model, lambda_max)
-            ax.set_title(model, fontsize=9, fontweight="bold")
+            ax.set_title(model, fontweight="bold")
 
         axes[0].set_ylabel("Risk R̂(M, λ)", fontsize=11)
         for ax in axes[1:]:
@@ -243,9 +256,9 @@ def plot_category_curves(df_cat: pd.DataFrame, output_dir: Path, fmt: str) -> No
                    borderpad=0.8, labelspacing=0.4)
         fig.suptitle(f"Risk by Category — {_attack_label(attack)}", fontsize=12,
                      fontweight="bold", y=1.01)
-        fig.tight_layout()
+        fig.tight_layout(pad=0.5)
         out_path = output_dir / f"risk_curves_by_category_{attack}.{fmt}"
-        fig.savefig(out_path, dpi=150, bbox_inches="tight", bbox_extra_artists=fig.legends)
+        fig.savefig(out_path, dpi=150, bbox_inches="tight", pad_inches=0, bbox_extra_artists=fig.legends)
         plt.close(fig)
         print(f"  Saved: {out_path}")
 
@@ -277,9 +290,9 @@ def plot_category_heatmap(df_cat: pd.DataFrame, output_dir: Path, fmt: str) -> N
         ax.set_ylabel("Category", fontsize=10)
         ax.tick_params(axis="x", rotation=25, labelsize=9)
         ax.tick_params(axis="y", rotation=0)
-        fig.tight_layout()
+        fig.tight_layout(pad=0.5)
         out_path = output_dir / f"heatmap_category_{attack}.{fmt}"
-        fig.savefig(out_path, dpi=150, bbox_inches="tight")
+        fig.savefig(out_path, dpi=150, bbox_inches="tight", pad_inches=0)
         plt.close(fig)
         print(f"  Saved: {out_path}")
 
@@ -331,10 +344,11 @@ def plot_break_pressure(df_cat: pd.DataFrame, output_dir: Path, fmt: str,
     ax.xaxis.set_major_locator(mticker.MaxNLocator(integer=True))
     ax.legend(title="Model", fontsize=8, title_fontsize=9,
               borderpad=0.8, labelspacing=0.4)
-    ax.spines[["top", "right"]].set_visible(False)
-    fig.tight_layout()
+    sns.despine(ax=ax)
+    ax.tick_params(direction="out", which="both")
+    fig.tight_layout(pad=0.5)
     out_path = output_dir / f"break_pressure_by_category.{fmt}"
-    fig.savefig(out_path, dpi=150, bbox_inches="tight")
+    fig.savefig(out_path, dpi=150, bbox_inches="tight", pad_inches=0)
     plt.close(fig)
     print(f"  Saved: {out_path}")
 
@@ -357,6 +371,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    _setup_style()
     args = parse_args()
 
     metrics_path = Path(args.metrics_csv)
