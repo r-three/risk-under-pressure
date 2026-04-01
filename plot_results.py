@@ -72,31 +72,41 @@ def _plot_risk_curve(
     label: str,
     marker: str = "o",
     linestyle: str = "-",
+    show_ci: bool = True,
 ) -> None:
-    """Draw a single risk-pressure curve with vertical CI error bars onto ax."""
+    """Draw a single risk-pressure curve with optional CI error bars onto ax."""
     df_pair = df_pair.sort_values("lambda")
     lam = df_pair["lambda"].values
     risk = df_pair["risk"].values
-    lo = df_pair["risk_lower"].values
-    hi = df_pair["risk_upper"].values
 
-    yerr_lo = risk - lo   # downward extent
-    yerr_hi = hi - risk   # upward extent
-
-    ax.errorbar(
-        lam, risk,
-        yerr=[yerr_lo, yerr_hi],
-        color=color,
-        label=label,
-        marker=marker,
-        linestyle=linestyle,
-        linewidth=1.8,
-        markersize=5,
-        capsize=4,
-        capthick=1.4,
-        elinewidth=1.2,
-        zorder=3,
-    )
+    if show_ci:
+        lo = df_pair["risk_lower"].values
+        hi = df_pair["risk_upper"].values
+        ax.errorbar(
+            lam, risk,
+            yerr=[risk - lo, hi - risk],
+            color=color,
+            label=label,
+            marker=marker,
+            linestyle=linestyle,
+            linewidth=1.8,
+            markersize=5,
+            capsize=4,
+            capthick=1.4,
+            elinewidth=1.2,
+            zorder=3,
+        )
+    else:
+        ax.plot(
+            lam, risk,
+            color=color,
+            label=label,
+            marker=marker,
+            linestyle=linestyle,
+            linewidth=1.8,
+            markersize=5,
+            zorder=3,
+        )
 
 
 def _style_axes(ax: plt.Axes, title: str, lambda_max: float) -> None:
@@ -175,6 +185,7 @@ def plot_combined(df: pd.DataFrame, output_dir: Path, fmt: str) -> None:
                 label=f"{model} / {_attack_label(attack)}",
                 marker=ATTACK_MARKERS.get(attack, "o"),
                 linestyle=ATTACK_LINESTYLES.get(attack, "-"),
+                show_ci=False,
             )
 
     _style_axes(ax, "Risk-Pressure Curves — All Models & Attacks", lambda_max)
