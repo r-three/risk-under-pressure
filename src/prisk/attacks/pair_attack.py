@@ -86,7 +86,7 @@ class PAIRAttack(AttackPolicy):
 
         # Build conversation with system prompt
         attacker_prompt = f"{_ATTACKER_SYSTEM_PROMPT}\n\n{user_msg}"
-        refined = self._attacker.generate(attacker_prompt, temperature=1.0, max_new_tokens=128)
+        refined = self._attacker.generate(attacker_prompt, temperature=1.0)
         refined = refined.strip()
 
         if not refined:
