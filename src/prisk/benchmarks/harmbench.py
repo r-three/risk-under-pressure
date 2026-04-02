@@ -31,8 +31,8 @@ class HarmBench(Benchmark):
         ds = load_dataset(_HF_DATASET, "standard", split="train")
         prompts = []
         for row in ds:
-            text = row.get("Behavior") or ""
-            category = row.get("SemanticCategory") or "unknown"
+            text = row.get("prompt") or ""
+            category = row.get("category") or "unknown"
             prompt_id = str(uuid.uuid5(_NAMESPACE, text))
             prompts.append(BenchmarkPrompt(
                 prompt_id=prompt_id,
