@@ -3,6 +3,6 @@ backend: "google"
 hf_name: "gemini-1.5-flash-latest"
 model_type: "instruct"
 generation:
-  max_new_tokens: 128
+  max_new_tokens: 512
   temperature: 0.7
   do_sample: true
