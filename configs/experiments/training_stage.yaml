@@ -1,7 +1,7 @@
 # Ablation 10.4: Training Stage Effects
 # Do later alignment stages meaningfully reduce optimization sensitivity?
 name: "training_stage"
-benchmark: "jailbreakbench"
+benchmark: "harmbench"
 n_prompts: 500
 pressure_levels: [0, 1, 2, 4, 6, 8, 10]
 lambda_max: 10
@@ -10,8 +10,8 @@ models:
   - "tulu2_7b_sft"
   - "tulu2_7b_dpo"
 attacks:
-  # - "pair"
-  # - "jailbroken"
+  - "pair"
+  - "jailbroken"
   - "gcg"
 judge_model: "llama3.1_8b_instruct_judge"
 # attacker_model: overrides the attacker LLM used by PAIR (optional; defaults to pair.yaml value)

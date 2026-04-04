@@ -1,0 +1,24 @@
+# Training Stage Effects — Tulu 3 series
+# Mirrors training_stage.yaml but for the Tulu 3 / Llama-3.1 family.
+# Models: Base → SFT → DPO → RLVR (final)
+# Research question: Does the Tulu 3 training pipeline show the same
+#   pressure-sensitivity pattern as Tulu 2?
+name: "training_stage_tulu3"
+benchmark: "harmbench"
+n_prompts: 500
+pressure_levels: [0, 1, 2, 4, 6, 8, 10]
+lambda_max: 10
+models:
+  - "tulu3_8b_base"
+  - "tulu3_8b_sft"
+  - "tulu3_8b_dpo"
+  - "tulu3_8b_rlvr"
+attacks:
+  - "pair"
+  - "jailbroken"
+  - "gcg"
+judge_model: "llama3.1_8b_instruct_judge"
+output_dir: "/home/ehghaghi/scratch/ehghaghi/outputs/training_stage_tulu3"
+seed: 42
+tau: 0.5
+n_bootstrap: 1000
