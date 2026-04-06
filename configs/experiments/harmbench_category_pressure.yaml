@@ -1,0 +1,18 @@
+# HarmBench category pressure curves
+# Same setup as pressure_sensitivity.yaml, but on HarmBench with requested models/attacks.
+name: "harmbench_category_pressure"
+benchmark: "harmbench"
+n_prompts: 50
+pressure_levels: [0, 1, 2, 4, 6, 8, 10]
+lambda_max: 10
+models:
+  - "qwen2.5_7b"
+  - "llama3.1_8b_instruct"
+attacks:
+  - "pair_harmbench"   # see attack config below
+  - "gcg"
+judge_model: "llama3.1_8b_instruct"
+output_dir: "/home/bogi/scratch/prisk-pressure/outputs/harmbench_category_pressure"
+seed: 42
+tau: 0.5
+n_bootstrap: 10

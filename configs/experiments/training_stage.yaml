@@ -16,7 +16,7 @@ models:
 attacks:
   - "pair"
 judge_model: "gpt4o_mini"
-output_dir: "/home/ehghaghi/scratch/ehghaghi/outputs/training_stage"
+output_dir: "/home/bogi/scratch/prisk-pressure/outputs/training_stage"
 seed: 42
 tau: 0.5
 n_bootstrap: 1000

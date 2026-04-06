@@ -1,3 +1,3 @@
 attack_id: "pair"
-attacker_model: "gpt4o_mini"
+attacker_model: "qwen2.5_7b"
 max_query_per_step: 1

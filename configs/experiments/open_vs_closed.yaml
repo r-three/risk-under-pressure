@@ -15,7 +15,7 @@ attacks:
   - "pair"
   - "jailbroken"
 judge_model: "gpt4o_mini"
-output_dir: "/home/ehghaghi/scratch/ehghaghi/outputs/open_vs_closed"
+output_dir: "/home/bogi/scratch/prisk-pressure/outputs/open_vs_closed"
 seed: 42
 tau: 0.5
 n_bootstrap: 1000
