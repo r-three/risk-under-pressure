@@ -6,7 +6,7 @@ module load gcc arrow/19.0.1 python/3.11
 
 source .venv/bin/activate
 
-export SCRATCH=/home/ehghaghi/scratch/ehghaghi
+export SCRATCH=/home/bogi/scratch/
 export HF_HOME=$SCRATCH/huggingface
 export HF_DATASETS_CACHE=$SCRATCH/huggingface/datasets
 export TRANSFORMERS_CACHE=$SCRATCH/huggingface
@@ -60,7 +60,7 @@ if [[ $(hostname) == klogin* ]]; then
         local command="$2"
         should_skip_job "$job_name" && return 0
         mkdir -p logs
-        sbatch --job-name="$job_name" --output="logs/%j_$job_name.out" --error="logs/%j_$job_name.out" setup/submit_killarney.sbatch "$command"
+        sbatch --job-name="$job_name" --output="logs/%j_$job_name.out" --error="logs/%j_$job_name.out" setup/submit_nibi.sbatch "$command"
     }
 else
     echo "Unknown hostname: $(hostname) - cannot define submit function"
