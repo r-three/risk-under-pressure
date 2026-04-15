@@ -51,6 +51,7 @@ def parse_args():
     p = argparse.ArgumentParser(description="Empirically order JailBroken templates by ASR")
     p.add_argument("--experiment", required=True, help="Path to experiment YAML config")
     p.add_argument("--configs-dir", default="configs", help="Root directory for configs")
+    p.add_argument("--seeds", type=int, nargs="+", help="Override: list of seeds (e.g. --seeds 42 123 456)")
     p.add_argument("--resume", action="store_true",
                    help="Skip (model, template, prompt) triples already in results files")
     p.add_argument("--aggregate-only", action="store_true",
@@ -207,6 +208,9 @@ def main():
     with open(args.experiment) as f:
         exp_data = yaml.safe_load(f)
     config = ExperimentConfig(**exp_data)
+
+    if args.seeds:
+        config.seeds = args.seeds
 
     output_dir = Path(config.output_dir)
     configs_dir = Path(args.configs_dir)

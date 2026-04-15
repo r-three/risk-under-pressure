@@ -52,6 +52,7 @@ def parse_args():
     p.add_argument("--attack", help="Override: run only this attack (e.g. pair)")
     p.add_argument("--lambda-max", type=int, help="Override: maximum pressure budget")
     p.add_argument("--n-prompts", type=int, help="Override: number of prompts to use")
+    p.add_argument("--seeds", type=int, nargs="+", help="Override: list of seeds (e.g. --seeds 42 123 456)")
     p.add_argument("--configs-dir", default="configs", help="Root directory for configs")
     p.add_argument("--resume", action="store_true",
                    help="Skip prompts already in results files")
@@ -75,6 +76,8 @@ def main():
         config.lambda_max = args.lambda_max
     if args.n_prompts:
         config.n_prompts = args.n_prompts
+    if args.seeds:
+        config.seeds = args.seeds
 
     output_dir = Path(config.output_dir)
     configs_dir = Path(args.configs_dir)

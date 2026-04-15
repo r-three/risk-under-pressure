@@ -7,17 +7,20 @@ set -e
 
 source setup/start_env.sh
 
-# submit "prisk_pressure_sensitivity" \
-#     "python scripts/run_inference.py --experiment configs/experiments/pressure_sensitivity.yaml --resume"
+submit "prisk_pressure_sensitivity" \
+    "python scripts/run_inference.py --experiment configs/experiments/pressure_sensitivity.yaml --seeds 1997 2 100 42 5431 --resume"
+
+# submit "prisk_pressure_sensitivity_JB" \
+#     "python scripts/run_inference.py --experiment configs/experiments/pressure_sensitivity_JB.yaml --seeds 1997 2 100 42 5431 --resume"
 
 # submit "prisk_attack_sensitivity" \
-#     "python scripts/run_inference.py --experiment configs/experiments/attack_sensitivity.yaml --resume"
+#     "python scripts/run_inference.py --experiment configs/experiments/attack_sensitivity.yaml --seeds 42 123 456 --resume"
 
 # submit "prisk_open_vs_closed" \
-#     "python scripts/run_inference.py --experiment configs/experiments/open_vs_closed.yaml --resume"
+#     "python scripts/run_inference.py --experiment configs/experiments/open_vs_closed.yaml --seeds 42 123 456 --resume"
 
 # submit "prisk_attacker_comparison" \
-#     "python scripts/run_inference.py --experiment configs/experiments/attacker_comparison.yaml --resume"
+#     "python scripts/run_inference.py --experiment configs/experiments/attacker_comparison.yaml --seeds 42 123 456 --resume"
 
-submit "prisk_template_ordering" \
-    "python scripts/compute_template_ordering.py --experiment configs/experiments/template_ordering.yaml --resume"
+# submit "prisk_template_ordering" \
+#     "python scripts/compute_template_ordering.py --experiment configs/experiments/template_ordering.yaml --seeds 42 123 456 --resume"
