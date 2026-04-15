@@ -7,8 +7,14 @@ set -e
 
 source setup/start_env.sh
 
-submit "prisk_pressure_sensitivity" \
-    "python scripts/run_inference.py --experiment configs/experiments/pressure_sensitivity.yaml --seeds 1997 2 100 42 5431 --resume"
+submit "prisk_pressure_sensitivity_batch1" \
+    "python scripts/run_inference.py --experiment configs/experiments/pressure_sensitivity.yaml --seeds 1997 2 100 --resume"
+
+submit "prisk_pressure_sensitivity_batch2" \
+    "python scripts/run_inference.py --experiment configs/experiments/pressure_sensitivity.yaml --seeds 42 5431 2002 --resume"
+
+submit "prisk_pressure_sensitivity_batch3" \
+    "python scripts/run_inference.py --experiment configs/experiments/pressure_sensitivity.yaml --seeds 256 512 123 5--resume"
 
 # submit "prisk_pressure_sensitivity_JB" \
 #     "python scripts/run_inference.py --experiment configs/experiments/pressure_sensitivity_JB.yaml --seeds 1997 2 100 42 5431 --resume"
