@@ -36,12 +36,16 @@ class GoogleModel(BaseModel):
         from google.genai import types  # type: ignore
 
         gen = self._config.generation
+        system_prompt = kwargs.get("system_prompt", None)
+        config_kwargs = dict(
+            max_output_tokens=kwargs.get("max_new_tokens", gen.max_new_tokens),
+            temperature=kwargs.get("temperature", gen.temperature),
+        )
+        if system_prompt is not None:
+            config_kwargs["system_instruction"] = system_prompt
         response = self._client.models.generate_content(
             model=self._model_name,
             contents=prompt,
-            config=types.GenerateContentConfig(
-                max_output_tokens=kwargs.get("max_new_tokens", gen.max_new_tokens),
-                temperature=kwargs.get("temperature", gen.temperature),
-            ),
+            config=types.GenerateContentConfig(**config_kwargs),
         )
         return response.text.strip()

@@ -31,9 +31,13 @@ class AnthropicModel(BaseModel):
     @retry(stop=stop_after_attempt(5), wait=wait_exponential(multiplier=1, min=4, max=60))
     def generate(self, prompt: str, **kwargs) -> str:
         gen = self._config.generation
-        response = self._client.messages.create(
+        system_prompt = kwargs.get("system_prompt", None)
+        create_kwargs = dict(
             model=self._config.hf_name or self._config.model_id,
             max_tokens=kwargs.get("max_new_tokens", gen.max_new_tokens),
             messages=[{"role": "user", "content": prompt}],
         )
+        if system_prompt is not None:
+            create_kwargs["system"] = system_prompt
+        response = self._client.messages.create(**create_kwargs)
         return response.content[0].text.strip()

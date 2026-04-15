@@ -31,9 +31,14 @@ class OpenAIModel(BaseModel):
     @retry(stop=stop_after_attempt(5), wait=wait_exponential(multiplier=1, min=4, max=60))
     def generate(self, prompt: str, **kwargs) -> str:
         gen = self._config.generation
+        system_prompt = kwargs.get("system_prompt", None)
+        messages = []
+        if system_prompt is not None:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
         response = self._client.chat.completions.create(
             model=self._config.hf_name or self._config.model_id,
-            messages=[{"role": "user", "content": prompt}],
+            messages=messages,
             max_tokens=kwargs.get("max_new_tokens", gen.max_new_tokens),
             temperature=kwargs.get("temperature", gen.temperature),
         )

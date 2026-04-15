@@ -1,23 +1,24 @@
 # Ablation 10.1: Pressure Sensitivity
 # Does risk increase monotonically with pressure? Does λ=0 underestimate exploitability?
 name: "pressure_sensitivity"
-benchmark: "jailbreakbench"
+benchmark: "harmbench" #harmbench, jailbreakbench
 n_prompts: 500
 pressure_levels: [0, 1, 2, 4, 6, 8, 10]
 lambda_max: 10
 models:
   - "qwen2.5_0.5b"
-  - "qwen2.5_3b"
-  - "qwen2.5_7b"
+  # - "qwen2.5_3b"
+  # - "qwen2.5_7b"
+  # - "qwen3_4b_saferl"
 attacks:
-  # - "pair"
-  # - "jailbroken"
+  - "pair"
+  - "jailbroken"
   - "gcg"
 judge_model: "llama3.1_8b_instruct_judge"
 # attacker_model: overrides the attacker LLM used by PAIR (optional; defaults to pair.yaml value)
 #   options: qwen2.5_7b | qwen2.5_3b | qwen2.5_0.5b | llama3.1_8b_instruct | llama3.2_1b_instruct
 #            tulu2_7b_dpo | gpt4o_mini | claude35_sonnet | gemini_flash | gemini_flash_lite
 output_dir: "/home/ehghaghi/scratch/ehghaghi/outputs/pressure_sensitivity"
-seed: 42
+seeds: [1997, 2, 100, 42, 5431]
 tau: 0.5
 n_bootstrap: 1000

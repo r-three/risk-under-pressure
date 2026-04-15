@@ -105,12 +105,27 @@ class HFModel(BaseModel):
         )
         return {k: v.to(self._config.device) for k, v in inputs.items()}
 
+    def _format_prompt_with_system(self, system_prompt: str, user_prompt: str) -> str:
+        """Format a system + user message pair using the model's chat template."""
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ]
+        if hasattr(self._processor, "chat_template") and self._processor.chat_template:
+            kwargs = dict(tokenize=False, add_generation_prompt=True)
+            if not self._config.enable_thinking:
+                kwargs["enable_thinking"] = False
+            return self._processor.apply_chat_template(messages, **kwargs)
+        # Fallback: concatenate system and user into plain template
+        return _BASE_TEMPLATE.format(prompt=f"{system_prompt}\n\n{user_prompt}")
+
     def generate(self, prompt: str, **kwargs) -> str:
         import torch
 
         gen_cfg = self._config.generation
         temperature = kwargs.get("temperature", gen_cfg.temperature)
         do_sample = kwargs.get("do_sample", gen_cfg.do_sample)
+        system_prompt = kwargs.get("system_prompt", None)
 
         # HF requires temperature > 0; temperature=0 means greedy decoding
         if temperature == 0.0:
@@ -138,7 +153,10 @@ class HFModel(BaseModel):
             new_tokens = output_ids[0][inputs["input_ids"].shape[1]:]
             return self._processor.decode(new_tokens, skip_special_tokens=True).strip()
         else:
-            formatted = self._format_prompt(prompt)
+            if system_prompt is not None:
+                formatted = self._format_prompt_with_system(system_prompt, prompt)
+            else:
+                formatted = self._format_prompt(prompt)
             inputs = self._processor(formatted, return_tensors="pt", truncation=True, max_length=2048)
             inputs = {k: v.to(self._config.device) for k, v in inputs.items()}
             generate_kwargs["pad_token_id"] = self._processor.pad_token_id

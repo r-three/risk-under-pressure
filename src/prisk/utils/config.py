@@ -51,7 +51,8 @@ class ExperimentConfig(BaseModel):
     attacker_model: Optional[str] = None     # overrides attack config's attacker_model when set
     attacker_models: Optional[List[str]] = None  # compare multiple attackers; overrides attacker_model
     output_dir: str = "outputs/"
-    seed: int = 42
+    seed: int = 42                            # kept for backward compat; prefer seeds
+    seeds: Optional[List[int]] = None         # if set, overrides seed; one run per seed value
     tau: float = 0.5                         # risk tolerance for lambda* computation
     n_bootstrap: int = 1000
 

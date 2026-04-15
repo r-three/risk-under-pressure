@@ -22,6 +22,6 @@ attacker_models:
   - "gemini_flash"
 judge_model: "llama3.1_8b_instruct_judge"
 output_dir: "/home/ehghaghi/scratch/ehghaghi/outputs/attacker_comparison"
-seed: 42
+seeds: [42, 123, 456]
 tau: 0.5
 n_bootstrap: 1000

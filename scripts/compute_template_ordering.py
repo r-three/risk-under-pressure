@@ -59,11 +59,9 @@ def parse_args():
 
 
 def run_inference(config: ExperimentConfig, output_dir: Path, configs_dir: Path, resume: bool):
-    """Run each template × model × prompt and save TrialRecords to JSONL."""
+    """Run each seed × template × model × prompt and save TrialRecords to JSONL."""
 
-    benchmark = get_benchmark(config.benchmark)
-    prompts = benchmark.load(n=config.n_prompts, seed=config.seed, categories=config.categories)
-    logger.info(f"Loaded {len(prompts)} prompts from {config.benchmark}")
+    seeds = config.seeds if config.seeds else [config.seed]
 
     judge_model_config = load_model_config(config.judge_model, configs_dir)
     judge_model = load_model(judge_model_config)
@@ -72,114 +70,121 @@ def run_inference(config: ExperimentConfig, output_dir: Path, configs_dir: Path,
 
     n_templates = len(TEMPLATE_REGISTRY)
     n_models = len(config.models)
-    logger.info(f"Templates: {n_templates}  |  Models: {n_models}  |  Budget: 1 (single-shot)")
+    logger.info(f"Templates: {n_templates}  |  Models: {n_models}  |  Seeds: {seeds}  |  Budget: 1 (single-shot)")
 
-    for model_name in config.models:
-        model_config = load_model_config(model_name, configs_dir)
-        target_model = load_model(model_config)
-        logger.info(f"Loaded model: {model_config.model_id}")
+    for seed in seeds:
+        logger.info(f"=== Seed {seed} ===")
 
-        for template_name, template_fn in TEMPLATE_REGISTRY:
-            attack = SingleTemplateAttack(template_fn, template_name)
-            out_path = output_dir / model_config.model_id / attack.attack_id / "results.jsonl"
+        benchmark = get_benchmark(config.benchmark)
+        prompts = benchmark.load(n=config.n_prompts, seed=seed, categories=config.categories)
+        logger.info(f"Loaded {len(prompts)} prompts from {config.benchmark} (seed={seed})")
 
-            if resume:
-                done_ids = load_completed_ids(out_path)
-            else:
-                done_ids = set()
-                if out_path.exists():
-                    out_path.unlink()
+        for model_name in config.models:
+            model_config = load_model_config(model_name, configs_dir)
+            target_model = load_model(model_config)
+            logger.info(f"Loaded model: {model_config.model_id}")
 
-            remaining = [p for p in prompts if p.prompt_id not in done_ids]
-            desc = f"{model_config.model_id}/{attack.attack_id}"
+            for template_name, template_fn in TEMPLATE_REGISTRY:
+                attack = SingleTemplateAttack(template_fn, template_name)
+                # Output path: outputs/{experiment}/{benchmark}/{model_id}_seed{seed}/{attack_id}/results.jsonl
+                model_seed_dir = f"{model_config.model_id}_seed{seed}"
+                out_path = output_dir / config.benchmark / model_seed_dir / attack.attack_id / "results.jsonl"
 
-            if done_ids:
-                logger.info(f"[{desc}] Resuming: {len(done_ids)} done, {len(remaining)} remaining")
+                if resume:
+                    done_ids = load_completed_ids(out_path)
+                else:
+                    done_ids = set()
+                    if out_path.exists():
+                        out_path.unlink()
 
-            if not remaining:
-                logger.info(f"[{desc}] Already complete.")
-                continue
+                remaining = [p for p in prompts if p.prompt_id not in done_ids]
+                desc = f"{model_seed_dir}/{attack.attack_id}"
 
-            for prompt in tqdm(remaining, desc=desc, unit="prompt"):
-                record = run_trial(
-                    base_prompt=prompt.text,
-                    prompt_id=prompt.prompt_id,
-                    behavior=prompt.text,
-                    category=prompt.category,
-                    source=prompt.source,
-                    model=target_model,
-                    judge=judge,
-                    attack=attack,
-                    budget=1,  # single shot — templates are stateless
-                )
-                append_jsonl(record, out_path)
+                if done_ids:
+                    logger.info(f"[{desc}] Resuming: {len(done_ids)} done, {len(remaining)} remaining")
+
+                if not remaining:
+                    logger.info(f"[{desc}] Already complete.")
+                    continue
+
+                for prompt in tqdm(remaining, desc=desc, unit="prompt"):
+                    record = run_trial(
+                        base_prompt=prompt.text,
+                        prompt_id=prompt.prompt_id,
+                        behavior=prompt.text,
+                        category=prompt.category,
+                        source=prompt.source,
+                        model=target_model,
+                        judge=judge,
+                        attack=attack,
+                        budget=1,  # single shot — templates are stateless
+                    )
+                    append_jsonl(record, out_path)
 
 
 def aggregate(config: ExperimentConfig, output_dir: Path) -> dict:
     """
-    Read all results, compute per-(template, model) ASR, average across models,
-    and return a sorted ordering dict.
+    Read all results, compute per-(template, model, seed) ASR, average across
+    models and seeds, and return a sorted ordering dict.
     """
-    # asr_per_model[template_name][model_id] = ASR
-    asr_per_model: dict = defaultdict(dict)
+    seeds = config.seeds if config.seeds else [config.seed]
 
-    for model_name in config.models:
-        # Resolve model_id from config (we need the actual model_id string, not config name)
-        # Read any result file for this model to get the model_id
-        model_dir = output_dir / model_name
-        if not model_dir.exists():
-            # Try to find directory by listing output_dir
-            candidates = [d for d in output_dir.iterdir() if d.is_dir()]
-            # Fall back: use model_name directly
-            model_dir = output_dir / model_name
+    # asr_runs[template_name][(model_id, seed)] = ASR
+    asr_runs: dict = defaultdict(dict)
 
-        for template_name, _ in TEMPLATE_REGISTRY:
-            attack_id = f"jailbroken_{template_name}"
+    for seed in seeds:
+        for model_name in config.models:
+            for template_name, _ in TEMPLATE_REGISTRY:
+                attack_id = f"jailbroken_{template_name}"
+                results_path = output_dir / config.benchmark / f"{model_name}_seed{seed}" / attack_id / "results.jsonl"
 
-            # Try both model_name and potential model_id (with dashes)
-            results_path = output_dir / model_name / attack_id / "results.jsonl"
-            if not results_path.exists():
-                # Try to find by scanning directories
-                found = list(output_dir.glob(f"*/{attack_id}/results.jsonl"))
-                if found:
-                    results_path = found[0]
-                else:
-                    logger.warning(f"Missing results: {results_path}")
+                if not results_path.exists():
+                    # Fall back: scan for any matching directory (handles model_id vs config name mismatch)
+                    found = list(output_dir.glob(f"{config.benchmark}/*_seed{seed}/{attack_id}/results.jsonl"))
+                    if found:
+                        results_path = found[0]
+                    else:
+                        logger.warning(f"Missing results: {results_path}")
+                        continue
+
+                records = list(read_jsonl(results_path))
+                if not records:
+                    logger.warning(f"Empty results file: {results_path}")
                     continue
 
-            records = list(read_jsonl(results_path))
-            if not records:
-                logger.warning(f"Empty results file: {results_path}")
-                continue
+                model_id = records[0].model_id
+                asr = compute_risk_at_pressure(records, pressure=1)
+                asr_runs[template_name][(model_id, seed)] = asr
+                logger.info(
+                    f"  {template_name:25s} | {model_id:30s} | seed={seed} | ASR={asr:.3f}  (n={len(records)})"
+                )
 
-            model_id = records[0].model_id
-            asr = compute_risk_at_pressure(records, pressure=1)
-            asr_per_model[template_name][model_id] = asr
-            logger.info(f"  {template_name:25s} | {model_id:40s} | ASR={asr:.3f}  (n={len(records)})")
-
-    # Average ASR across models for each template
+    # Average ASR across all (model, seed) runs for each template
     mean_asr = {}
     for template_name, _ in TEMPLATE_REGISTRY:
-        per_model = asr_per_model.get(template_name, {})
-        if per_model:
-            mean_asr[template_name] = sum(per_model.values()) / len(per_model)
-        else:
-            mean_asr[template_name] = float("nan")
+        runs = asr_runs.get(template_name, {})
+        mean_asr[template_name] = sum(runs.values()) / len(runs) if runs else float("nan")
 
     ordered = sorted(mean_asr.items(), key=lambda x: x[1])
+
+    # Build per-model summary averaged over seeds
+    per_model_asr: dict = defaultdict(dict)
+    for template_name, runs in asr_runs.items():
+        by_model: dict = defaultdict(list)
+        for (model_id, _seed), asr in runs.items():
+            by_model[model_id].append(asr)
+        for model_id, asrs in by_model.items():
+            per_model_asr[template_name][model_id] = round(sum(asrs) / len(asrs), 4)
 
     return {
         "ordered_templates": [
             {"name": name, "mean_asr": round(asr, 4)} for name, asr in ordered
         ],
-        "per_model_asr": {
-            name: {mid: round(v, 4) for mid, v in model_asrs.items()}
-            for name, model_asrs in asr_per_model.items()
-        },
+        "per_model_asr": dict(per_model_asr),
         "n_prompts": config.n_prompts,
         "models": config.models,
         "benchmark": config.benchmark,
-        "seed": config.seed,
+        "seeds": seeds,
     }
 
 
