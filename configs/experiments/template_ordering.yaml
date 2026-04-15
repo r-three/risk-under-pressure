@@ -18,6 +18,6 @@ models:
 attacks: []  # not used by this script; SingleTemplateAttack is instantiated directly
 judge_model: "llama3.1_8b_instruct_judge"
 output_dir: "/home/ehghaghi/scratch/ehghaghi/outputs/template_ordering"
-seeds: [42, 123, 456]
+seeds: [1997, 2, 100, 42, 5431, 2002, 256, 512, 123, 5]
 tau: 0.5
 n_bootstrap: 1000
