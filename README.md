@@ -764,13 +764,3 @@ print(f"AURC: {metrics['aurc']:.4f}  ΔR: {metrics['delta_r']:.4f}  λ*: {metric
 
 ---
 
-## Citation
-
-```bibtex
-@inproceedings{ehghaghi2024prisk,
-  title     = {pRisk-Pressure: A Pressure-Conditioned Probabilistic Metric for Evaluating LLM Safety},
-  author    = {Ehghaghi, Malikeh and Ecsedi, Boglarka},
-  booktitle = {38th Conference on Neural Information Processing Systems (NeurIPS 2024)},
-  year      = {2024}
-}
-```
