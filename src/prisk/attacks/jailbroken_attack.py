@@ -85,6 +85,43 @@ _DEFAULT_TEMPLATES = [
     _template_combination,
 ]
 
+# Registry mapping name → function for per-template experiments
+TEMPLATE_REGISTRY: List = [
+    ("prefix_injection",    _template_prefix_injection),
+    ("refusal_suppression", _template_refusal_suppression),
+    ("style_injection",     _template_style_injection),
+    ("role_play",           _template_role_play),
+    ("aim",                 _template_aim),
+    ("dev_mode",            _template_dev_mode),
+    ("base64",              _template_base64),
+    ("combination",         _template_combination),
+]
+
+
+class SingleTemplateAttack(AttackPolicy):
+    """
+    Applies a single fixed template at every step (no cycling).
+
+    Used to measure per-template ASR independently, without the confound
+    of cycling through templates during a single trial.
+    """
+
+    def __init__(self, template_fn, template_name: str):
+        self._template_fn = template_fn
+        self._name = template_name
+        self._base_prompt: Optional[str] = None
+
+    @property
+    def attack_id(self) -> str:
+        return f"jailbroken_{self._name}"
+
+    def initialize(self, base_prompt: str) -> str:
+        self._base_prompt = base_prompt
+        return self._template_fn(base_prompt)
+
+    def refine(self, prompt: str, response: str, judgment: int, step: int) -> str:
+        return self._template_fn(self._base_prompt)
+
 
 class JailBrokenAttack(AttackPolicy):
     """

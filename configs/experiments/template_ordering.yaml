@@ -1,0 +1,21 @@
+# Empirical Template Ordering Experiment
+# Runs each JailBroken template independently (budget=1) across models to measure
+# per-template ASR, then sorts templates by ascending ASR.
+# Result replaces the hand-crafted _DEFAULT_TEMPLATES ordering in jailbroken_attack.py.
+name: "template_ordering"
+benchmark: "jailbreakbench"
+n_prompts: 50
+pressure_levels: [1]
+lambda_max: 1
+models:
+  # - "qwen2.5_0.5b"
+  # - "qwen2.5_3b"
+  # - "qwen2.5_7b"
+  - "llama3.1_8b_instruct"
+  - "tulu2_7b_dpo"
+attacks: []  # not used by this script; SingleTemplateAttack is instantiated directly
+judge_model: "llama3.1_8b_instruct_judge"
+output_dir: "/home/ehghaghi/scratch/ehghaghi/outputs/template_ordering"
+seed: 42
+tau: 0.5
+n_bootstrap: 1000

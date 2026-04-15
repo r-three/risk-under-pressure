@@ -25,6 +25,8 @@ class ModelConfig(BaseModel):
     quantization: Literal["4bit", "8bit", "none"] = "none"
     device: str = "cuda"
     generation: GenerationConfig = Field(default_factory=GenerationConfig)
+    model_class: Literal["causal_lm", "image_text_to_text"] = "causal_lm"
+    enable_thinking: bool = True            # set false for Qwen3-style thinking models
     extra: Dict[str, Any] = Field(default_factory=dict)
 
 
