@@ -6,7 +6,7 @@ from ..utils.config import AttackConfig
 from .base import AttackPolicy
 
 
-def load_attack(config: AttackConfig, attacker_model=None, target_model=None) -> AttackPolicy:
+def load_attack(config: AttackConfig, attacker_model=None, target_model=None, seed=None) -> AttackPolicy:
     """
     Instantiate an attack policy from config.
 
@@ -14,6 +14,7 @@ def load_attack(config: AttackConfig, attacker_model=None, target_model=None) ->
         config:          AttackConfig (attack_id determines which class to use)
         attacker_model:  BaseModel used by PAIR to generate refined prompts
         target_model:    BaseModel used by GCG for gradient access
+        seed:            RNG seed forwarded to JailBrokenAttack for template shuffling
     """
     attack_id = config.attack_id.lower()
 
@@ -25,7 +26,7 @@ def load_attack(config: AttackConfig, attacker_model=None, target_model=None) ->
         return GCGAttack(config, target_model=target_model)
     elif attack_id in ("jailbroken", "jailbreak"):
         from .jailbroken_attack import JailBrokenAttack
-        return JailBrokenAttack(config)
+        return JailBrokenAttack(config, seed=seed)
     else:
         raise ValueError(
             f"Unknown attack '{attack_id}'. Available: 'pair', 'gcg', 'jailbroken'"

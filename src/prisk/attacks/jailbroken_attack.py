@@ -8,6 +8,7 @@ stateless — it cycles through templates at each step.
 from __future__ import annotations
 
 import base64
+import random
 from typing import List, Optional
 
 from ..utils.config import AttackConfig
@@ -127,14 +128,16 @@ class JailBrokenAttack(AttackPolicy):
     """
     JailBroken-style template attack.
 
-    At step 0 (initialize), applies the first template.
-    At each subsequent step, cycles to the next template.
+    At step 0 (initialize), shuffles the template list using the provided seed
+    (so the order varies per attack-model pair / seed) then applies the first
+    template.  At each subsequent step, cycles through the shuffled list.
     If all templates are exhausted, wraps around.
     """
 
-    def __init__(self, config: AttackConfig):
+    def __init__(self, config: AttackConfig, seed: Optional[int] = None):
         self._config = config
-        self._templates = _DEFAULT_TEMPLATES
+        self._seed = seed
+        self._templates = list(_DEFAULT_TEMPLATES)
         self._base_prompt: Optional[str] = None
         self._step_idx: int = 0
 
@@ -145,6 +148,10 @@ class JailBrokenAttack(AttackPolicy):
     def initialize(self, base_prompt: str) -> str:
         self._base_prompt = base_prompt
         self._step_idx = 0
+        # Shuffle templates using the seed so each experiment run gets a
+        # different but reproducible template ordering.
+        self._templates = list(_DEFAULT_TEMPLATES)
+        random.Random(self._seed).shuffle(self._templates)
         # Apply first template at step 0
         return self._templates[0](base_prompt)
 

@@ -135,6 +135,7 @@ def main():
                         attack_config,
                         attacker_model=attacker_model,
                         target_model=target_model,
+                        seed=seed,
                     )
 
                     # Encode attacker name in folder when comparing multiple attackers
