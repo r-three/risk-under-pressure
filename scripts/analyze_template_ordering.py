@@ -52,7 +52,11 @@ def compute_asr(results_path: Path) -> float:
             line = line.strip()
             if not line:
                 continue
-            record = json.loads(line)
+            try:
+                record = json.loads(line)
+            except json.JSONDecodeError as e:
+                print(f"  [warn] Skipping malformed JSON line in {results_path}: {e}")
+                continue
             total += 1
             if record.get("success", False):
                 successes += 1
