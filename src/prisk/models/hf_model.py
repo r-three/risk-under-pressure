@@ -79,6 +79,10 @@ class HFModel(BaseModel):
     def model_id(self) -> str:
         return self._config.model_id
 
+    @property
+    def _tokenizer(self):
+        return self._processor
+
     def _format_prompt(self, prompt: str) -> str:
         """Format prompt as a string (causal_lm path only)."""
         if self._config.model_type == "base":
