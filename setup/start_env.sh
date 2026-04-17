@@ -1,7 +1,8 @@
 _host=$(hostname)
+_host_f=$(hostname -f 2>/dev/null || echo "$_host")
 
 # Load StdEnv on Alliance clusters (Trillium, Fir)
-if [[ "$_host" == "trig-login01" || "$_host" == fir-login* ]]; then
+if [[ "$_host" == "trig-login01" || "$_host_f" == *.fir.alliancecan.ca ]]; then
     module load StdEnv/2023
 fi
 module load cuda/12.6
@@ -70,7 +71,7 @@ if [[ "$_host" == klogin* ]]; then
         mkdir -p logs
         sbatch --job-name="$job_name" --output="logs/%j_$job_name.out" --error="logs/%j_$job_name.out" setup/submit_killarney.sbatch "$command"
     }
-elif [[ "$_host" == fir-login* ]]; then
+elif [[ "$_host_f" == *.fir.alliancecan.ca ]]; then
     function submit() {
         local job_name="$1"
         local command="$2"
