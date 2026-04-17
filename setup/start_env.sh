@@ -1,4 +1,7 @@
-if [[ $(hostname) == "trig-login01" ]]; then
+_host=$(hostname)
+
+# Load StdEnv on Alliance clusters (Trillium, Fir)
+if [[ "$_host" == "trig-login01" || "$_host" == fir-login* ]]; then
     module load StdEnv/2023
 fi
 module load cuda/12.6
@@ -6,7 +9,13 @@ module load gcc arrow/19.0.1 python/3.11
 
 source .venv/bin/activate
 
-export SCRATCH=/home/ehghaghi/scratch/ehghaghi
+# Set SCRATCH per cluster
+if [[ "$_host" == klogin* ]]; then
+    export SCRATCH=/home/ehghaghi/scratch/ehghaghi
+else
+    # Alliance clusters (Fir, Trillium): use standard scratch path
+    export SCRATCH=/scratch/$USER
+fi
 export HF_HOME=$SCRATCH/huggingface
 export HF_DATASETS_CACHE=$SCRATCH/huggingface/datasets
 export TRANSFORMERS_CACHE=$SCRATCH/huggingface
@@ -53,8 +62,7 @@ function should_skip_job() {
     return 1
 }
 
-if [[ $(hostname) == klogin* ]]; then
-    # define job submission function (killarney L40S)
+if [[ "$_host" == klogin* ]]; then
     function submit() {
         local job_name="$1"
         local command="$2"
@@ -62,6 +70,22 @@ if [[ $(hostname) == klogin* ]]; then
         mkdir -p logs
         sbatch --job-name="$job_name" --output="logs/%j_$job_name.out" --error="logs/%j_$job_name.out" setup/submit_killarney.sbatch "$command"
     }
+elif [[ "$_host" == fir-login* ]]; then
+    function submit() {
+        local job_name="$1"
+        local command="$2"
+        should_skip_job "$job_name" && return 0
+        mkdir -p logs
+        sbatch --job-name="$job_name" --output="logs/%j_$job_name.out" --error="logs/%j_$job_name.out" setup/submit_fir.sbatch "$command"
+    }
+elif [[ "$_host" == "trig-login01" ]]; then
+    function submit() {
+        local job_name="$1"
+        local command="$2"
+        should_skip_job "$job_name" && return 0
+        mkdir -p logs
+        sbatch --job-name="$job_name" --output="logs/%j_$job_name.out" --error="logs/%j_$job_name.out" setup/submit_trillium.sbatch "$command"
+    }
 else
-    echo "Unknown hostname: $(hostname) - cannot define submit function"
+    echo "Unknown hostname: $_host - cannot define submit function"
 fi

@@ -257,7 +257,6 @@ class GCGAttack(AttackPolicy):
             logger.error(
                 f"GCG gradient step failed ({type(e).__name__}): {e}. "
                 "Using static suffix (no gradient updates). "
-                "Common cause: model loaded with quantization (4bit/8bit) which disables "
-                "gradient computation — load the model with quantization=none for GCG."
+                "Common causes: EasyJailbreak not installed, or model/tokenizer attribute mismatch."
             )
             return self._current_suffix
