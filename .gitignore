@@ -214,3 +214,4 @@ logs/*
 .gitkeep
 .env*
 .env.example
+.DS_Store
