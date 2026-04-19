@@ -1,11 +1,11 @@
-# Ablation 10.1: Pressure Sensitivity — tulu3_8b_dpo
-name: "pressure_sensitivity_tulu3_8b_dpo"
+# Pressure Sensitivity (HarmBench) — qwen3_4b_saferl
+name: "HB_qwen3_4b_saferl"
 benchmark: "harmbench"
 n_prompts: 500
 pressure_levels: [0, 1, 2, 4, 6, 8, 10]
 lambda_max: 10
 models:
-  - "tulu3_8b_dpo"
+  - "qwen3_4b_saferl"
 attacks:
   - "pair"
   - "jailbroken"

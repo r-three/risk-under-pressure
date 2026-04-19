@@ -1,0 +1,17 @@
+# Pressure Sensitivity (JailBreakBench) — tulu2_7b_dpo
+name: "JB_tulu2_7b_dpo"
+benchmark: "jailbreakbench"
+n_prompts: 100
+pressure_levels: [0, 1, 2, 4, 6, 8, 10]
+lambda_max: 10
+models:
+  - "tulu2_7b_dpo"
+attacks:
+  - "pair"
+  - "jailbroken"
+  - "gcg"
+judge_model: "llama3.1_8b_instruct_judge"
+output_dir: "/home/ehghaghi/scratch/ehghaghi/outputs/jailbreakbench/pressure_sensitivity"
+seeds: [1997, 2, 100, 42, 5431, 2002, 256, 512, 123, 5]
+tau: 0.5
+n_bootstrap: 1000

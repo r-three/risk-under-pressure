@@ -1,5 +1,5 @@
-# Ablation 10.1: Pressure Sensitivity — qwen2.5_3b
-name: "pressure_sensitivity_qwen2.5_3b"
+# Pressure Sensitivity (HarmBench) — qwen2.5_3b
+name: "HB_qwen2.5_3b"
 benchmark: "harmbench"
 n_prompts: 500
 pressure_levels: [0, 1, 2, 4, 6, 8, 10]

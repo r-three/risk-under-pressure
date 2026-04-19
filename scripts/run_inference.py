@@ -50,6 +50,7 @@ def parse_args():
     p.add_argument("--experiment", required=True, help="Path to experiment YAML config")
     p.add_argument("--model", help="Override: run only this model (config name, e.g. qwen2.5_7b)")
     p.add_argument("--attack", help="Override: run only this attack (e.g. pair)")
+    p.add_argument("--attacks", nargs="+", help="Override: list of attacks (e.g. --attacks pair jailbroken gcg)")
     p.add_argument("--lambda-max", type=int, help="Override: maximum pressure budget")
     p.add_argument("--n-prompts", type=int, help="Override: number of prompts to use")
     p.add_argument("--seeds", type=int, nargs="+", help="Override: list of seeds (e.g. --seeds 42 123 456)")
@@ -70,7 +71,9 @@ def main():
     # Apply CLI overrides
     if args.model:
         config.models = [args.model]
-    if args.attack:
+    if args.attacks:
+        config.attacks = args.attacks
+    elif args.attack:
         config.attacks = [args.attack]
     if args.lambda_max:
         config.lambda_max = args.lambda_max
