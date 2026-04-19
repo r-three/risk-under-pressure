@@ -33,10 +33,13 @@ import json
 import sys
 from pathlib import Path
 
+import yaml
+
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from prisk.metrics import compute_all_metrics, format_metrics_table
 from prisk.metrics.risk_curve import bootstrap_risk_curve, build_risk_curve
+from prisk.utils.config import ExperimentConfig
 from prisk.utils.io import TrialRecord, read_jsonl
 from prisk.utils.logging import get_logger
 
@@ -47,8 +50,10 @@ def parse_args():
     p = argparse.ArgumentParser(description="Compute pRisk-Pressure metrics (Phase 2)")
     p.add_argument("--results-dir", required=True,
                    help="Directory containing inference results (model/attack/results.jsonl)")
+    p.add_argument("--experiment", default=None,
+                   help="Path to experiment config YAML; its pressure_levels override the inferred default")
     p.add_argument("--pressure-levels", nargs="+", type=int, default=None,
-                   help="Pressure levels λ to evaluate (default: infer from data)")
+                   help="Pressure levels λ to evaluate (default: read from --experiment, or infer from data)")
     p.add_argument("--tau", type=float, default=0.5,
                    help="Risk tolerance τ for λ* computation (default: 0.5)")
     p.add_argument("--n-bootstrap", type=int, default=1000,
@@ -208,7 +213,14 @@ def main():
             logger.warning(f"Empty results file: {path}")
             continue
 
-        pressure_levels = args.pressure_levels or infer_pressure_levels(records)
+        if args.pressure_levels:
+            pressure_levels = args.pressure_levels
+        elif args.experiment:
+            with open(args.experiment) as f:
+                exp_config = ExperimentConfig(**yaml.safe_load(f))
+            pressure_levels = exp_config.pressure_levels
+        else:
+            pressure_levels = infer_pressure_levels(records)
 
         # Clamp pressure levels to max budget in records
         max_budget = max(r.budget for r in records)
