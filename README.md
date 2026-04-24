@@ -23,15 +23,16 @@ where $\lambda$ is the adversarial optimization pressure (refinement budget). Ra
 7. [Step 6 — Choose an experiment](#step-6--choose-an-experiment)
 8. [Step 7 — Run inference (Phase 1)](#step-7--run-inference-phase-1)
 9. [Step 8 — Run evaluation (Phase 2)](#step-8--run-evaluation-phase-2)
-10. [Step 9 — Plot results (Phase 3)](#step-9--plot-results-phase-3)
-11. [Step 10 — Understand the outputs](#step-10--understand-the-outputs)
-12. [Step 11 — Run all ablation experiments](#step-11--run-all-ablation-experiments)
-13. [Running on Killarney (SLURM)](#running-on-killarney-slurm)
-14. [Reference: Models](#reference-models)
-15. [Reference: Attacks](#reference-attacks)
-16. [Reference: Metrics](#reference-metrics)
-17. [Programmatic Usage](#programmatic-usage)
-18. [Citation](#citation)
+10. [Step 8.5 — Compute attack costs (optional)](#step-85--compute-attack-costs-optional)
+11. [Step 9 — Plot results (Phase 3)](#step-9--plot-results-phase-3)
+12. [Step 10 — Understand the outputs](#step-10--understand-the-outputs)
+13. [Step 11 — Run all ablation experiments](#step-11--run-all-ablation-experiments)
+14. [Running on Killarney (SLURM)](#running-on-killarney-slurm)
+15. [Reference: Models](#reference-models)
+16. [Reference: Attacks](#reference-attacks)
+17. [Reference: Metrics](#reference-metrics)
+18. [Programmatic Usage](#programmatic-usage)
+19. [Citation](#citation)
 
 ---
 
@@ -44,7 +45,7 @@ prisk-pressure/
 │   ├── models/                  # Target model wrappers (HuggingFace + APIs)
 │   ├── attacks/                 # Refinement policies: PAIR, GCG, JailBroken
 │   ├── judges/                  # LLM-based and keyword safety judges
-│   ├── metrics/                 # Risk curve, AURC, ΔR, λ*, bootstrap CIs
+│   ├── metrics/                 # Risk curve, AURC, ΔR, λ*, bootstrap CIs, cost mapper
 │   ├── pipeline/                # Algorithm 1: Budgeted Iterative Refinement
 │   └── utils/                   # Data structures, configs, logging
 │
@@ -55,7 +56,8 @@ prisk-pressure/
 │
 ├── scripts/
 │   ├── run_inference.py         # Phase 1: run attacks, write JSONL results
-│   └── run_evaluation.py        # Phase 2: compute metrics from saved results
+│   ├── run_evaluation.py        # Phase 2: compute metrics from saved results
+│   └── compute_attack_costs.py  # Phase 2.5: derive token/FLOP costs from JSONL (no re-run needed)
 │
 ├── outputs/                     # All results written here
 ├── plot_results.py              # Phase 3: generate risk-pressure curve plots
@@ -411,6 +413,63 @@ qwen2.5-7b-instruct                 pair           2.1800   0.4200      5   100
 
 ---
 
+## Step 8.5 — Compute attack costs (optional)
+
+This optional step augments `metrics.csv` with token-count and FLOP-count columns, enabling cost-axis plots in Step 9. **No re-running of experiments is required** — costs are derived entirely post-hoc from the prompt and response text already stored in each trial's JSONL file.
+
+### What it computes
+
+Token counts use a chars/4 approximation (standard English estimate, accurate to ~10–15%). FLOPs use the standard transformer approximation `2 × N_B × L / 1000` (TFLOPs), where N_B is model size in billions and L is sequence length. Per-attack overhead:
+
+| Attack | Target model cost | Additional cost |
+|--------|-------------------|-----------------|
+| **Jailbroken** | 1 forward pass / step | none |
+| **PAIR** | 1 forward pass / step | 1 attacker LLM forward pass / step (estimated from logged text) |
+| **GCG** | 1 forward+backward / step | ×3 multiplier by default (forward+backward ≈ 3× forward) |
+
+### Basic usage
+
+```bash
+python scripts/compute_attack_costs.py \
+    --results-dir outputs/pressure_sensitivity/qwen2.5-0.5b-instruct \
+    --metrics-csv  outputs/pressure_sensitivity/qwen2.5-0.5b-instruct/metrics.csv
+```
+
+This writes `cost_metrics.csv` in the same directory as `metrics.csv`. Pass it as `--metrics-csv` to `plot_results.py` to unlock the token and FLOP x-axis options.
+
+### Output columns added
+
+| Column | Description |
+|--------|-------------|
+| `mean_target_tokens` | Mean cumulative target-model tokens consumed up to this λ |
+| `mean_total_tokens` | Mean cumulative total tokens (+ PAIR attacker overhead) up to this λ |
+| `mean_target_tflops` | Mean cumulative target-model TFLOPs up to this λ |
+| `mean_total_tflops` | Mean cumulative total TFLOPs (+ PAIR attacker) up to this λ |
+
+The "mean" is taken across all prompts in the dataset. Trials that succeeded early contribute only the tokens consumed up to the success step — no imputation needed.
+
+### Adjust the GCG multiplier
+
+The default multiplier of 3.0 accounts for a forward+backward pass (standard training estimate). To additionally count GCG's 128 candidate evaluations per step, use ~43×:
+
+```bash
+python scripts/compute_attack_costs.py \
+    --results-dir outputs/pressure_sensitivity/qwen2.5-0.5b-instruct \
+    --metrics-csv  outputs/pressure_sensitivity/qwen2.5-0.5b-instruct/metrics.csv \
+    --gcg-backward-mult 43.0
+```
+
+### Custom output path
+
+```bash
+python scripts/compute_attack_costs.py \
+    --results-dir outputs/pressure_sensitivity/qwen2.5-0.5b-instruct \
+    --metrics-csv  outputs/pressure_sensitivity/qwen2.5-0.5b-instruct/metrics.csv \
+    --output       outputs/pressure_sensitivity/qwen2.5-0.5b-instruct/cost_metrics.csv
+```
+
+---
+
 ## Step 9 — Plot results (Phase 3)
 
 This phase reads the `metrics.csv` produced by Step 8 and generates risk-pressure curve figures. **No model calls are made** — it runs in seconds.
@@ -451,26 +510,92 @@ uv run python plot_results.py \
     --format pdf   # png (default) | pdf | svg
 ```
 
+### Choose a confidence interval method
+
+By default, confidence intervals come from **bootstrap resampling** (1000 resamples per seed, prompt-level). When you have results across multiple seeds, you can instead derive CIs from the **empirical variance across seeds** (t-distribution with n−1 degrees of freedom), which gives tighter, statistically more honest intervals because each seed is a genuine independent run.
+
+```bash
+# Bootstrap CI — default; one CI band per seed, resampled 1000× at prompt level
+uv run python plot_results.py \
+    --metrics-csv outputs/pressure_sensitivity/metrics.csv \
+    --ci-method bootstrap \
+    --output-dir  outputs/pressure_sensitivity/plots/bootstrap
+
+# Seed-based CI — averages across seeds; CI comes from t-distribution over seed means
+uv run python plot_results.py \
+    --metrics-csv outputs/pressure_sensitivity/metrics.csv \
+    --ci-method seeds \
+    --output-dir  outputs/pressure_sensitivity/plots/seeds
+```
+
+| `--ci-method` | When to use | How CI is computed |
+|---------------|-------------|-------------------|
+| `bootstrap` (default) | Single-seed results, or per-seed variance | 1000-resample bootstrap at the prompt level; stored in `risk_lower`/`risk_upper` in `metrics.csv` |
+| `seeds` | Multi-seed results (≥2 seeds) | Groups rows by base model name across seeds, computes t-distribution CI: `mean ± t_{n−1,0.975} × SEM` |
+
+`run_plots.sh` generates both variants automatically, saving to `plots/bootstrap/` and `plots/seeds/` respectively so you can compare both visually.
+
+### Change the x-axis to token or FLOP cost
+
+By default the x-axis is the pressure level λ (number of refinement steps). After running Step 8.5, you can switch to a compute-cost axis derived post-hoc from the stored trial records — **no re-running required**.
+
+```bash
+# Token cost axis — total tokens consumed by the attack up to each λ
+uv run python plot_results.py \
+    --metrics-csv outputs/pressure_sensitivity/qwen2.5-0.5b-instruct/cost_metrics.csv \
+    --output-dir  outputs/pressure_sensitivity/qwen2.5-0.5b-instruct/plots_tokens \
+    --x-axis tokens
+
+# FLOP cost axis — total TFLOPs consumed by the attack up to each λ
+uv run python plot_results.py \
+    --metrics-csv outputs/pressure_sensitivity/qwen2.5-0.5b-instruct/cost_metrics.csv \
+    --output-dir  outputs/pressure_sensitivity/qwen2.5-0.5b-instruct/plots_flops \
+    --x-axis flops
+```
+
+| `--x-axis` value | X-axis column used | Label |
+|------------------|--------------------|-------|
+| `lambda` (default) | `lambda` | Pressure level λ |
+| `tokens` | `mean_total_tokens` | Attack token budget (total tokens) |
+| `flops` | `mean_total_tflops` | Attack compute budget (TFLOPs) |
+
+The token axis is most interpretable (directly maps to API call cost). The FLOP axis is most fair for cross-model comparisons because a single λ step costs 14× more FLOPs on a 7B model than a 0.5B model — the FLOP axis normalises this away.
+
 ### Output files
+
+When using `run_plots.sh`, both CI variants are generated automatically:
+
+```
+plots/
+├── bootstrap/   ← CI from 1000-resample bootstrap (per seed)
+│   ├── risk_curves_pair.png
+│   ├── risk_curves_combined.png
+│   └── ...
+└── seeds/       ← CI from t-distribution across seeds (empirical variance)
+    ├── risk_curves_pair.png
+    ├── risk_curves_combined.png
+    └── ...
+```
 
 **Aggregate plots** (always generated):
 
 | File | Contents |
 |------|----------|
-| `plots/risk_curves_gcg.png` | Risk curves for all models under the GCG attack |
-| `plots/risk_curves_pair.png` | Risk curves for all models under the PAIR attack |
-| `plots/risk_curves_jailbroken.png` | Risk curves for all models under the Jailbroken attack |
-| `plots/risk_curves_combined.png` | All (model, attack) pairs in one figure |
+| `plots/<ci-method>/risk_curves_gcg.png` | Risk curves for all models under the GCG attack |
+| `plots/<ci-method>/risk_curves_pair.png` | Risk curves for all models under the PAIR attack |
+| `plots/<ci-method>/risk_curves_jailbroken.png` | Risk curves for all models under the Jailbroken attack |
+| `plots/<ci-method>/risk_curves_combined.png` | All (model, attack) pairs in one figure |
+| `plots/<ci-method>/efficiency_summary.png` | Grouped bar chart: expected total tokens per (model, attack) at max λ |
 
 **Category-level plots** (generated when `--category-metrics-csv` is provided):
 
 | File | Contents |
 |------|----------|
-| `plots/risk_curves_by_category_<attack>.png` | Per-category risk curves, one subplot per model |
-| `plots/heatmap_category_<attack>.png` | Category × model risk heatmap at max λ |
-| `plots/break_pressure_by_category.png` | Minimum λ to reach ≥50% risk, ranked by category |
+| `plots/<ci-method>/risk_curves_by_category_<attack>.png` | Per-category risk curves, one subplot per model |
+| `plots/<ci-method>/heatmap_category_<attack>.png` | Category × model risk heatmap at max λ |
+| `plots/<ci-method>/break_pressure_by_category.png` | Minimum λ to reach ≥50% risk, ranked by category |
 
-One aggregate figure is generated per attack (colour = model), plus a combined figure where colour encodes the model and line style encodes the attack. Confidence interval error bars are drawn automatically. Category plots further break down risk by the 10 JailbreakBench semantic harm categories.
+One aggregate figure is generated per attack (colour = model), plus a combined figure where colour encodes the model and line style encodes the attack. Confidence interval error bars are drawn automatically. The `efficiency_summary` bar chart shows the expected total token cost at max λ per (model, attack) pair, and requires cost columns from Step 8.5 (gracefully skipped otherwise). Category plots further break down risk by the 10 JailbreakBench semantic harm categories.
 
 ---
 
@@ -483,12 +608,17 @@ One aggregate figure is generated per attack (colour = model), plus a combined f
 | `outputs/<exp>/<model>/<attack>/results.jsonl` | Raw trial records from inference |
 | `outputs/<exp>/metrics.json` | Metrics dict keyed by `"model_id/attack_id"` |
 | `outputs/<exp>/metrics.csv` | Aggregate CSV, one row per `(model, attack, λ)` |
+| `outputs/<exp>/cost_metrics.csv` | metrics.csv + token/FLOP cost columns (Step 8.5) |
 | `outputs/<exp>/metrics_by_category.csv` | Per-category CSV, one row per `(model, attack, category, λ)` |
-| `outputs/<exp>/plots/risk_curves_<attack>.png` | Per-attack risk-pressure curve plot |
-| `outputs/<exp>/plots/risk_curves_combined.png` | Combined plot of all (model, attack) pairs |
-| `outputs/<exp>/plots/risk_curves_by_category_<attack>.png` | Per-category risk curves, one subplot per model |
-| `outputs/<exp>/plots/heatmap_category_<attack>.png` | Category × model risk heatmap at max λ |
-| `outputs/<exp>/plots/break_pressure_by_category.png` | Category exploitability ranking by break pressure |
+| `outputs/<exp>/plots/bootstrap/risk_curves_<attack>.png` | Per-attack risk curves with bootstrap CIs |
+| `outputs/<exp>/plots/bootstrap/risk_curves_combined.png` | Combined plot (bootstrap CI) |
+| `outputs/<exp>/plots/bootstrap/efficiency_summary.png` | Expected token cost per (model, attack) at max λ |
+| `outputs/<exp>/plots/seeds/risk_curves_<attack>.png` | Per-attack risk curves with seed-based CIs |
+| `outputs/<exp>/plots/seeds/risk_curves_combined.png` | Combined plot (seed-based CI) |
+| `outputs/<exp>/plots/seeds/efficiency_summary.png` | Expected token cost per (model, attack) at max λ |
+| `outputs/<exp>/plots/<ci>/risk_curves_by_category_<attack>.png` | Per-category risk curves, one subplot per model |
+| `outputs/<exp>/plots/<ci>/heatmap_category_<attack>.png` | Category × model risk heatmap at max λ |
+| `outputs/<exp>/plots/<ci>/break_pressure_by_category.png` | Category exploitability ranking by break pressure |
 
 ### Metrics JSON structure
 
@@ -711,9 +841,27 @@ $$\hat{R}(M, \lambda) = \frac{1}{N} \sum_{i=1}^{N} \mathbf{1}\bigl[\text{attack 
 | **ΔR** | $\hat{R}(M, \lambda_{\max}) - \hat{R}(M, 0)$ | Risk increase attributable to adversarial optimization |
 | **λ\*** | $\min\{\lambda : \hat{R}(M, \lambda) \geq \tau\}$ | Minimum budget needed to exceed risk tolerance τ |
 
-Bootstrap confidence intervals (1000 resamples by default) are computed for all metrics by resampling at the prompt level (one `TrialRecord` = one independent trial).
+Two confidence interval methods are supported (select with `--ci-method` in `plot_results.py`):
+
+| Method | How it works | Best when |
+|--------|-------------|-----------|
+| **Bootstrap** (default) | 1000-resample prompt-level resampling per seed; stored in `risk_lower`/`risk_upper` in `metrics.csv` | Single-seed results, or when per-seed variance is the quantity of interest |
+| **Seeds** | Groups `model_id` rows that share a base name across multiple seeds (e.g. `qwen2.5-0.5b-instruct_seed{N}`); computes t-distribution CI: `mean ± t_{n−1,0.975} × SEM` across seed means | Multi-seed results (≥2 seeds); gives tighter, statistically honest CIs because each seed is a genuine independent run |
 
 **Key design property**: Inference is run once at `lambda_max`. Lower-pressure metrics are derived by truncating the stored step judgments — no re-running is needed to evaluate at λ < λ_max.
+
+### Cost-axis metrics (post-hoc, no re-running needed)
+
+Token and FLOP cost axes are derived entirely from the prompt and response text already stored in each `TrialRecord`. No additional model calls are made.
+
+| Cost metric | Formula | Meaning |
+|-------------|---------|---------|
+| **Target tokens at λ** | mean over trials of Σ_{t=1}^{min(t\*, λ)} (prompt_tokens + response_tokens) | Tokens consumed by the target model up to success or budget |
+| **Total tokens at λ** | Target tokens + attacker tokens (PAIR only, estimated from logged text) | Full token cost of the attack |
+| **Target TFLOPs at λ** | 2 × N_B × target_tokens / 1000 (×3 for GCG gradient step) | FLOPs spent on the target model |
+| **Total TFLOPs at λ** | Target TFLOPs + attacker TFLOPs (PAIR: 2 × 7.62B × attacker_tokens / 1000) | Full compute cost of the attack |
+
+The FLOP axis normalises for model size: a Jailbroken step on Qwen 7B costs ~14× more FLOPs than on Qwen 0.5B, even though both appear at the same x-position in the λ plot. Use `--x-axis flops` when comparing models of different sizes, and `--x-axis tokens` when comparing attack strategies on a fixed model.
 
 ---
 
