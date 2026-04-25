@@ -30,10 +30,14 @@ Usage:
 import argparse
 import csv
 import json
+import re
 import sys
 from pathlib import Path
 
+import numpy as np
+import pandas as pd
 import yaml
+from scipy import stats as scipy_stats
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
@@ -133,6 +137,125 @@ def write_csv(results: dict, output_path: Path) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=rows[0].keys())
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+_SEED_RE = re.compile(r"_seed\d+$")
+
+
+def write_summary_csv(output_path: Path, metrics_csv_path: Path, alpha: float = 0.05) -> None:
+    """Aggregate per-seed rows in metrics.csv into mean ± std ± CI and write metrics_summary.csv.
+
+    Groups by (base_model, attack_id, lambda). CI uses t-distribution with (n_seeds-1) df.
+    Skips writing if no _seedN suffixes are detected.
+    """
+    df = pd.read_csv(metrics_csv_path)
+    df["_base_model"] = df["model_id"].str.replace(_SEED_RE, "", regex=True)
+
+    if (df["_base_model"] == df["model_id"]).all():
+        return  # no seed rows to aggregate
+
+    rows = []
+    for (base_model, attack_id, lam), grp in df.groupby(["_base_model", "attack_id", "lambda"], sort=True):
+        n = len(grp)
+        risks = grp["risk"].values.astype(float)
+        mean_r = float(risks.mean())
+        std_r = float(risks.std(ddof=1)) if n > 1 else 0.0
+
+        if n > 1:
+            sem = std_r / n ** 0.5
+            t_crit = scipy_stats.t.ppf(1 - alpha / 2, df=n - 1)
+            lo = float(np.clip(mean_r - t_crit * sem, 0.0, 1.0))
+            hi = float(np.clip(mean_r + t_crit * sem, 0.0, 1.0))
+        else:
+            lo = hi = mean_r
+
+        scalar_cols = {
+            "aurc": ("aurc", "aurc_std"),
+            "delta_r": ("delta_r", "delta_r_std"),
+        }
+        row: dict = {
+            "model_id":   base_model,
+            "attack_id":  attack_id,
+            "lambda":     lam,
+            "risk":       mean_r,
+            "risk_std":   std_r,
+            "risk_lower": lo,
+            "risk_upper": hi,
+            "n_seeds":    n,
+        }
+        for src_col, (mean_col, std_col) in scalar_cols.items():
+            if src_col in grp.columns:
+                vals = pd.to_numeric(grp[src_col], errors="coerce").dropna().values
+                row[mean_col] = float(vals.mean()) if len(vals) else float("nan")
+                row[std_col]  = float(vals.std(ddof=1)) if len(vals) > 1 else 0.0
+        if "lambda_star" in grp.columns:
+            ls_vals = pd.to_numeric(grp["lambda_star"], errors="coerce").dropna().values
+            row["lambda_star"] = float(ls_vals.mean()) if len(ls_vals) else float("nan")
+        if "n_prompts" in grp.columns:
+            row["n_prompts"] = float(pd.to_numeric(grp["n_prompts"], errors="coerce").mean())
+        rows.append(row)
+
+    if not rows:
+        return
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(output_path, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def write_category_summary_csv(output_path: Path, cat_csv_path: Path, alpha: float = 0.05) -> None:
+    """Aggregate per-seed rows in metrics_by_category.csv into mean ± std ± CI.
+
+    Groups by (base_model, attack_id, category, lambda). Skips if no _seedN suffixes.
+    """
+    df = pd.read_csv(cat_csv_path)
+    df["_base_model"] = df["model_id"].str.replace(_SEED_RE, "", regex=True)
+
+    if (df["_base_model"] == df["model_id"]).all():
+        return
+
+    rows = []
+    for (base_model, attack_id, category, lam), grp in df.groupby(
+        ["_base_model", "attack_id", "category", "lambda"], sort=True
+    ):
+        n = len(grp)
+        risks = grp["risk"].values.astype(float)
+        mean_r = float(risks.mean())
+        std_r = float(risks.std(ddof=1)) if n > 1 else 0.0
+
+        if n > 1:
+            sem = std_r / n ** 0.5
+            t_crit = scipy_stats.t.ppf(1 - alpha / 2, df=n - 1)
+            lo = float(np.clip(mean_r - t_crit * sem, 0.0, 1.0))
+            hi = float(np.clip(mean_r + t_crit * sem, 0.0, 1.0))
+        else:
+            lo = hi = mean_r
+
+        row: dict = {
+            "model_id":   base_model,
+            "attack_id":  attack_id,
+            "category":   category,
+            "lambda":     lam,
+            "risk":       mean_r,
+            "risk_std":   std_r,
+            "risk_lower": lo,
+            "risk_upper": hi,
+            "n_seeds":    n,
+        }
+        if "n_prompts" in grp.columns:
+            row["n_prompts"] = float(pd.to_numeric(grp["n_prompts"], errors="coerce").mean())
+        rows.append(row)
+
+    if not rows:
+        return
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(output_path, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
         writer.writeheader()
         writer.writerows(rows)
 
@@ -274,12 +397,20 @@ def main():
     if args.format == "csv":
         write_csv(nested_results, output_path)
         logger.info(f"CSV metrics written to {output_path}")
+        summary_output_path = output_path.parent / "metrics_summary.csv"
+        write_summary_csv(summary_output_path, output_path)
+        if summary_output_path.exists():
+            logger.info(f"Seed-aggregated summary CSV written to {summary_output_path}")
         cat_output_path = output_path.parent / "metrics_by_category.csv"
         write_csv_by_category(
             all_records, all_pressure_levels, cat_output_path,
             n_bootstrap=args.n_bootstrap, seed=args.seed,
         )
         logger.info(f"Per-category CSV metrics written to {cat_output_path}")
+        cat_summary_path = cat_output_path.parent / "metrics_by_category_summary.csv"
+        write_category_summary_csv(cat_summary_path, cat_output_path)
+        if cat_summary_path.exists():
+            logger.info(f"Seed-aggregated category summary CSV written to {cat_summary_path}")
     else:
         with open(output_path, "w") as f:
             json.dump(all_metrics, f, indent=2)

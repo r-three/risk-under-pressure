@@ -150,16 +150,27 @@ def _style_axes(ax: plt.Axes, title: str, x_max: float, x_axis: str = "lambda") 
 # Per-attack figures
 # --------------------------------------------------------------------------- #
 
-def plot_per_attack(df: pd.DataFrame, output_dir: Path, fmt: str, x_axis: str = "lambda") -> None:
+def _compute_x_max(df: pd.DataFrame, xcol: str, x_axis: str) -> float:
+    """For token/flop axes, use the max value at the highest pressure level only."""
+    if x_axis == "lambda" or xcol not in df.columns:
+        return df.get(xcol, df["lambda"]).max()
+    lambda_max = df["lambda"].max()
+    df_top = df[df["lambda"] == lambda_max]
+    return df_top[xcol].max() if not df_top.empty else df[xcol].max()
+
+
+def plot_per_attack(df: pd.DataFrame, output_dir: Path, fmt: str, x_axis: str = "lambda",
+                    suptitle: str = "") -> None:
     """One figure per attack: all models overlaid."""
     attacks = sorted(df["attack_id"].unique())
     models = sorted(df["model_id"].unique())
     color_map = _model_color(models)
     xcol = _x_col(x_axis)
-    x_max = df[xcol].max() if xcol in df.columns else df["lambda"].max()
+    x_max = _compute_x_max(df, xcol, x_axis)
 
     for attack in attacks:
         df_attack = df[df["attack_id"] == attack]
+        attack_x_max = _compute_x_max(df_attack, xcol, x_axis)
         fig, ax = plt.subplots(figsize=(6, 4.5))
 
         for model in models:
@@ -175,11 +186,13 @@ def plot_per_attack(df: pd.DataFrame, output_dir: Path, fmt: str, x_axis: str = 
                 x_axis=x_axis,
             )
 
-        _style_axes(ax, f"Risk-Pressure Curves — {_attack_label(attack)}", x_max, x_axis)
+        _style_axes(ax, f"Risk-Pressure Curves — {_attack_label(attack)}", attack_x_max, x_axis)
         ax.legend(title="Model", fontsize=9, title_fontsize=9,
                   loc="lower right", framealpha=0.9,
                   borderpad=0.8, labelspacing=0.4)
 
+        if suptitle:
+            fig.suptitle(suptitle, fontsize=11, fontweight="bold", y=1.01)
         fig.tight_layout(pad=0.5)
         out_path = output_dir / f"risk_curves_{attack}.{fmt}"
         fig.savefig(out_path, dpi=150, bbox_inches="tight", pad_inches=0)
@@ -191,13 +204,14 @@ def plot_per_attack(df: pd.DataFrame, output_dir: Path, fmt: str, x_axis: str = 
 # All-in-one figure
 # --------------------------------------------------------------------------- #
 
-def plot_combined(df: pd.DataFrame, output_dir: Path, fmt: str, x_axis: str = "lambda") -> None:
+def plot_combined(df: pd.DataFrame, output_dir: Path, fmt: str, x_axis: str = "lambda",
+                  suptitle: str = "") -> None:
     """Single figure: all (model, attack) pairs with colour=model, style=attack."""
     models = sorted(df["model_id"].unique())
     attacks = sorted(df["attack_id"].unique())
     color_map = _model_color(models)
     xcol = _x_col(x_axis)
-    x_max = df[xcol].max() if xcol in df.columns else df["lambda"].max()
+    x_max = _compute_x_max(df, xcol, x_axis)
 
     fig, ax = plt.subplots(figsize=(10, 5))
 
@@ -241,6 +255,8 @@ def plot_combined(df: pd.DataFrame, output_dir: Path, fmt: str, x_axis: str = "l
                      loc="upper left", bbox_to_anchor=(1.01, 0.45), framealpha=0.9,
                      borderpad=0.8, labelspacing=0.4)
 
+    if suptitle:
+        fig.suptitle(suptitle, fontsize=11, fontweight="bold", y=1.01)
     fig.subplots_adjust(right=0.68)
     out_path = output_dir / f"risk_curves_combined.{fmt}"
     fig.savefig(out_path, dpi=150, bbox_inches="tight", pad_inches=0, bbox_extra_artists=(leg1, leg2))
@@ -257,7 +273,10 @@ def _category_color(categories: list[str]) -> dict[str, str]:
 
 
 def plot_category_curves(df_cat: pd.DataFrame, output_dir: Path, fmt: str) -> None:
-    """One figure per (attack, model): per-category risk curves."""
+    """One figure per (attack, base_model): per-category risk curves with CI bands.
+
+    Expects df_cat to already be seed-aggregated (model_id = base model name).
+    """
     attacks = sorted(df_cat["attack_id"].unique())
     models = sorted(df_cat["model_id"].unique())
     categories = sorted(df_cat["category"].unique())
@@ -282,6 +301,10 @@ def plot_category_curves(df_cat: pd.DataFrame, output_dir: Path, fmt: str) -> No
                 ax.plot(df_pair["lambda"], df_pair["risk"],
                         color=color_map[cat], label=cat,
                         marker="o", linestyle="-", linewidth=1.6, markersize=4)
+                if "risk_lower" in df_pair.columns and "risk_upper" in df_pair.columns:
+                    ax.fill_between(df_pair["lambda"],
+                                    df_pair["risk_lower"], df_pair["risk_upper"],
+                                    color=color_map[cat], alpha=0.15)
             _style_axes(ax, f"{model} — {_attack_label(attack)}", lambda_max)
             ax.legend(handles=handles, title="Category",
                       fontsize=7, title_fontsize=8,
@@ -385,6 +408,100 @@ def plot_break_pressure(df_cat: pd.DataFrame, output_dir: Path, fmt: str,
 
 
 # --------------------------------------------------------------------------- #
+# Cross-model category comparison (one figure per attack × category)
+# --------------------------------------------------------------------------- #
+
+def plot_category_comparison(df_cat: pd.DataFrame, output_dir: Path, fmt: str,
+                              suptitle: str = "") -> None:
+    """One figure per (attack, category): all models overlaid with seed-CI error bars.
+
+    Expects df_cat to already be seed-aggregated (model_id = base model name).
+    """
+    attacks    = sorted(df_cat["attack_id"].unique())
+    categories = sorted(df_cat["category"].unique())
+    models     = sorted(df_cat["model_id"].unique())
+    color_map  = _model_color(models)
+    lambda_max = df_cat["lambda"].max()
+
+    for attack in attacks:
+        for category in categories:
+            df_ac = df_cat[(df_cat["attack_id"] == attack) & (df_cat["category"] == category)]
+            if df_ac.empty:
+                continue
+
+            fig, ax = plt.subplots(figsize=(6, 4.5))
+            for model in models:
+                df_m = df_ac[df_ac["model_id"] == model].sort_values("lambda")
+                if df_m.empty:
+                    continue
+                _plot_risk_curve(
+                    ax, df_m,
+                    color=color_map[model],
+                    label=model,
+                    marker=ATTACK_MARKERS.get(attack, "o"),
+                    linestyle="-",
+                )
+
+            _style_axes(ax, f"{_attack_label(attack)} — {category}", lambda_max)
+            ax.legend(title="Model", fontsize=9, title_fontsize=9,
+                      loc="lower right", framealpha=0.9,
+                      borderpad=0.8, labelspacing=0.4)
+            if suptitle:
+                fig.suptitle(suptitle, fontsize=11, fontweight="bold", y=1.01)
+            fig.tight_layout(pad=0.5)
+
+            safe_cat = category.replace("/", "_").replace(" ", "_")
+            out_path = output_dir / f"risk_curves_category_{attack}_{safe_cat}.{fmt}"
+            fig.savefig(out_path, dpi=150, bbox_inches="tight", pad_inches=0)
+            plt.close(fig)
+            print(f"  Saved: {out_path}")
+
+
+# --------------------------------------------------------------------------- #
+# Seed-aggregated plot (one line per attack, CI from seed variance)
+# --------------------------------------------------------------------------- #
+
+def plot_seed_aggregated(df: pd.DataFrame, output_dir: Path, fmt: str, x_axis: str = "lambda") -> None:
+    """One figure: one line per attack, risk averaged across seeds with CI shading."""
+    df_agg = aggregate_seeds(df)
+    attacks = sorted(df_agg["attack_id"].unique())
+    xcol = _x_col(x_axis)
+    xcol_use = xcol if xcol in df_agg.columns else "lambda"
+
+    attack_colors = {a: PALETTE[i % len(PALETTE)] for i, a in enumerate(attacks)}
+    x_max = _compute_x_max(df_agg, xcol_use, x_axis)
+
+    fig, ax = plt.subplots(figsize=(7, 5))
+
+    for attack in attacks:
+        df_a = df_agg[df_agg["attack_id"] == attack].sort_values(xcol_use)
+        if df_a.empty:
+            continue
+        x    = df_a[xcol_use].values
+        risk = df_a["risk"].values
+        lo   = df_a["risk_lower"].values
+        hi   = df_a["risk_upper"].values
+        color = attack_colors[attack]
+
+        ax.plot(x, risk, color=color, label=_attack_label(attack),
+                marker=ATTACK_MARKERS.get(attack, "o"),
+                linestyle=ATTACK_LINESTYLES.get(attack, "-"),
+                linewidth=1.8, markersize=5, zorder=3)
+        ax.fill_between(x, lo, hi, color=color, alpha=0.2, zorder=2)
+
+    _style_axes(ax, "Risk-Pressure Curves — Seed-Averaged", x_max, x_axis)
+    ax.legend(title="Attack", fontsize=9, title_fontsize=9,
+              loc="lower right", framealpha=0.9,
+              borderpad=0.8, labelspacing=0.4)
+
+    fig.tight_layout(pad=0.5)
+    out_path = output_dir / f"risk_curves_seed_aggregated.{fmt}"
+    fig.savefig(out_path, dpi=150, bbox_inches="tight", pad_inches=0)
+    plt.close(fig)
+    print(f"  Saved: {out_path}")
+
+
+# --------------------------------------------------------------------------- #
 # Efficiency summary plot
 # --------------------------------------------------------------------------- #
 
@@ -470,17 +587,19 @@ COST_COLS = [
 ]
 
 
-def aggregate_seeds(df: pd.DataFrame, alpha: float = 0.05) -> pd.DataFrame:
+def aggregate_seeds(df: pd.DataFrame, alpha: float = 0.05,
+                    extra_group_cols: list[str] | None = None) -> pd.DataFrame:
     """
-    Collapse multi-seed rows into one row per (base_model, attack, lambda).
+    Collapse multi-seed rows into one row per (base_model, attack, [extra_group_cols], lambda).
 
+    extra_group_cols: additional columns to include in the groupby key, e.g. ["category"].
     Confidence intervals are computed from the empirical variance across seeds
     using a t-distribution with (n_seeds - 1) degrees of freedom.
     Rows whose model_id has no _seedN suffix are returned unchanged.
-
-    Extra columns carried through by averaging: aurc, delta_r, lambda_star,
-    n_prompts, and all cost columns from compute_attack_costs.py.
     """
+    if extra_group_cols is None:
+        extra_group_cols = []
+
     df = df.copy()
     df["_base_model"] = df["model_id"].str.replace(_SEED_RE, "", regex=True)
 
@@ -492,10 +611,17 @@ def aggregate_seeds(df: pd.DataFrame, alpha: float = 0.05) -> pd.DataFrame:
         c for c in COST_COLS if c in df.columns
     ]
 
+    group_keys = ["_base_model", "attack_id"] + extra_group_cols + ["lambda"]
+
     rows = []
-    for (base_model, attack_id, lam), grp in df.groupby(
-        ["_base_model", "attack_id", "lambda"], sort=False
-    ):
+    for group_vals, grp in df.groupby(group_keys, sort=False):
+        if not isinstance(group_vals, tuple):
+            group_vals = (group_vals,)
+        base_model = group_vals[0]
+        attack_id  = group_vals[1]
+        lam        = group_vals[-1]
+        extra_vals = group_vals[2:-1] if extra_group_cols else ()
+
         n = len(grp)
         risks = grp["risk"].values
         mean_r = risks.mean()
@@ -511,6 +637,7 @@ def aggregate_seeds(df: pd.DataFrame, alpha: float = 0.05) -> pd.DataFrame:
         row: dict = {
             "model_id":   base_model,
             "attack_id":  attack_id,
+            **{k: v for k, v in zip(extra_group_cols, extra_vals)},
             "lambda":     lam,
             "risk":       float(mean_r),
             "risk_lower": lo,
@@ -531,10 +658,12 @@ def aggregate_seeds(df: pd.DataFrame, alpha: float = 0.05) -> pd.DataFrame:
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Plot pRisk-Pressure curves from metrics CSV")
-    p.add_argument("--metrics-csv", required=True,
-                   help="Path to metrics.csv (or cost_metrics.csv from compute_attack_costs.py)")
-    p.add_argument("--category-metrics-csv", default=None,
-                   help="Path to metrics_by_category.csv (optional; enables category plots)")
+    p.add_argument("--metrics-csv", nargs="+", required=True,
+                   help="Path(s) to metrics.csv or metrics_summary.csv. Pass multiple paths to compare models across folders.")
+    p.add_argument("--category-metrics-csv", nargs="+", default=None,
+                   help="Path(s) to metrics_by_category.csv. Pass multiple paths to enable cross-model category comparison plots.")
+    p.add_argument("--title", default="",
+                   help="Optional suptitle added to all comparison figures (per-attack and category plots).")
     p.add_argument("--output-dir", default=None,
                    help="Directory to save plot files (default: same directory as metrics CSV)")
     p.add_argument("--format", default="png", choices=["png", "pdf", "svg"],
@@ -564,14 +693,20 @@ def main() -> None:
     _setup_style()
     args = parse_args()
 
-    metrics_path = Path(args.metrics_csv)
-    if not metrics_path.exists():
-        raise FileNotFoundError(f"Metrics CSV not found: {metrics_path}")
+    metrics_paths = [Path(p) for p in args.metrics_csv]
+    for metrics_path in metrics_paths:
+        if not metrics_path.exists():
+            raise FileNotFoundError(f"Metrics CSV not found: {metrics_path}")
 
-    output_dir = Path(args.output_dir) if args.output_dir else metrics_path.parent / "plots"
+    if args.output_dir:
+        output_dir = Path(args.output_dir)
+    elif len(metrics_paths) == 1:
+        output_dir = metrics_paths[0].parent / "plots"
+    else:
+        output_dir = metrics_paths[0].parent.parent / "comparison_plots"
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    df = pd.read_csv(metrics_path)
+    df = pd.concat([pd.read_csv(p) for p in metrics_paths], ignore_index=True)
     required = {"model_id", "attack_id", "lambda", "risk", "risk_lower", "risk_upper"}
     missing = required - set(df.columns)
     if missing:
@@ -599,25 +734,36 @@ def main() -> None:
           f"{df['attack_id'].nunique()} attack(s)  "
           f"[x-axis: {args.x_axis}, CI: {args.ci_method}{n_seeds_info}]")
 
+    title = args.title
+
     print("\nGenerating per-attack plots...")
-    plot_per_attack(df, output_dir, args.format, x_axis=args.x_axis)
+    plot_per_attack(df, output_dir, args.format, x_axis=args.x_axis, suptitle=title)
 
     print("\nGenerating combined plot...")
-    plot_combined(df, output_dir, args.format, x_axis=args.x_axis)
+    plot_combined(df, output_dir, args.format, x_axis=args.x_axis, suptitle=title)
+
+    print("\nGenerating seed-aggregated plot...")
+    plot_seed_aggregated(df, output_dir, args.format, x_axis=args.x_axis)
 
     print("\nGenerating efficiency summary...")
     plot_efficiency_summary(df, output_dir, args.format)
 
     if args.category_metrics_csv:
-        cat_path = Path(args.category_metrics_csv)
-        if not cat_path.exists():
-            raise FileNotFoundError(f"Category metrics CSV not found: {cat_path}")
-        df_cat = pd.read_csv(cat_path)
+        cat_paths = [Path(p) for p in args.category_metrics_csv]
+        for cp in cat_paths:
+            if not cp.exists():
+                raise FileNotFoundError(f"Category metrics CSV not found: {cp}")
+        df_cat = pd.concat([pd.read_csv(cp) for cp in cat_paths], ignore_index=True)
+        df_cat = aggregate_seeds(df_cat, extra_group_cols=["category"])
         print(f"\nLoaded {len(df_cat)} category rows — "
-              f"{df_cat['category'].nunique()} categories")
+              f"{df_cat['category'].nunique()} categories, "
+              f"{df_cat['model_id'].nunique()} model(s)")
 
-        print("\nGenerating per-category risk curves...")
+        print("\nGenerating per-category risk curves (per model)...")
         plot_category_curves(df_cat, output_dir, args.format)
+
+        print("\nGenerating cross-model category comparison plots...")
+        plot_category_comparison(df_cat, output_dir, args.format, suptitle=title)
 
         print("\nGenerating category heatmaps...")
         plot_category_heatmap(df_cat, output_dir, args.format)
