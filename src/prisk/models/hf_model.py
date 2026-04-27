@@ -8,6 +8,23 @@ from .base import BaseModel
 
 logger = get_logger(__name__)
 
+
+class _SanitizeLogitsProcessor:
+    """Replace NaN/Inf logits with 0 before sampling.
+
+    GCG adversarial suffixes are optimized against a specific model's embedding
+    space. When replayed on a different model (transfer experiments), some token
+    embeddings can produce NaN or Inf logits, which crash torch.multinomial.
+    This processor is a no-op on clean logits and costs one .isfinite() check.
+    """
+
+    def __call__(self, input_ids, scores):
+        import torch
+        if not torch.isfinite(scores).all():
+            logger.warning("NaN/Inf logits detected — sanitizing before sampling")
+            scores = torch.nan_to_num(scores, nan=0.0, posinf=0.0, neginf=0.0)
+        return scores
+
 # Plain-text continuation format for base (non-instruct) models
 _BASE_TEMPLATE = "### Instruction:\n{prompt}\n\n### Response:\n"
 
@@ -140,6 +157,7 @@ class HFModel(BaseModel):
             max_new_tokens=kwargs.get("max_new_tokens", gen_cfg.max_new_tokens),
             do_sample=do_sample,
             repetition_penalty=kwargs.get("repetition_penalty", gen_cfg.repetition_penalty),
+            logits_processor=[_SanitizeLogitsProcessor()],
         )
         if do_sample:
             generate_kwargs["temperature"] = temperature

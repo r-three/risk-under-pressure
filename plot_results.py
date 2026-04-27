@@ -330,7 +330,7 @@ def plot_category_heatmap(df_cat: pd.DataFrame, output_dir: Path, fmt: str) -> N
         pivot = df_a.pivot_table(index="category", columns="model_id", values="risk")
         pivot = pivot.sort_index()
 
-        fig, ax = plt.subplots(figsize=(max(5, len(pivot.columns) * 2.2), max(4, len(pivot) * 0.65)))
+        fig, ax = plt.subplots(figsize=(max(6, len(pivot.columns) * 2.2 + 4), max(4, len(pivot) * 0.65)))
         sns.heatmap(
             pivot, ax=ax, vmin=0, vmax=1, cmap="YlOrRd",
             annot=pivot.applymap(lambda v: f"{v:.0%}"),
@@ -383,18 +383,27 @@ def plot_break_pressure(df_cat: pd.DataFrame, output_dir: Path, fmt: str,
 
     for i, model in enumerate(models):
         df_m = df_mean[df_mean["model_id"] == model].set_index("category")
-        values = [df_m.loc[c, "break_pressure"] if c in df_m.index else lambda_max + 1
-                  for c in cat_order]
+        raw = [df_m.loc[c, "break_pressure"] if c in df_m.index else lambda_max + 1
+               for c in cat_order]
+        # Cap display at lambda_max; bars that hit it were never broken in the tested range
+        values = [min(v, lambda_max) for v in raw]
+        never_broken = [v > lambda_max for v in raw]
         y_pos = np.arange(n_cats) + (i - (n_models - 1) / 2) * bar_height
-        ax.barh(y_pos, values, height=bar_height * 0.9,
-                color=color_map[model], label=model, alpha=0.85)
+        bars = ax.barh(y_pos, values, height=bar_height * 0.9,
+                       color=color_map[model], label=model, alpha=0.85)
+        # Hatch bars that were never broken to distinguish them from λ=10 break pressure
+        for bar, nb in zip(bars, never_broken):
+            if nb:
+                bar.set_hatch("///")
+                bar.set_edgecolor("white")
+                bar.set_linewidth(0.5)
 
     ax.set_yticks(np.arange(n_cats))
     ax.set_yticklabels(cat_order, fontsize=9)
     ax.set_xlabel("Break pressure λ (min λ to reach ≥50% risk)", fontsize=10)
     ax.set_title("Category Exploitability — Break Pressure", fontsize=12, fontweight="bold")
-    ax.axvline(lambda_max + 1, color="gray", linestyle="--", linewidth=0.8, alpha=0.5)
-    ax.set_xlim(left=0, right=lambda_max + 1.5)
+    ax.axvline(lambda_max, color="gray", linestyle="--", linewidth=0.8, alpha=0.5)
+    ax.set_xlim(left=0, right=lambda_max)
     ax.xaxis.set_major_locator(mticker.MaxNLocator(integer=True))
     ax.legend(title="Model", fontsize=8, title_fontsize=9,
               borderpad=0.8, labelspacing=0.4)
@@ -462,8 +471,9 @@ def plot_category_comparison(df_cat: pd.DataFrame, output_dir: Path, fmt: str,
 # --------------------------------------------------------------------------- #
 
 def plot_seed_aggregated(df: pd.DataFrame, output_dir: Path, fmt: str, x_axis: str = "lambda") -> None:
-    """One figure: one line per attack, risk averaged across seeds with CI shading."""
+    """One figure per model: one line per attack, risk averaged across seeds with CI shading."""
     df_agg = aggregate_seeds(df)
+    models  = sorted(df_agg["model_id"].unique())
     attacks = sorted(df_agg["attack_id"].unique())
     xcol = _x_col(x_axis)
     xcol_use = xcol if xcol in df_agg.columns else "lambda"
@@ -471,34 +481,39 @@ def plot_seed_aggregated(df: pd.DataFrame, output_dir: Path, fmt: str, x_axis: s
     attack_colors = {a: PALETTE[i % len(PALETTE)] for i, a in enumerate(attacks)}
     x_max = _compute_x_max(df_agg, xcol_use, x_axis)
 
-    fig, ax = plt.subplots(figsize=(7, 5))
+    for model in models:
+        df_m = df_agg[df_agg["model_id"] == model]
+        fig, ax = plt.subplots(figsize=(7, 5))
 
-    for attack in attacks:
-        df_a = df_agg[df_agg["attack_id"] == attack].sort_values(xcol_use)
-        if df_a.empty:
-            continue
-        x    = df_a[xcol_use].values
-        risk = df_a["risk"].values
-        lo   = df_a["risk_lower"].values
-        hi   = df_a["risk_upper"].values
-        color = attack_colors[attack]
+        for attack in attacks:
+            df_a = df_m[df_m["attack_id"] == attack].sort_values(xcol_use)
+            if df_a.empty:
+                continue
+            x    = df_a[xcol_use].values
+            risk = df_a["risk"].values
+            lo   = df_a["risk_lower"].values
+            hi   = df_a["risk_upper"].values
+            color = attack_colors[attack]
 
-        ax.plot(x, risk, color=color, label=_attack_label(attack),
-                marker=ATTACK_MARKERS.get(attack, "o"),
-                linestyle=ATTACK_LINESTYLES.get(attack, "-"),
-                linewidth=1.8, markersize=5, zorder=3)
-        ax.fill_between(x, lo, hi, color=color, alpha=0.2, zorder=2)
+            ax.plot(x, risk, color=color, label=_attack_label(attack),
+                    marker=ATTACK_MARKERS.get(attack, "o"),
+                    linestyle=ATTACK_LINESTYLES.get(attack, "-"),
+                    linewidth=1.8, markersize=5, zorder=3)
+            has_seed_ci = "n_seeds" in df_a.columns and (df_a["n_seeds"] > 1).any()
+            if has_seed_ci:
+                ax.fill_between(x, lo, hi, color=color, alpha=0.2, zorder=2)
 
-    _style_axes(ax, "Risk-Pressure Curves — Seed-Averaged", x_max, x_axis)
-    ax.legend(title="Attack", fontsize=9, title_fontsize=9,
-              loc="lower right", framealpha=0.9,
-              borderpad=0.8, labelspacing=0.4)
+        _style_axes(ax, f"Risk-Pressure Curves — Seed-Averaged ({model})", x_max, x_axis)
+        ax.legend(title="Attack", fontsize=9, title_fontsize=9,
+                  loc="lower right", framealpha=0.9,
+                  borderpad=0.8, labelspacing=0.4)
 
-    fig.tight_layout(pad=0.5)
-    out_path = output_dir / f"risk_curves_seed_aggregated.{fmt}"
-    fig.savefig(out_path, dpi=150, bbox_inches="tight", pad_inches=0)
-    plt.close(fig)
-    print(f"  Saved: {out_path}")
+        fig.tight_layout(pad=0.5)
+        suffix = f"_{model}" if len(models) > 1 else ""
+        out_path = output_dir / f"risk_curves_seed_aggregated{suffix}.{fmt}"
+        fig.savefig(out_path, dpi=150, bbox_inches="tight", pad_inches=0)
+        plt.close(fig)
+        print(f"  Saved: {out_path}")
 
 
 # --------------------------------------------------------------------------- #
@@ -686,6 +701,10 @@ def parse_args() -> argparse.Namespace:
             "(requires multi-seed metrics.csv with model_id like model_seed<N>)"
         ),
     )
+    p.add_argument(
+        "--attacks", nargs="+", default=None,
+        help="Filter to specific attack(s) by attack_id (e.g. --attacks gcg pair).",
+    )
     return p.parse_args()
 
 
@@ -711,6 +730,11 @@ def main() -> None:
     missing = required - set(df.columns)
     if missing:
         raise ValueError(f"Missing columns in CSV: {missing}")
+
+    if args.attacks:
+        df = df[df["attack_id"].isin(args.attacks)]
+        if df.empty:
+            raise ValueError(f"No rows remain after filtering to attacks: {args.attacks}")
 
     if args.x_axis != "lambda":
         needed_col = _x_col(args.x_axis)

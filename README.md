@@ -25,14 +25,16 @@ where $\lambda$ is the adversarial optimization pressure (refinement budget). Ra
 9. [Step 8 — Run evaluation (Phase 2)](#step-8--run-evaluation-phase-2)
 10. [Step 8.5 — Compute attack costs (optional)](#step-85--compute-attack-costs-optional)
 11. [Step 9 — Plot results (Phase 3)](#step-9--plot-results-phase-3)
-12. [Step 10 — Understand the outputs](#step-10--understand-the-outputs)
-13. [Step 11 — Run all ablation experiments](#step-11--run-all-ablation-experiments)
-14. [Running on Killarney (SLURM)](#running-on-killarney-slurm)
-15. [Reference: Models](#reference-models)
-16. [Reference: Attacks](#reference-attacks)
-17. [Reference: Metrics](#reference-metrics)
-18. [Programmatic Usage](#programmatic-usage)
-19. [Citation](#citation)
+12. [Step 9.5 — Multi-model comparison and ablation plots](#step-95--multi-model-comparison-and-ablation-plots)
+13. [Step 10 — Understand the outputs](#step-10--understand-the-outputs)
+14. [Step 11 — Run all ablation experiments](#step-11--run-all-ablation-experiments)
+15. [Attack Transfer (GCG transferability)](#attack-transfer-gcg-transferability)
+16. [Running on Killarney (SLURM)](#running-on-killarney-slurm)
+17. [Reference: Models](#reference-models)
+18. [Reference: Attacks](#reference-attacks)
+19. [Reference: Metrics](#reference-metrics)
+20. [Programmatic Usage](#programmatic-usage)
+21. [Citation](#citation)
 
 ---
 
@@ -43,7 +45,7 @@ prisk-pressure/
 ├── src/prisk/                   # Main Python package
 │   ├── benchmarks/              # JailbreakBench & HarmBench loaders
 │   ├── models/                  # Target model wrappers (HuggingFace + APIs)
-│   ├── attacks/                 # Refinement policies: PAIR, GCG, JailBroken
+│   ├── attacks/                 # Refinement policies: PAIR, GCG, JailBroken, TransferAttack
 │   ├── judges/                  # LLM-based and keyword safety judges
 │   ├── metrics/                 # Risk curve, AURC, ΔR, λ*, bootstrap CIs, cost mapper
 │   ├── pipeline/                # Algorithm 1: Budgeted Iterative Refinement
@@ -56,11 +58,18 @@ prisk-pressure/
 │
 ├── scripts/
 │   ├── run_inference.py         # Phase 1: run attacks, write JSONL results
+│   ├── run_transfer_inference.py  # Phase 1 (transfer): replay source trajectories on a new model
 │   ├── run_evaluation.py        # Phase 2: compute metrics from saved results
-│   └── compute_attack_costs.py  # Phase 2.5: derive token/FLOP costs from JSONL (no re-run needed)
+│   ├── compute_attack_costs.py  # Phase 2.5: derive token/FLOP costs from JSONL (no re-run needed)
+│   └── select_best_model.py     # Helper: pick lowest-AURC model from a candidate set
 │
 ├── outputs/                     # All results written here
 ├── plot_results.py              # Phase 3: generate risk-pressure curve plots
+├── run_evaluations.sh           # Evaluate all models (HarmBench + JailbreakBench)
+├── run_plots.sh                 # Generate comparison and ablation plots for all models
+├── run_HB_experiments.sh        # Submit HarmBench inference jobs to Killarney
+├── run_JB_experiments.sh        # Submit JailbreakBench inference jobs to Killarney
+├── run_transfer_experiments.sh  # Submit attack transfer jobs to Killarney
 ├── pyproject.toml               # Dependencies and package config
 └── .env.example                 # API key template
 ```
@@ -357,11 +366,24 @@ This writes two CSV files:
 
 | File | Contents |
 |------|----------|
-| `metrics.csv` | One row per `(model, attack, λ)` — aggregate risk across all categories |
-| `metrics_by_category.csv` | One row per `(model, attack, category, λ)` — per-category risk curves with bootstrap CIs |
+| `metrics.csv` | One row per `(model_seed, attack, λ)` — aggregate risk across all categories |
+| `metrics_by_category.csv` | One row per `(model_seed, attack, category, λ)` — per-category risk curves with bootstrap CIs |
 
 `metrics.csv` columns: `model_id`, `attack_id`, `lambda`, `risk`, `risk_lower`, `risk_upper`, `aurc`, `delta_r`, `lambda_star`, `n_prompts`.
 `metrics_by_category.csv` columns: `model_id`, `attack_id`, `category`, `lambda`, `risk`, `risk_lower`, `risk_upper`, `n_prompts`.
+
+### Seed-aggregated summary CSVs (multi-seed experiments)
+
+When running experiments with multiple seeds, `run_evaluation.py` also automatically writes two additional summary files alongside the per-seed CSVs:
+
+| File | Contents |
+|------|----------|
+| `metrics_summary.csv` | Mean ± 95% CI across seeds per `(base_model, attack, λ)` |
+| `metrics_by_category_summary.csv` | Same, broken down by harm category |
+
+CIs use a t-distribution with `n_seeds − 1` degrees of freedom, giving statistically honest intervals that reflect genuine run-to-run variance rather than prompt-level bootstrap resampling. These summary files are the inputs for comparison and ablation plots (Step 9.5).
+
+Summary CSV columns: `model_id`, `attack_id`, `lambda`, `risk`, `risk_std`, `risk_lower`, `risk_upper`, `n_seeds`, `aurc`, `aurc_std`, `delta_r`, `delta_r_std`, `lambda_star`, `n_prompts`.
 
 ### Adjust the risk tolerance τ for λ*
 
@@ -483,6 +505,28 @@ uv run python plot_results.py \
 
 Plots are saved to `outputs/pressure_sensitivity/plots/` by default.
 
+### Multi-model comparison plots
+
+Pass multiple `--metrics-csv` files (one per model) to overlay all models on the same axes. This is the standard mode for comparison and ablation figures. Use `--title` to label the figure.
+
+```bash
+uv run python plot_results.py \
+    --metrics-csv \
+        outputs/harmbench/tulu3-8b-base/metrics_summary.csv \
+        outputs/harmbench/tulu3-8b-sft/metrics_summary.csv \
+        outputs/harmbench/tulu3-8b-dpo/metrics_summary.csv \
+        outputs/harmbench/tulu3-8b-rlvr/metrics_summary.csv \
+    --category-metrics-csv \
+        outputs/harmbench/tulu3-8b-base/metrics_by_category_summary.csv \
+        outputs/harmbench/tulu3-8b-sft/metrics_by_category_summary.csv \
+        outputs/harmbench/tulu3-8b-dpo/metrics_by_category_summary.csv \
+        outputs/harmbench/tulu3-8b-rlvr/metrics_by_category_summary.csv \
+    --output-dir outputs/harmbench/ablations/tulu3_training \
+    --title "HarmBench — Tulu3 Training Phase Ablation"
+```
+
+The number of `--metrics-csv` and `--category-metrics-csv` paths must match (one per model). Models are identified from the `model_id` column in each CSV.
+
 ### Include category-level analyses
 
 Pass `--category-metrics-csv` to also generate the three category-level plots. This file is produced automatically by `run_evaluation.py --format csv`.
@@ -599,6 +643,53 @@ One aggregate figure is generated per attack (colour = model), plus a combined f
 
 ---
 
+## Step 9.5 — Multi-model comparison and ablation plots
+
+`run_plots.sh` orchestrates all comparison and ablation plots for the full 11-model suite. It reads `metrics_summary.csv` and `metrics_by_category_summary.csv` (produced by `run_evaluations.sh`) and generates:
+
+1. **All-models comparison** — every model overlaid per attack, written to `comparison_plots/`
+2. **Qwen size ablation** — 0.5B / 3B / 7B on the same axes
+3. **Tulu3 training ablation** — base / SFT / DPO / RLVR
+4. **Tulu2 training ablation** — base / SFT / DPO
+5. **Best-per-family** — one representative per family (Qwen2.5, Tulu3, Tulu2, Qwen3-SafeRL), where the "best" (lowest mean AURC = most robust) is selected automatically
+
+```bash
+# Run evaluation for all models first
+bash run_evaluations.sh
+
+# Then generate all comparison and ablation plots
+bash run_plots.sh
+```
+
+### Selecting the best model from a family
+
+`scripts/select_best_model.py` reads `metrics_summary.csv` for a set of candidate models, deduplicates by attack, averages AURC across attacks, and prints the model name with the lowest mean AURC (most robust):
+
+```bash
+python scripts/select_best_model.py \
+    --metrics-dir outputs/harmbench \
+    --models qwen2.5-0.5b-instruct qwen2.5-3b-instruct qwen2.5-7b-instruct
+# prints: qwen2.5-7b-instruct  (or whichever has lowest AURC)
+```
+
+This is called automatically by `run_plots.sh` to populate the best-per-family comparison group.
+
+### Ablation output layout
+
+```
+outputs/harmbench/
+├── comparison_plots/            # all 11 models overlaid
+├── ablations/
+│   ├── qwen_size/               # Qwen2.5 0.5B / 3B / 7B
+│   ├── tulu3_training/          # Tulu3 base / SFT / DPO / RLVR
+│   ├── tulu2_training/          # Tulu2 base / SFT / DPO
+│   └── best_per_family/         # one best model per family
+outputs/jailbreakbench/
+└── ... (same structure)
+```
+
+---
+
 ## Step 10 — Understand the outputs
 
 ### Output files
@@ -704,6 +795,80 @@ done
 
 ---
 
+## Attack Transfer (GCG transferability)
+
+GCG optimizes adversarial suffixes using the target model's gradients (white-box). The transfer experiment asks: **do those learned suffixes also jailbreak models we can only prompt (black-box)?**
+
+The transfer pipeline replays the stored per-step prompts from model A's GCG trajectories against model B, judging model B's responses independently. The output is a full pressure-sensitivity curve for the transferred attack, directly comparable to native GCG on model B.
+
+### How it works
+
+1. Model A runs GCG and stores every step's prompt in `results.jsonl`.
+2. The transfer script loads those trajectories and builds a `TransferAttack` that replays step-`t` from model A's trace as the prompt at step `t` for model B.
+3. Model B's response is judged; no re-optimization happens.
+
+This gives `R(M_B, λ)` under *transferred* GCG — if this curve is close to native GCG on model B, the suffix generalizes; if it is flat, the suffix is model-specific.
+
+### Run transfer inference
+
+```bash
+python scripts/run_transfer_inference.py \
+    --experiment configs/experiments/HB_tulu3_8b_sft.yaml \
+    --source-results-dir /path/to/results/harmbench/tulu3-8b-sft \
+    --source-model tulu3-8b-sft \
+    --source-attack gcg \
+    --target-models tulu3_8b_base tulu3_8b_dpo qwen2.5_7b \
+    --output-dir /path/to/outputs \
+    --resume
+```
+
+| Flag | Description |
+|------|-------------|
+| `--experiment` | Provides `benchmark`, `n_prompts`, `seeds`, `judge_model`, `lambda_max` — reuse any existing YAML |
+| `--source-results-dir` | Benchmark-level dir containing `{source_model}_seed{N}/` subdirectories |
+| `--source-model` | `model_id` of the source model (used to locate `{model}_seed{N}/{attack}/results.jsonl`) |
+| `--source-attack` | Which attack's trajectories to transfer (default: `gcg`) |
+| `--target-models` | Config names of target models (one or more); each is loaded and evaluated in sequence |
+| `--output-dir` | Root output directory; benchmark subdir and attack folder are appended automatically |
+| `--resume` | Skip prompt IDs already present in the output file |
+
+### Output layout
+
+Results land in the same format as native inference, with the attack folder encoding provenance:
+
+```
+outputs/harmbench/
+└── tulu3-8b-base_seed1997/
+    └── transfer_gcg_from_tulu3-8b-sft/
+        └── results.jsonl    ← identical TrialRecord format
+```
+
+Because the format is identical to native inference, `run_evaluation.py` and `plot_results.py` work on the transfer results without any changes. The attack series will appear as `transfer_gcg_from_tulu3-8b-sft` in the metrics CSV and plots.
+
+### Smoke test
+
+```bash
+python scripts/run_transfer_inference.py \
+    --experiment configs/experiments/HB_tulu3_8b_sft.yaml \
+    --source-results-dir /path/to/results/harmbench/tulu3-8b-sft \
+    --source-model tulu3-8b-sft \
+    --target-models tulu3_8b_base \
+    --seeds 1997 --n-prompts 5 \
+    --output-dir /tmp/transfer_test
+```
+
+### Submit to Killarney
+
+`run_transfer_experiments.sh` submits transfer jobs for source model `tulu3-8b-sft` against all 10 other models across both benchmarks. Jobs are batched by seeds (same 4-batch pattern as the main experiment scripts) and use the standard L40S config (23 h, 128 GB).
+
+```bash
+bash run_transfer_experiments.sh
+```
+
+Other source models (e.g., `tulu3-8b-dpo`, `qwen2.5-7b-instruct`) are included in the script as commented-out blocks — uncomment the desired sections to run reverse-direction or cross-architecture transfers.
+
+---
+
 ## Running on Killarney (SLURM)
 
 The `setup/` directory contains scripts for running experiments on the Killarney cluster (L40S GPUs, SLURM). All scripts should be run from the **project root**.
@@ -731,11 +896,30 @@ For the HuggingFace token you can also place it in `~/hf_token.txt` as a fallbac
 
 ### Submit all experiments (batch)
 
+Several submission scripts are provided, each targeting a different phase of the experiment pipeline:
+
+| Script | What it submits |
+|--------|----------------|
+| `run_HB_experiments.sh` | HarmBench inference (all models, all attacks, all seeds) |
+| `run_JB_experiments.sh` | JailbreakBench inference (same) |
+| `run_transfer_experiments.sh` | Attack transfer jobs (GCG trajectories from source → all target models) |
+
+Each script sources `setup/start_env.sh` and calls `submit()` for every job. Jobs that are already running, pending, or completed in the past two days are skipped automatically.
+
 ```bash
-bash run_experiments.sh
+# Phase 1: inference
+bash run_HB_experiments.sh
+bash run_JB_experiments.sh
+
+# Phase 1 (transfer): replay GCG trajectories against target models
+bash run_transfer_experiments.sh
+
+# Phase 2 + 3: evaluation and plots (run on login node, no GPU needed)
+bash run_evaluations.sh
+bash run_plots.sh
 ```
 
-This sources `setup/start_env.sh` and calls `submit()` for each of the four ablation experiments. Jobs that are already running, pending, or completed in the past two days are skipped automatically. Check the queue with:
+Check the queue with:
 
 ```bash
 squeue -u $USER
@@ -820,11 +1004,13 @@ quantization: "none"   # "none" | "4bit" | "8bit"
 | **PAIR** | Black-box, iterative | Attacker LLM (default: GPT-4o-mini) | Uses an LLM to iteratively craft improved jailbreak prompts based on the target's response |
 | **GCG** | White-box, gradient | Local HuggingFace model + GPU | Appends an adversarial token suffix optimized via greedy coordinate gradient descent |
 | **JailBroken** | Black-box, template | Nothing | Cycles through fixed obfuscation templates: Base64 encoding, AIM persona, developer mode, role-play, etc. |
+| **TransferAttack** | Black-box, replay | Pre-computed source trajectories | Replays step-by-step prompts from a source model's attack against a target model; no re-optimization. Used via `run_transfer_inference.py`. |
 
 **Notes:**
 - GCG only works with `backend: "huggingface"` models. Pairing it with an API model raises `NotImplementedError`.
 - PAIR's attacker model is set in `configs/attacks/pair.yaml` (`attacker_model: "gpt4o_mini"`). Change this to any model config name to use a different attacker.
 - JailBroken requires no setup and runs without any API calls — useful for quick local tests.
+- TransferAttack works with any target model (including API models) since no gradients are required; it is constructed directly in `run_transfer_inference.py`, not via the attack factory.
 
 ---
 

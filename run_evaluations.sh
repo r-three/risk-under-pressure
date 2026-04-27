@@ -107,6 +107,14 @@ python run_evaluation.py \
     --print-table \
     | tee $BASE/harmbench/tulu3-8b-rlvr/summary.txt
 
+python run_evaluation.py \
+    --experiment configs/experiments/HB_qwen3_8b.yaml \
+    --results-dir $BASE/harmbench/qwen3-8b \
+    --format csv \
+    --output $OUTPUT/harmbench/qwen3-8b/metrics.csv \
+    --print-table \
+    | tee $BASE/harmbench/qwen3-8b/summary.txt
+
 # --------------------------------------------------------------------------- #
 # JailbreakBench
 # --------------------------------------------------------------------------- #
@@ -198,3 +206,12 @@ python run_evaluation.py \
     --output $OUTPUT/jailbreakbench/tulu3-8b-rlvr/metrics.csv \
     --print-table \
     | tee $BASE/jailbreakbench/tulu3-8b-rlvr/summary.txt
+
+python run_evaluation.py \
+    --experiment configs/experiments/JB_qwen3_8b.yaml \
+    --results-dir $BASE/jailbreakbench/qwen3-8b \
+    --format csv \
+    --output $OUTPUT/jailbreakbench/qwen3-8b/metrics.csv \
+    --print-table \
+    | tee $BASE/jailbreakbench/qwen3-8b/summary.txt
+
