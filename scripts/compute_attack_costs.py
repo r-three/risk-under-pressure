@@ -23,7 +23,8 @@ Usage:
         --metrics-csv path/to/metrics.csv \\
         --output path/to/cost_metrics.csv
 
-    # Adjust GCG backward-pass multiplier (default 3.0 = forward+backward):
+    # Adjust GCG gradient-step multiplier (default 3.0 = forward+backward;
+    # 128 candidate passes are always included separately):
     python scripts/compute_attack_costs.py \\
         --results-dir path/to/results \\
         --metrics-csv path/to/metrics.csv \\
@@ -46,8 +47,10 @@ logger = get_logger("compute_attack_costs")
 
 COST_COLS = [
     "mean_target_tokens",
+    "mean_judge_tokens",
     "mean_total_tokens",
     "mean_target_tflops",
+    "mean_judge_tflops",
     "mean_total_tflops",
 ]
 
@@ -70,8 +73,12 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--output", default=None,
                    help="Output CSV path (default: cost_metrics.csv next to metrics.csv)")
     p.add_argument("--gcg-backward-mult", type=float, default=3.0,
-                   help="FLOPs multiplier for GCG gradient step vs single forward pass "
-                        "(default 3.0 = forward+backward; use ~43 to include 128 candidates)")
+                   help="FLOPs multiplier for the GCG gradient step only (default 3.0 = "
+                        "1 forward + 1 backward). The 128 candidate forward passes are "
+                        "always counted separately and are not affected by this flag.")
+    p.add_argument("--judge-model", default="llama3.1_8b_instruct",
+                   help="Model ID of the safety judge used during inference "
+                        "(default: llama3.1_8b_instruct). Used to compute judge token/FLOP costs.")
     return p.parse_args()
 
 
@@ -131,15 +138,21 @@ def main() -> None:
             continue
 
         pressure_levels = sorted(metrics_by_key[key].keys())
-        costs = aggregate_costs(records, pressure_levels, gcg_backward_mult=args.gcg_backward_mult)
+        costs = aggregate_costs(
+            records, pressure_levels,
+            judge_model_id=args.judge_model,
+            gcg_backward_mult=args.gcg_backward_mult,
+        )
 
         cost_lookup[key] = costs
         max_lam = max(pressure_levels)
-        etfs_tok = costs.get(max_lam, {}).get("mean_total_tokens", 0)
-        etfs_tfl = costs.get(max_lam, {}).get("mean_total_tflops", 0)
+        top = costs.get(max_lam, {})
         logger.info(
             f"  {model_id}/{attack_id}: "
-            f"ETFS tokens={etfs_tok:.0f}  TFLOPs={etfs_tfl:.4f}  (N={len(records)})"
+            f"target={top.get('mean_target_tokens', 0):.0f}tok  "
+            f"judge={top.get('mean_judge_tokens', 0):.0f}tok  "
+            f"total={top.get('mean_total_tokens', 0):.0f}tok  "
+            f"TFLOPs={top.get('mean_total_tflops', 0):.4f}  (N={len(records)})"
         )
 
     # ------------------------------------------------------------------ #

@@ -12,7 +12,7 @@ set -e
 source setup/start_env.sh
 
 BASE=/home/ehghaghi/projects/aip-craffel/ehghaghi/prisk-pressure/results/multitrial_experiments/pressure_sensitivity
-OUTPUT=/home/ehghaghi/scratch/aip-craffel/ehghaghi/prisk-pressure/results/multitrial_experiments/pressure_sensitivity
+OUTPUT=/home/ehghaghi/projects/aip-craffel/ehghaghi/prisk-pressure/results/plots/multitrial_experiments/pressure_sensitivity
 
 HB_MODELS=(
     qwen2.5-0.5b-instruct

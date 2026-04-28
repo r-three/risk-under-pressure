@@ -441,13 +441,35 @@ This optional step augments `metrics.csv` with token-count and FLOP-count column
 
 ### What it computes
 
-Token counts use a chars/4 approximation (standard English estimate, accurate to ~10–15%). FLOPs use the standard transformer approximation `2 × N_B × L / 1000` (TFLOPs), where N_B is model size in billions and L is sequence length. Per-attack overhead:
+Token counts use each model's **exact HuggingFace tokenizer** (loaded locally, CPU-only, no GPU required). Every component that consumes tokens at each step is counted:
 
-| Attack | Target model cost | Additional cost |
-|--------|-------------------|-----------------|
-| **Jailbroken** | 1 forward pass / step | none |
-| **PAIR** | 1 forward pass / step | 1 attacker LLM forward pass / step (estimated from logged text) |
-| **GCG** | 1 forward+backward / step | ×3 multiplier by default (forward+backward ≈ 3× forward) |
+| Component | Attacks | Input tokens counted | Output tokens counted |
+|-----------|---------|----------------------|----------------------|
+| **Target model** | All | `tokenizer(prompt) + tokenizer(response)` using the target model's own tokenizer | — (included in response count) |
+| **Judge model** | All | `tokenizer(system_prompt + "REQUEST:\n" + prompt[:1000 chars] + "\n\nRESPONSE:\n" + response[:1500 chars])` | +2 (for "SAFE" / "UNSAFE") |
+| **PAIR attacker** | PAIR only | `tokenizer(system_prompt + "GOAL: " + behavior + "CURRENT PROMPT:\n" + prompt + "MODEL RESPONSE:\n" + response[:500 chars] + …)` | `tokenizer(prompt)` — current prompt length used as a proxy for the refined-prompt output |
+
+> **Truncation note**: Judge and PAIR attacker inputs are truncated by **character count** (`[:1000]`, `[:1500]`, `[:500]`), not by tokens. For typical English text this introduces a small approximation (roughly 3–4 characters per token), but may differ for code or other high-density text.
+
+> **PAIR output approximation**: The PAIR attacker's output (the refined prompt it produces) is approximated as the length of the *current* prompt. This is a reasonable average-case proxy; the actual refined prompt may be longer or shorter.
+
+FLOPs use the standard transformer approximation `2 × N_B × L / 1000` (TFLOPs), where N_B is model size in billions and L is the exact token count from above. Per-attack target-model overhead:
+
+| Attack | Target model FLOPs | Additional FLOPs |
+|--------|--------------------|-----------------|
+| **Jailbroken** | 1 forward pass / step | 1 judge forward pass / step |
+| **PAIR** | 1 forward pass / step | 1 judge forward pass + 1 attacker forward pass / step |
+| **GCG** | 1 forward+backward / step (×`gcg_backward_mult`, default 3.0) | 1 judge forward pass / step |
+
+> **GCG cost accounting**: Each GCG step involves two distinct computation phases on two different sequences. The *optimization sequence* is `prompt + " Sure, here is"` (the GCG reference prefix); this is what the gradient step and all 128 candidate evaluations operate on. The *generation sequence* is `prompt + response` (the final model query stored in the trial record). Token and FLOP costs are computed as:
+> - **Tokens**: `129 × count(opt_seq) + count(prompt) + count(response)` — 1 gradient pass + 128 candidate passes on the optimization sequence, plus 1 generation pass
+> - **TFLOPs**: `(gcg_backward_mult + 128) × 2N × L_opt / 1000 + 2N × L_gen / 1000`
+>
+> `--gcg-backward-mult` (default 3.0 = forward + backward) applies only to the single gradient step; the 128 candidate forward passes are always included. The reference prefix `"Sure, here is"` and candidate count 128 are hardcoded to match `gcg_attack.py` (`reference_responses=["Sure, here is"]`, `num_turb_sample=128`).
+
+> **Transfer attack cost**: For attack-transfer experiments (e.g. qwen3-8b evaluated by replaying GCG prompts from tulu3-8b-dpo), the JSONL record stores `attack_id: "transfer_gcg_from_..."`. Because `step_cost` reads `attack_id` directly from each record (not from the folder name), the GCG backward-pass multiplier is **not applied** and no PAIR attacker cost is added. Transfer attack cost is therefore counted as one target-model forward pass + one judge forward pass per step — which is correct, since no gradient computation occurs during replay.
+
+Each step is tokenized exactly once per trial; cumulative sums across λ levels are built from that single pass (no redundant re-tokenization).
 
 ### Basic usage
 
@@ -459,16 +481,33 @@ python scripts/compute_attack_costs.py \
 
 This writes `cost_metrics.csv` in the same directory as `metrics.csv`. Pass it as `--metrics-csv` to `plot_results.py` to unlock the token and FLOP x-axis options.
 
+Tokenizers are downloaded automatically on first use (a few MB each) and cached for the duration of the run. No GPU is needed.
+
 ### Output columns added
 
 | Column | Description |
 |--------|-------------|
-| `mean_target_tokens` | Mean cumulative target-model tokens consumed up to this λ |
-| `mean_total_tokens` | Mean cumulative total tokens (+ PAIR attacker overhead) up to this λ |
+| `mean_target_tokens` | Mean cumulative tokens consumed by the **target model** up to this λ (exact tokenizer count) |
+| `mean_judge_tokens` | Mean cumulative tokens consumed by the **judge model** up to this λ |
+| `mean_total_tokens` | Mean cumulative tokens across **all components** (target + judge + PAIR attacker) up to this λ |
 | `mean_target_tflops` | Mean cumulative target-model TFLOPs up to this λ |
-| `mean_total_tflops` | Mean cumulative total TFLOPs (+ PAIR attacker) up to this λ |
+| `mean_judge_tflops` | Mean cumulative judge-model TFLOPs up to this λ |
+| `mean_total_tflops` | Mean cumulative TFLOPs across all components up to this λ |
 
-The "mean" is taken across all prompts in the dataset. Trials that succeeded early contribute only the tokens consumed up to the success step — no imputation needed.
+The "mean" is taken across all prompts in the dataset. Each trial contributes the tokens consumed across **all steps up to min(λ, budget)** — the cost is not truncated at the first success step, so trials that succeed early still accumulate cost for every step run up to that pressure level.
+
+### Specify the judge model
+
+If your experiments used a judge other than the default (`llama3.1_8b_instruct`), pass `--judge-model` so the correct tokenizer and parameter count are used:
+
+```bash
+python scripts/compute_attack_costs.py \
+    --results-dir outputs/pressure_sensitivity/qwen2.5-0.5b-instruct \
+    --metrics-csv  outputs/pressure_sensitivity/qwen2.5-0.5b-instruct/metrics.csv \
+    --judge-model qwen2.5_7b_judge
+```
+
+Supported judge model IDs: `llama3.1_8b_instruct` (default), `qwen2.5_7b_judge`.
 
 ### Adjust the GCG multiplier
 
@@ -1038,14 +1077,16 @@ Two confidence interval methods are supported (select with `--ci-method` in `plo
 
 ### Cost-axis metrics (post-hoc, no re-running needed)
 
-Token and FLOP cost axes are derived entirely from the prompt and response text already stored in each `TrialRecord`. No additional model calls are made.
+Token and FLOP cost axes are derived entirely from the prompt and response text already stored in each `TrialRecord`. No additional model calls are made. Token counts use each model's exact HuggingFace tokenizer (CPU-only); all three token-consuming components at each step are accounted for:
 
 | Cost metric | Formula | Meaning |
 |-------------|---------|---------|
-| **Target tokens at λ** | mean over trials of Σ_{t=1}^{min(t\*, λ)} (prompt_tokens + response_tokens) | Tokens consumed by the target model up to success or budget |
-| **Total tokens at λ** | Target tokens + attacker tokens (PAIR only, estimated from logged text) | Full token cost of the attack |
-| **Target TFLOPs at λ** | 2 × N_B × target_tokens / 1000 (×3 for GCG gradient step) | FLOPs spent on the target model |
-| **Total TFLOPs at λ** | Target TFLOPs + attacker TFLOPs (PAIR: 2 × 7.62B × attacker_tokens / 1000) | Full compute cost of the attack |
+| **Target tokens at λ** | jailbroken/PAIR: mean Σ count(prompt_t + response_t); GCG: mean Σ [129 × count(prompt_t + " Sure, here is") + count(prompt_t + response_t)] | Tokens consumed by the **target model** across all steps up to λ; GCG includes optimization passes |
+| **Judge tokens at λ** | mean over trials of Σ_{t=1}^{min(λ, budget)} [ tokenize(system + prompt_t[:1000 chars] + response_t[:1500 chars]) + 2 ] | Tokens consumed by the **judge model** (one call per step, all attacks; inputs truncated by character count) |
+| **Total tokens at λ** | Target + judge + attacker tokens (PAIR attacker counted via its exact tokenizer; output approximated as current prompt length) | Full token cost of the attack across all components |
+| **Target TFLOPs at λ** | jailbroken/PAIR: 2N × L_gen / 1000; GCG: (gcg_backward_mult + 128) × 2N × L_opt / 1000 + 2N × L_gen / 1000, where L_opt = count(prompt + " Sure, here is"), L_gen = count(prompt + response) | FLOPs spent on the target model; GCG accounts for gradient step + all 128 candidate passes |
+| **Judge TFLOPs at λ** | 2 × N_judge × judge_tokens / 1000 | FLOPs spent on the judge model (default: LLaMA 3.1 8B, 8.03B params) |
+| **Total TFLOPs at λ** | Target + judge + attacker TFLOPs | Full compute cost of the attack across all components |
 
 The FLOP axis normalises for model size: a Jailbroken step on Qwen 7B costs ~14× more FLOPs than on Qwen 0.5B, even though both appear at the same x-position in the λ plot. Use `--x-axis flops` when comparing models of different sizes, and `--x-axis tokens` when comparing attack strategies on a fixed model.
 
