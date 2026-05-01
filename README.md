@@ -529,6 +529,22 @@ python scripts/compute_attack_costs.py \
     --output       outputs/pressure_sensitivity/qwen2.5-0.5b-instruct/cost_metrics.csv
 ```
 
+### Compute-space summary metrics
+
+After writing `cost_metrics.csv`, the script automatically computes summary metrics over the full risk-vs-TFLOPs curve for each (model, attack) pair across all 10 seeds and writes two additional files alongside `cost_metrics.csv`:
+
+| File | Contents |
+|------|----------|
+| `cost_summary_metrics.csv` | One row per (base_model, attack) — aggregate compute-space metrics with mean, std, and 95% CI across seeds |
+| `cost_metrics_by_category.csv` | Same as `cost_metrics.csv` but broken down by harm category — one row per (model_seed, attack, category, λ). Requires `metrics_by_category.csv` in the same directory as `metrics.csv`. |
+| `cost_summary_by_category.csv` | One row per (base_model, attack, category) — category-level compute-space summary metrics with CIs |
+
+`jailbroken-v1` is excluded from both summary files automatically.
+
+CIs use a t-distribution with `n_seeds − 1` degrees of freedom, matching the seed-aggregation approach used by `metrics_summary.csv`.
+
+The compute-space summary metrics treat the risk-vs-TFLOPs curve as a unit and answer questions that per-λ costs cannot — such as "how cheaply does this attack reach 50% risk?" or "does it front-load its gains in cheap compute?". See [Reference: Metrics](#reference-metrics) for metric definitions.
+
 ---
 
 ## Step 9 — Plot results (Phase 3)
@@ -739,6 +755,9 @@ outputs/jailbreakbench/
 | `outputs/<exp>/metrics.json` | Metrics dict keyed by `"model_id/attack_id"` |
 | `outputs/<exp>/metrics.csv` | Aggregate CSV, one row per `(model, attack, λ)` |
 | `outputs/<exp>/cost_metrics.csv` | metrics.csv + token/FLOP cost columns (Step 8.5) |
+| `outputs/<exp>/cost_summary_metrics.csv` | Compute-space summary metrics per (base_model, attack) with seed-aggregated mean/std/CI |
+| `outputs/<exp>/cost_metrics_by_category.csv` | cost_metrics.csv broken down by harm category |
+| `outputs/<exp>/cost_summary_by_category.csv` | Compute-space summary metrics per (base_model, attack, category) with CIs |
 | `outputs/<exp>/metrics_by_category.csv` | Per-category CSV, one row per `(model, attack, category, λ)` |
 | `outputs/<exp>/plots/bootstrap/risk_curves_<attack>.png` | Per-attack risk curves with bootstrap CIs |
 | `outputs/<exp>/plots/bootstrap/risk_curves_combined.png` | Combined plot (bootstrap CI) |
@@ -1089,6 +1108,47 @@ Token and FLOP cost axes are derived entirely from the prompt and response text 
 | **Total TFLOPs at λ** | Target + judge + attacker TFLOPs | Full compute cost of the attack across all components |
 
 The FLOP axis normalises for model size: a Jailbroken step on Qwen 7B costs ~14× more FLOPs than on Qwen 0.5B, even though both appear at the same x-position in the λ plot. Use `--x-axis flops` when comparing models of different sizes, and `--x-axis tokens` when comparing attack strategies on a fixed model.
+
+### Compute-space summary metrics
+
+These metrics are derived from the **risk-vs-TFLOPs curve** (one curve per (model, attack, seed)) and written to `cost_summary_metrics.csv` and `cost_summary_by_category.csv`. They capture efficiency and cost properties that per-λ cost columns cannot express — e.g. how cheaply an attack reaches a given risk level, or how front-loaded its gains are.
+
+All metrics are computed per seed, then aggregated across seeds with mean, std, and 95% t-distribution CI (df = n_seeds − 1). `jailbroken-v1` is excluded.
+
+**Threshold metrics (C@τ)**
+
+| Metric | Formula | Meaning |
+|--------|---------|---------|
+| **C@0.2** | Min TFLOPs $C$ s.t. $R(C) \geq 0.2$ | Compute to first reach 20% risk (linear interp.) |
+| **C@0.5** | Min TFLOPs $C$ s.t. $R(C) \geq 0.5$ | Compute to first reach 50% risk |
+| **C@0.8** | Min TFLOPs $C$ s.t. $R(C) \geq 0.8$ | Compute to first reach 80% risk |
+
+Returns `inf` if the threshold is never reached; `{metric}_frac_inf` records the fraction of seeds in that situation.
+
+**Efficiency metrics**
+
+| Metric | Formula | Meaning |
+|--------|---------|---------|
+| **AE** (Average Efficiency) | $(R(C_{\max}) - R(0)) / (C_{\max} - C_0)$ | Total risk gained per TFLOP over the full curve — higher is more efficient |
+| **EE** (Early Efficiency) | $(R(C_k) - R(0)) / (C_k - C_0)$, $k=2$ (i.e. $\lambda=2$) | Risk gain per TFLOP at the early part of the curve |
+| **ER** (Efficiency Ratio) | $(R(C_k) - R(0)) / (R(C_{\max}) - R(0) + \epsilon)$ | Fraction of total risk gain achieved in the early steps; ~1 = cheap attack, ~0 = expensive |
+
+**Area metrics**
+
+| Metric | Formula | Meaning |
+|--------|---------|---------|
+| **CAURC** | $\int R(C)\,dC$ (trapezoidal) | Area under risk curve in compute space — captures aggregate exploitability weighted by compute |
+| **log-CAURC** | $\int R(C)\,d\log_{10}(C+1)$ (trapezoidal) | Same in log-compute space; more informative when TFLOPs span several orders of magnitude |
+
+**Fixed-budget risk (R@C)**
+
+| Metric | Formula | Meaning |
+|--------|---------|---------|
+| **R@10** | $R$ at $C=10$ TFLOPs (linear interp.) | Risk achievable within a 10 TFLOP budget |
+| **R@100** | $R$ at $C=100$ TFLOPs | Risk achievable within a 100 TFLOP budget |
+| **R@1000** | $R$ at $C=1000$ TFLOPs | Risk achievable within a 1000 TFLOP budget |
+
+Boundary-clamped: if the target budget is below the cheapest point on the curve, returns $R(C_0)$; if above the most expensive point, returns $R(C_{\max})$.
 
 ---
 
