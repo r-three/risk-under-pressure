@@ -52,6 +52,12 @@ PALETTE = [
     "#8338ec", "#ff4365", "#06d6a0", "#0d2c54",
 ]
 
+_CATEGORY_PALETTE = [
+    "#e41a1c", "#377eb8", "#4daf4a", "#984ea3",
+    "#ff7f00", "#a65628", "#f781bf", "#999999",
+    "#66c2a5", "#fc8d62", "#8da0cb", "#e78ac3",
+]
+
 ATTACK_MARKERS = {
     "gcg": "o", "pair": "s", "jailbroken": "^", "jailbroken-v1": "D",
 }
@@ -73,12 +79,12 @@ COST_COLS_ALL = [
 X_AXIS_META: dict[str, dict] = {
     "tokens": {
         "col":     "mean_total_tokens",
-        "label":   "Mean token cost per prompt",
+        "label":   "Avg. cumulative tokens per prompt",
         "k_scale": True,
     },
     "flops": {
         "col":     "mean_total_tflops",
-        "label":   "Attack compute budget (TFLOPs)",
+        "label":   "Avg. cumulative TFLOPs per prompt",
         "k_scale": False,
     },
 }
@@ -103,6 +109,10 @@ def _attack_label(a: str) -> str:
 
 def _model_color(models: list[str]) -> dict[str, str]:
     return {m: PALETTE[i % len(PALETTE)] for i, m in enumerate(sorted(set(models)))}
+
+
+def _category_color(categories: list[str]) -> dict[str, str]:
+    return {c: _CATEGORY_PALETTE[i % len(_CATEGORY_PALETTE)] for i, c in enumerate(sorted(categories))}
 
 
 def _base(model_id: str) -> str:
@@ -143,6 +153,21 @@ def load_cost_csv(paths: list[Path], skip_missing: bool = False) -> pd.DataFrame
         frames.append(pd.read_csv(p))
     if not frames:
         raise FileNotFoundError("No cost CSV files could be loaded (all paths missing)")
+    return pd.concat(frames, ignore_index=True)
+
+
+def load_category_cost_csv(paths: list[Path], skip_missing: bool = False) -> pd.DataFrame:
+    """Load and concatenate cost_metrics_by_category.csv files."""
+    frames = []
+    for p in paths:
+        if not p.exists():
+            if skip_missing:
+                print(f"  WARNING: {p} not found — skipping")
+                continue
+            raise FileNotFoundError(f"Category cost CSV not found: {p}")
+        frames.append(pd.read_csv(p))
+    if not frames:
+        return pd.DataFrame()
     return pd.concat(frames, ignore_index=True)
 
 
@@ -194,6 +219,57 @@ def aggregate_seeds(df: pd.DataFrame, alpha: float = 0.05) -> pd.DataFrame:
         row: dict = {
             "model_id":   bm,
             "attack_id":  atk,
+            "lambda":     lam,
+            "risk":       mean_r,
+            "risk_lower": lo,
+            "risk_upper": hi,
+            "n_seeds":    n,
+        }
+        for col in extra_num:
+            if col in grp.columns:
+                row[col] = pd.to_numeric(grp[col], errors="coerce").mean()
+        rows.append(row)
+
+    return pd.DataFrame(rows)
+
+
+def aggregate_seeds_by_category(df: pd.DataFrame, alpha: float = 0.05) -> pd.DataFrame:
+    """Like aggregate_seeds() but groups by (base_model, attack_id, category, lambda)."""
+    df = df.copy()
+    df["_base"] = df["model_id"].apply(_base)
+
+    if (df["_base"] == df["model_id"]).all():
+        df.drop(columns=["_base"], inplace=True)
+        if "n_seeds" not in df.columns:
+            df["n_seeds"] = 1
+        return df
+
+    extra_num = ["n_prompts"] + [c for c in COST_COLS_ALL if c in df.columns]
+
+    rows: list[dict] = []
+    for (bm, atk, cat, lam), grp in df.groupby(
+        ["_base", "attack_id", "category", "lambda"], sort=False
+    ):
+        n      = len(grp)
+        risks  = grp["risk"].values
+        mean_r = float(risks.mean())
+
+        if n > 1:
+            sem    = risks.std(ddof=1) / n ** 0.5
+            t_crit = scipy_stats.t.ppf(1 - alpha / 2, df=n - 1)
+            lo = float(np.clip(mean_r - t_crit * sem, 0.0, 1.0))
+            hi = float(np.clip(mean_r + t_crit * sem, 0.0, 1.0))
+        else:
+            if "risk_lower" in grp.columns and "risk_upper" in grp.columns:
+                lo = float(grp["risk_lower"].values[0])
+                hi = float(grp["risk_upper"].values[0])
+            else:
+                lo = hi = mean_r
+
+        row: dict = {
+            "model_id":   bm,
+            "attack_id":  atk,
+            "category":   cat,
             "lambda":     lam,
             "risk":       mean_r,
             "risk_lower": lo,
@@ -518,8 +594,230 @@ def plot_combined(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Category cost plots
+# ─────────────────────────────────────────────────────────────────────────────
+
+def plot_cost_category_curves(
+    df_cat_agg: pd.DataFrame,
+    output_dir: Path,
+    fmt: str,
+    x_axis: str = "flops",
+) -> None:
+    """One figure per (base_model × attack): per-category risk vs compute cost."""
+    xcol = _xcol(x_axis)
+    if xcol not in df_cat_agg.columns:
+        print(f"  Skipping category curves: column '{xcol}' not in category data")
+        return
+
+    attacks    = sorted(df_cat_agg["attack_id"].unique())
+    models     = sorted(df_cat_agg["model_id"].unique())
+    categories = sorted(df_cat_agg["category"].unique())
+    color_map  = _category_color(categories)
+
+    for attack in attacks:
+        df_a = df_cat_agg[df_cat_agg["attack_id"] == attack]
+        for model in models:
+            df_m = df_a[df_a["model_id"] == model]
+            if df_m.empty:
+                continue
+
+            x_max = float(df_m[xcol].max())
+            fig, ax = plt.subplots(figsize=(7, 5))
+            for cat in categories:
+                df_c = df_m[df_m["category"] == cat].sort_values(xcol)
+                if df_c.empty:
+                    continue
+                ax.plot(
+                    df_c[xcol], df_c["risk"],
+                    color=color_map[cat], label=cat,
+                    marker="o", linestyle="-", linewidth=1.6, markersize=4, zorder=3,
+                )
+                has_ci = "n_seeds" in df_c.columns and (df_c["n_seeds"] > 1).any()
+                if has_ci:
+                    ax.fill_between(
+                        df_c[xcol], df_c["risk_lower"], df_c["risk_upper"],
+                        color=color_map[cat], alpha=0.15, zorder=2,
+                    )
+            _style_axes(ax, f"{model} — {_attack_label(attack)}", x_max, x_axis)
+            ax.legend(title="Category", fontsize=7, title_fontsize=8,
+                      loc="lower right", framealpha=0.9,
+                      borderpad=0.8, labelspacing=0.4)
+            fig.tight_layout(pad=0.5)
+            safe_m = model.replace("/", "_")
+            out_path = output_dir / f"cost_category_curves_{attack}_{safe_m}.{fmt}"
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            fig.savefig(out_path, dpi=150, bbox_inches="tight", pad_inches=0)
+            plt.close(fig)
+            print(f"  Saved: {out_path}")
+
+
+def plot_cost_category_heatmap(
+    df_cat_agg: pd.DataFrame,
+    output_dir: Path,
+    fmt: str,
+    x_axis: str = "flops",
+) -> None:
+    """One heatmap per attack: rows=categories, cols=models, value=risk at max compute."""
+    xcol = _xcol(x_axis)
+    if xcol not in df_cat_agg.columns:
+        print(f"  Skipping category heatmap: column '{xcol}' not in category data")
+        return
+
+    attacks = sorted(df_cat_agg["attack_id"].unique())
+
+    for attack in attacks:
+        df_a = df_cat_agg[df_cat_agg["attack_id"] == attack]
+        # Take the risk at each (model, category)'s own max compute point
+        df_at_max = df_a.loc[df_a.groupby(["model_id", "category"])[xcol].idxmax()]
+        if df_at_max.empty:
+            continue
+        pivot = df_at_max.pivot_table(index="category", columns="model_id", values="risk")
+        pivot = pivot.sort_index()
+
+        n_cols = len(pivot.columns)
+        n_rows = len(pivot)
+        fig, ax = plt.subplots(
+            figsize=(max(6, n_cols * 2.2 + 4), max(4, n_rows * 0.65))
+        )
+        annot_df = pivot.map(lambda v: f"{v:.0%}" if not pd.isna(v) else "")
+        sns.heatmap(
+            pivot, ax=ax, vmin=0, vmax=1, cmap="YlOrRd",
+            annot=annot_df, fmt="",
+            linewidths=0.5, linecolor="white",
+            cbar_kws={
+                "label": "Risk",
+                "shrink": 1.0,
+                "format": mticker.PercentFormatter(xmax=1, decimals=0),
+            },
+        )
+        ax.set_title(
+            f"Risk at peak compute — {_attack_label(attack)}",
+            fontsize=12, fontweight="bold",
+        )
+        ax.set_xlabel("Model", fontsize=10)
+        ax.set_ylabel("Category", fontsize=10)
+        ax.tick_params(axis="x", rotation=25, labelsize=9)
+        ax.tick_params(axis="y", rotation=0)
+        fig.tight_layout(pad=0.5)
+        out_path = output_dir / f"cost_category_heatmap_{attack}.{fmt}"
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(out_path, dpi=150, bbox_inches="tight", pad_inches=0)
+        plt.close(fig)
+        print(f"  Saved: {out_path}")
+
+
+def plot_cost_category_comparison(
+    df_cat_agg: pd.DataFrame,
+    output_dir: Path,
+    fmt: str,
+    x_axis: str = "flops",
+    suptitle: str = "",
+) -> None:
+    """One figure per (attack × category): models overlaid with CI bands, x=cost."""
+    xcol = _xcol(x_axis)
+    if xcol not in df_cat_agg.columns:
+        print(f"  Skipping category comparison: column '{xcol}' not in category data")
+        return
+
+    attacks    = sorted(df_cat_agg["attack_id"].unique())
+    categories = sorted(df_cat_agg["category"].unique())
+    models     = sorted(df_cat_agg["model_id"].unique())
+    color_map  = _model_color(models)
+
+    for attack in attacks:
+        for category in categories:
+            df_ac = df_cat_agg[
+                (df_cat_agg["attack_id"] == attack) & (df_cat_agg["category"] == category)
+            ]
+            if df_ac.empty:
+                continue
+
+            x_max = float(df_ac[xcol].max())
+            fig, ax = plt.subplots(figsize=(7, 5))
+            for model in models:
+                df_m = df_ac[df_ac["model_id"] == model].sort_values(xcol)
+                if df_m.empty:
+                    continue
+                color = color_map[model]
+                ax.plot(
+                    df_m[xcol], df_m["risk"],
+                    color=color, label=model,
+                    marker=ATTACK_MARKERS.get(attack, "o"),
+                    linestyle="-", linewidth=1.8, markersize=5, zorder=3,
+                )
+                has_ci = "n_seeds" in df_m.columns and (df_m["n_seeds"] > 1).any()
+                if has_ci:
+                    ax.fill_between(
+                        df_m[xcol], df_m["risk_lower"], df_m["risk_upper"],
+                        color=color, alpha=0.15, zorder=2,
+                    )
+            _style_axes(ax, f"{_attack_label(attack)} — {category}", x_max, x_axis)
+            ax.legend(title="Model", fontsize=9, title_fontsize=9,
+                      loc="lower right", framealpha=0.9,
+                      borderpad=0.8, labelspacing=0.4)
+            if suptitle:
+                fig.suptitle(suptitle, fontsize=11, fontweight="bold", y=1.01)
+            fig.tight_layout(pad=0.5)
+
+            safe_cat = category.replace("/", "_").replace(" ", "_")
+            out_path = output_dir / f"cost_category_{attack}_{safe_cat}.{fmt}"
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            fig.savefig(out_path, dpi=150, bbox_inches="tight", pad_inches=0)
+            plt.close(fig)
+            print(f"  Saved: {out_path}")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Entry point
 # ─────────────────────────────────────────────────────────────────────────────
+
+def load_summary_csvs(cost_csv_paths: list[Path], skip_missing: bool = False) -> pd.DataFrame:
+    """Load cost_summary_metrics.csv files found alongside each cost_metrics.csv."""
+    frames = []
+    for p in cost_csv_paths:
+        summary_path = p.parent / "cost_summary_metrics.csv"
+        if summary_path.exists():
+            frames.append(pd.read_csv(summary_path))
+    if not frames:
+        return pd.DataFrame()
+    return pd.concat(frames, ignore_index=True)
+
+
+def save_summary_table(summary_df: pd.DataFrame, output_dir: Path, base_models: set) -> None:
+    """Write a filtered cost_summary_table.csv to output_dir for the given base models."""
+    df = summary_df[summary_df["model_id"].isin(base_models)].copy()
+    df = df[df["attack_id"] != "jailbroken-v1"]
+    df = df.sort_values(["model_id", "attack_id"]).reset_index(drop=True)
+    out_path = output_dir / "cost_summary_table.csv"
+    df.to_csv(out_path, index=False)
+    print(f"Summary table written to: {out_path}  ({len(df)} rows)")
+
+
+def load_category_summary_csvs(
+    cost_csv_paths: list[Path], skip_missing: bool = False
+) -> pd.DataFrame:
+    """Load cost_summary_by_category.csv files found alongside each cost_metrics.csv."""
+    frames = []
+    for p in cost_csv_paths:
+        summary_path = p.parent / "cost_summary_by_category.csv"
+        if summary_path.exists():
+            frames.append(pd.read_csv(summary_path))
+    if not frames:
+        return pd.DataFrame()
+    return pd.concat(frames, ignore_index=True)
+
+
+def save_category_summary_table(
+    cat_summary_df: pd.DataFrame, output_dir: Path, base_models: set
+) -> None:
+    """Write filtered cost_summary_by_category_table.csv to output_dir."""
+    df = cat_summary_df[cat_summary_df["model_id"].isin(base_models)].copy()
+    df = df[df["attack_id"] != "jailbroken-v1"]
+    df = df.sort_values(["model_id", "attack_id", "category"]).reset_index(drop=True)
+    out_path = output_dir / "cost_summary_by_category_table.csv"
+    df.to_csv(out_path, index=False)
+    print(f"Category summary table written to: {out_path}  ({len(df)} rows)")
+
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(
@@ -563,6 +861,11 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     p.add_argument(
+        "--cost-category-csv", nargs="+", default=None, metavar="PATH",
+        help="Path(s) to cost_metrics_by_category.csv for per-category plots. "
+             "Pass multiple paths (matching --cost-csv) for ablation comparisons.",
+    )
+    p.add_argument(
         "--skip-missing", action="store_true",
         help="Silently skip --cost-csv paths that do not exist",
     )
@@ -588,6 +891,8 @@ def main() -> None:
             "Run scripts/compute_attack_costs.py first to generate cost_metrics.csv."
         )
 
+    df_raw = df_raw[df_raw["attack_id"] != "jailbroken-v1"]
+
     if args.attacks:
         df_raw = df_raw[df_raw["attack_id"].isin(args.attacks)]
         if df_raw.empty:
@@ -597,6 +902,27 @@ def main() -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     df_agg = aggregate_seeds(df_raw)
+
+    summary_df = load_summary_csvs(paths, skip_missing=args.skip_missing)
+    base_models = set(df_agg["model_id"].unique())
+    if not summary_df.empty:
+        save_summary_table(summary_df, output_dir, base_models)
+
+    # Per-category cost data
+    cat_paths = (
+        [Path(p) for p in args.cost_category_csv]
+        if args.cost_category_csv else []
+    )
+    df_cat_raw = load_category_cost_csv(cat_paths, skip_missing=args.skip_missing)
+    if not df_cat_raw.empty:
+        df_cat_raw = df_cat_raw[df_cat_raw["attack_id"] != "jailbroken-v1"]
+        if args.attacks:
+            df_cat_raw = df_cat_raw[df_cat_raw["attack_id"].isin(args.attacks)]
+        df_cat_agg = aggregate_seeds_by_category(df_cat_raw)
+
+        cat_summary_df = load_category_summary_csvs(paths, skip_missing=args.skip_missing)
+        if not cat_summary_df.empty:
+            save_category_summary_table(cat_summary_df, output_dir, base_models)
 
     n_base    = df_raw["model_id"].apply(_base).nunique()
     n_seeds_m = (
@@ -634,6 +960,24 @@ def main() -> None:
             )
         else:
             print("\nSingle model — skipping comparison / combined plots")
+
+    if not df_cat_raw.empty:
+        cat_dir = output_dir / "by_category"
+        cat_dir.mkdir(parents=True, exist_ok=True)
+
+        if mode in ("all", "aggregated"):
+            print("\nGenerating per-category cost curves…")
+            plot_cost_category_curves(df_cat_agg, cat_dir, args.format, x_axis=args.x_axis)
+
+        print("\nGenerating per-category cost heatmap…")
+        plot_cost_category_heatmap(df_cat_agg, cat_dir, args.format, x_axis=args.x_axis)
+
+        if mode in ("all", "comparison") and n_base > 1:
+            print("\nGenerating per-category cost comparison plots…")
+            plot_cost_category_comparison(
+                df_cat_agg, cat_dir, args.format,
+                x_axis=args.x_axis, suptitle=args.title,
+            )
 
     print(f"\nDone. Plots saved to: {output_dir}")
 

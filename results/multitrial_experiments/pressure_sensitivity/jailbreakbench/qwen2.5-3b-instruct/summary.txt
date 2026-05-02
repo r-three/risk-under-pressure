@@ -1,64 +1,64 @@
-16:26:17 | INFO | run_evaluation | Found 30 (model, attack) result sets
-16:26:17 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed100/gcg] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:26:17 | INFO | run_evaluation |   AURC=3.8350 ΔR=0.7500 λ*=8 (N=100)
-16:26:17 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed100/jailbroken] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:26:17 | INFO | run_evaluation |   AURC=7.4000 ΔR=0.9900 λ*=2 (N=100)
-16:26:17 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed100/pair] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:26:17 | INFO | run_evaluation |   AURC=6.6350 ΔR=0.9400 λ*=4 (N=100)
-16:26:17 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed123/gcg] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:26:17 | INFO | run_evaluation |   AURC=4.3100 ΔR=0.8400 λ*=6 (N=100)
-16:26:17 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed123/jailbroken] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:26:17 | INFO | run_evaluation |   AURC=7.2550 ΔR=0.9300 λ*=2 (N=100)
-16:26:17 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed123/pair] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:26:18 | INFO | run_evaluation |   AURC=6.9950 ΔR=0.9900 λ*=4 (N=100)
-16:26:18 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed1997/gcg] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:26:18 | INFO | run_evaluation |   AURC=3.9550 ΔR=0.8400 λ*=8 (N=100)
-16:26:18 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed1997/jailbroken] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:26:18 | INFO | run_evaluation |   AURC=7.3450 ΔR=0.9600 λ*=2 (N=100)
-16:26:18 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed1997/pair] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:26:18 | INFO | run_evaluation |   AURC=6.5000 ΔR=0.9600 λ*=4 (N=100)
-16:26:18 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed2/gcg] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:26:18 | INFO | run_evaluation |   AURC=3.8050 ΔR=0.8100 λ*=6 (N=100)
-16:26:18 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed2/jailbroken] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:26:18 | INFO | run_evaluation |   AURC=7.2850 ΔR=0.9800 λ*=2 (N=100)
-16:26:18 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed2/pair] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:26:19 | INFO | run_evaluation |   AURC=6.5600 ΔR=0.9600 λ*=4 (N=100)
-16:26:19 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed2002/gcg] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:26:19 | INFO | run_evaluation |   AURC=3.7550 ΔR=0.7600 λ*=8 (N=100)
-16:26:19 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed2002/jailbroken] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:26:19 | INFO | run_evaluation |   AURC=6.9700 ΔR=0.9500 λ*=4 (N=100)
-16:26:19 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed2002/pair] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:26:19 | INFO | run_evaluation |   AURC=6.6750 ΔR=0.9600 λ*=4 (N=100)
-16:26:19 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed256/gcg] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:26:19 | INFO | run_evaluation |   AURC=4.1350 ΔR=0.8200 λ*=6 (N=100)
-16:26:19 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed256/jailbroken] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:26:19 | INFO | run_evaluation |   AURC=7.2050 ΔR=0.9700 λ*=2 (N=100)
-16:26:19 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed256/pair] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:26:20 | INFO | run_evaluation |   AURC=6.5350 ΔR=0.9700 λ*=4 (N=100)
-16:26:20 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed42/gcg] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:26:20 | INFO | run_evaluation |   AURC=4.2700 ΔR=0.7600 λ*=6 (N=100)
-16:26:20 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed42/jailbroken] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:26:20 | INFO | run_evaluation |   AURC=7.2100 ΔR=0.9600 λ*=2 (N=100)
-16:26:20 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed42/pair] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:26:20 | INFO | run_evaluation |   AURC=6.8850 ΔR=0.9700 λ*=4 (N=100)
-16:26:20 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed5/gcg] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:26:20 | INFO | run_evaluation |   AURC=4.1950 ΔR=0.7800 λ*=6 (N=100)
-16:26:20 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed5/jailbroken] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:26:20 | INFO | run_evaluation |   AURC=7.0700 ΔR=0.9600 λ*=4 (N=100)
-16:26:20 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed5/pair] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:26:21 | INFO | run_evaluation |   AURC=6.5500 ΔR=0.9600 λ*=4 (N=100)
-16:26:21 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed512/gcg] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:26:21 | INFO | run_evaluation |   AURC=3.9700 ΔR=0.7800 λ*=6 (N=100)
-16:26:21 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed512/jailbroken] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:26:21 | INFO | run_evaluation |   AURC=7.3300 ΔR=0.9800 λ*=2 (N=100)
-16:26:21 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed512/pair] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:26:21 | INFO | run_evaluation |   AURC=6.7550 ΔR=0.9500 λ*=4 (N=100)
-16:26:21 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed5431/gcg] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:26:21 | INFO | run_evaluation |   AURC=3.8400 ΔR=0.7200 λ*=6 (N=100)
-16:26:21 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed5431/jailbroken] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:26:21 | INFO | run_evaluation |   AURC=7.4750 ΔR=0.9500 λ*=2 (N=100)
-16:26:21 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed5431/pair] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:26:22 | INFO | run_evaluation |   AURC=6.6350 ΔR=0.9400 λ*=4 (N=100)
+22:52:45 | INFO | run_evaluation | Found 30 (model, attack) result sets
+22:52:45 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed100/gcg] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:52:45 | INFO | run_evaluation |   AURC=3.8350 ΔR=0.7500 λ*=8 (N=100)
+22:52:45 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed100/jailbroken] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:52:46 | INFO | run_evaluation |   AURC=7.4000 ΔR=0.9900 λ*=2 (N=100)
+22:52:46 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed100/pair] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:52:46 | INFO | run_evaluation |   AURC=6.6350 ΔR=0.9400 λ*=4 (N=100)
+22:52:46 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed123/gcg] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:52:46 | INFO | run_evaluation |   AURC=4.3100 ΔR=0.8400 λ*=6 (N=100)
+22:52:46 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed123/jailbroken] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:52:46 | INFO | run_evaluation |   AURC=7.2550 ΔR=0.9300 λ*=2 (N=100)
+22:52:46 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed123/pair] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:52:46 | INFO | run_evaluation |   AURC=6.9950 ΔR=0.9900 λ*=4 (N=100)
+22:52:46 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed1997/gcg] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:52:47 | INFO | run_evaluation |   AURC=3.9550 ΔR=0.8400 λ*=8 (N=100)
+22:52:47 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed1997/jailbroken] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:52:47 | INFO | run_evaluation |   AURC=7.3450 ΔR=0.9600 λ*=2 (N=100)
+22:52:47 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed1997/pair] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:52:47 | INFO | run_evaluation |   AURC=6.5000 ΔR=0.9600 λ*=4 (N=100)
+22:52:47 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed2/gcg] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:52:47 | INFO | run_evaluation |   AURC=3.8050 ΔR=0.8100 λ*=6 (N=100)
+22:52:47 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed2/jailbroken] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:52:47 | INFO | run_evaluation |   AURC=7.2850 ΔR=0.9800 λ*=2 (N=100)
+22:52:47 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed2/pair] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:52:47 | INFO | run_evaluation |   AURC=6.5600 ΔR=0.9600 λ*=4 (N=100)
+22:52:47 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed2002/gcg] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:52:48 | INFO | run_evaluation |   AURC=3.7550 ΔR=0.7600 λ*=8 (N=100)
+22:52:48 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed2002/jailbroken] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:52:48 | INFO | run_evaluation |   AURC=6.9700 ΔR=0.9500 λ*=4 (N=100)
+22:52:48 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed2002/pair] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:52:48 | INFO | run_evaluation |   AURC=6.6750 ΔR=0.9600 λ*=4 (N=100)
+22:52:48 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed256/gcg] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:52:48 | INFO | run_evaluation |   AURC=4.1350 ΔR=0.8200 λ*=6 (N=100)
+22:52:48 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed256/jailbroken] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:52:48 | INFO | run_evaluation |   AURC=7.2050 ΔR=0.9700 λ*=2 (N=100)
+22:52:48 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed256/pair] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:52:48 | INFO | run_evaluation |   AURC=6.5350 ΔR=0.9700 λ*=4 (N=100)
+22:52:48 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed42/gcg] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:52:49 | INFO | run_evaluation |   AURC=4.2700 ΔR=0.7600 λ*=6 (N=100)
+22:52:49 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed42/jailbroken] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:52:49 | INFO | run_evaluation |   AURC=7.2100 ΔR=0.9600 λ*=2 (N=100)
+22:52:49 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed42/pair] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:52:49 | INFO | run_evaluation |   AURC=6.8850 ΔR=0.9700 λ*=4 (N=100)
+22:52:49 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed5/gcg] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:52:49 | INFO | run_evaluation |   AURC=4.1950 ΔR=0.7800 λ*=6 (N=100)
+22:52:49 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed5/jailbroken] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:52:49 | INFO | run_evaluation |   AURC=7.0700 ΔR=0.9600 λ*=4 (N=100)
+22:52:49 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed5/pair] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:52:49 | INFO | run_evaluation |   AURC=6.5500 ΔR=0.9600 λ*=4 (N=100)
+22:52:49 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed512/gcg] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:52:50 | INFO | run_evaluation |   AURC=3.9700 ΔR=0.7800 λ*=6 (N=100)
+22:52:50 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed512/jailbroken] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:52:50 | INFO | run_evaluation |   AURC=7.3300 ΔR=0.9800 λ*=2 (N=100)
+22:52:50 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed512/pair] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:52:50 | INFO | run_evaluation |   AURC=6.7550 ΔR=0.9500 λ*=4 (N=100)
+22:52:50 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed5431/gcg] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:52:50 | INFO | run_evaluation |   AURC=3.8400 ΔR=0.7200 λ*=6 (N=100)
+22:52:50 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed5431/jailbroken] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:52:50 | INFO | run_evaluation |   AURC=7.4750 ΔR=0.9500 λ*=2 (N=100)
+22:52:50 | INFO | run_evaluation | [qwen2.5-3b-instruct_seed5431/pair] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:52:51 | INFO | run_evaluation |   AURC=6.6350 ΔR=0.9400 λ*=4 (N=100)
 
 Model                               Attack           AURC       ΔR     λ*     N
 -------------------------------------------------------------------------------
@@ -92,10 +92,10 @@ qwen2.5-3b-instruct_seed512         pair           6.7550   0.9500      4   100
 qwen2.5-3b-instruct_seed5431        gcg            3.8400   0.7200      6   100
 qwen2.5-3b-instruct_seed5431        jailbroken     7.4750   0.9500      2   100
 qwen2.5-3b-instruct_seed5431        pair           6.6350   0.9400      4   100
-16:26:22 | INFO | run_evaluation | CSV metrics written to /home/ehghaghi/scratch/aip-craffel/ehghaghi/prisk-pressure/results/multitrial_experiments/pressure_sensitivity/jailbreakbench/qwen2.5-3b-instruct/metrics.csv
-16:26:22 | INFO | run_evaluation | Seed-aggregated summary CSV written to /home/ehghaghi/scratch/aip-craffel/ehghaghi/prisk-pressure/results/multitrial_experiments/pressure_sensitivity/jailbreakbench/qwen2.5-3b-instruct/metrics_summary.csv
-16:26:46 | INFO | run_evaluation | Per-category CSV metrics written to /home/ehghaghi/scratch/aip-craffel/ehghaghi/prisk-pressure/results/multitrial_experiments/pressure_sensitivity/jailbreakbench/qwen2.5-3b-instruct/metrics_by_category.csv
-16:26:46 | INFO | run_evaluation | Seed-aggregated category summary CSV written to /home/ehghaghi/scratch/aip-craffel/ehghaghi/prisk-pressure/results/multitrial_experiments/pressure_sensitivity/jailbreakbench/qwen2.5-3b-instruct/metrics_by_category_summary.csv
+22:52:51 | INFO | run_evaluation | CSV metrics written to /home/ehghaghi/projects/aip-craffel/ehghaghi/prisk-pressure/results/plots/multitrial_experiments/pressure_sensitivity/jailbreakbench/qwen2.5-3b-instruct/metrics.csv
+22:52:51 | INFO | run_evaluation | Seed-aggregated summary CSV written to /home/ehghaghi/projects/aip-craffel/ehghaghi/prisk-pressure/results/plots/multitrial_experiments/pressure_sensitivity/jailbreakbench/qwen2.5-3b-instruct/metrics_summary.csv
+22:53:15 | INFO | run_evaluation | Per-category CSV metrics written to /home/ehghaghi/projects/aip-craffel/ehghaghi/prisk-pressure/results/plots/multitrial_experiments/pressure_sensitivity/jailbreakbench/qwen2.5-3b-instruct/metrics_by_category.csv
+22:53:15 | INFO | run_evaluation | Seed-aggregated category summary CSV written to /home/ehghaghi/projects/aip-craffel/ehghaghi/prisk-pressure/results/plots/multitrial_experiments/pressure_sensitivity/jailbreakbench/qwen2.5-3b-instruct/metrics_by_category_summary.csv
 
 ============================================================
 pRisk-Pressure Evaluation Summary

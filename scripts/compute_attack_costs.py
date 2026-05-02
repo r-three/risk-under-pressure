@@ -35,11 +35,18 @@ from __future__ import annotations
 import argparse
 import csv
 import sys
+from collections import defaultdict
 from pathlib import Path
+
+import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from prisk.metrics.cost_mapper import aggregate_costs
+from prisk.metrics.cost_summary import (
+    compute_cost_summary_metrics,
+    compute_cost_summary_by_category,
+)
 from prisk.utils.io import TrialRecord, read_jsonl
 from prisk.utils.logging import get_logger
 
@@ -125,6 +132,7 @@ def main() -> None:
     logger.info(f"Found {len(result_files)} (model, attack) result sets")
 
     cost_lookup: dict[tuple[str, str], dict[int, dict]] = {}
+    cat_cost_lookup: dict[tuple[str, str, str], dict[int, dict]] = {}
 
     for (model_id, attack_id), path in sorted(result_files.items()):
         key = (model_id, attack_id)
@@ -155,6 +163,18 @@ def main() -> None:
             f"TFLOPs={top.get('mean_total_tflops', 0):.4f}  (N={len(records)})"
         )
 
+        # Per-category costs — reuse the already-loaded records
+        by_cat: dict[str, list[TrialRecord]] = defaultdict(list)
+        for rec in records:
+            by_cat[rec.category].append(rec)
+        for cat, cat_records in by_cat.items():
+            cat_costs = aggregate_costs(
+                cat_records, pressure_levels,
+                judge_model_id=args.judge_model,
+                gcg_backward_mult=args.gcg_backward_mult,
+            )
+            cat_cost_lookup[(model_id, attack_id, cat)] = cat_costs
+
     # ------------------------------------------------------------------ #
     # Join and write output CSV
     # ------------------------------------------------------------------ #
@@ -176,6 +196,47 @@ def main() -> None:
 
     print(f"\nCost metrics written to: {output_path}")
     print(f"Columns added: {COST_COLS}")
+
+    cost_df = pd.read_csv(output_path)
+    summary_df = compute_cost_summary_metrics(cost_df)
+    summary_path = output_path.parent / "cost_summary_metrics.csv"
+    summary_df.to_csv(summary_path, index=False, na_rep="")
+    print(f"Cost summary metrics written to: {summary_path}")
+
+    # ------------------------------------------------------------------ #
+    # Per-category: join with metrics_by_category.csv and write outputs
+    # ------------------------------------------------------------------ #
+    cat_metrics_path = metrics_path.parent / "metrics_by_category.csv"
+    if not cat_metrics_path.exists():
+        logger.warning(f"metrics_by_category.csv not found at {cat_metrics_path}; skipping per-category cost output")
+    else:
+        with open(cat_metrics_path, newline="") as f:
+            reader = csv.DictReader(f)
+            cat_rows = list(reader)
+            cat_fieldnames = reader.fieldnames or []
+
+        cat_out_fieldnames = list(cat_fieldnames) + COST_COLS
+        cat_output_path = output_path.parent / "cost_metrics_by_category.csv"
+
+        with open(cat_output_path, "w", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=cat_out_fieldnames)
+            writer.writeheader()
+            for row in cat_rows:
+                key = (row["model_id"], row["attack_id"], row["category"])
+                lam = int(row["lambda"])
+                costs = cat_cost_lookup.get(key, {}).get(lam, {})
+                out_row = dict(row)
+                for col in COST_COLS:
+                    out_row[col] = costs.get(col, "")
+                writer.writerow(out_row)
+
+        print(f"Per-category cost metrics written to: {cat_output_path}")
+
+        cat_cost_df = pd.read_csv(cat_output_path)
+        cat_summary_df = compute_cost_summary_by_category(cat_cost_df)
+        cat_summary_path = output_path.parent / "cost_summary_by_category.csv"
+        cat_summary_df.to_csv(cat_summary_path, index=False, na_rep="")
+        print(f"Per-category cost summary written to: {cat_summary_path}")
 
 
 if __name__ == "__main__":

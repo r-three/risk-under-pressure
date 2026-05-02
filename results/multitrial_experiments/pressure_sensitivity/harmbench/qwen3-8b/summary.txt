@@ -1,12 +1,12 @@
-17:36:36 | INFO | run_evaluation | Found 1 (model, attack) result sets
-17:36:36 | INFO | run_evaluation | [qwen3-8b/gcg] 200 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-17:36:37 | INFO | run_evaluation |   AURC=3.3475 ΔR=0.4650 λ*=None (N=200)
+22:52:11 | INFO | run_evaluation | Found 1 (model, attack) result sets
+22:52:11 | INFO | run_evaluation | [qwen3-8b/gcg] 200 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:52:11 | INFO | run_evaluation |   AURC=3.3475 ΔR=0.4650 λ*=None (N=200)
 
 Model                               Attack           AURC       ΔR     λ*     N
 -------------------------------------------------------------------------------
 qwen3-8b                            gcg            3.3475   0.4650    N/A   200
-17:36:37 | INFO | run_evaluation | CSV metrics written to /home/ehghaghi/scratch/aip-craffel/ehghaghi/prisk-pressure/results/multitrial_experiments/pressure_sensitivity/harmbench/qwen3-8b/metrics.csv
-17:36:37 | INFO | run_evaluation | Per-category CSV metrics written to /home/ehghaghi/scratch/aip-craffel/ehghaghi/prisk-pressure/results/multitrial_experiments/pressure_sensitivity/harmbench/qwen3-8b/metrics_by_category.csv
+22:52:11 | INFO | run_evaluation | CSV metrics written to /home/ehghaghi/projects/aip-craffel/ehghaghi/prisk-pressure/results/plots/multitrial_experiments/pressure_sensitivity/harmbench/qwen3-8b/metrics.csv
+22:52:11 | INFO | run_evaluation | Per-category CSV metrics written to /home/ehghaghi/projects/aip-craffel/ehghaghi/prisk-pressure/results/plots/multitrial_experiments/pressure_sensitivity/harmbench/qwen3-8b/metrics_by_category.csv
 
 ============================================================
 pRisk-Pressure Evaluation Summary

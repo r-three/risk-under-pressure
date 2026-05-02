@@ -1,64 +1,64 @@
-16:27:49 | INFO | run_evaluation | Found 30 (model, attack) result sets
-16:27:49 | INFO | run_evaluation | [tulu2-7b-base_seed100/gcg] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:27:50 | INFO | run_evaluation |   AURC=9.3550 ΔR=1.0000 λ*=1 (N=100)
-16:27:50 | INFO | run_evaluation | [tulu2-7b-base_seed100/jailbroken] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:27:50 | INFO | run_evaluation |   AURC=9.4000 ΔR=1.0000 λ*=1 (N=100)
-16:27:50 | INFO | run_evaluation | [tulu2-7b-base_seed100/pair] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:27:50 | INFO | run_evaluation |   AURC=9.1350 ΔR=1.0000 λ*=1 (N=100)
-16:27:50 | INFO | run_evaluation | [tulu2-7b-base_seed123/gcg] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:27:50 | INFO | run_evaluation |   AURC=9.4400 ΔR=1.0000 λ*=1 (N=100)
-16:27:50 | INFO | run_evaluation | [tulu2-7b-base_seed123/jailbroken] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:27:50 | INFO | run_evaluation |   AURC=9.4150 ΔR=1.0000 λ*=1 (N=100)
-16:27:50 | INFO | run_evaluation | [tulu2-7b-base_seed123/pair] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:27:50 | INFO | run_evaluation |   AURC=9.3550 ΔR=1.0000 λ*=1 (N=100)
-16:27:50 | INFO | run_evaluation | [tulu2-7b-base_seed1997/gcg] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:27:50 | INFO | run_evaluation |   AURC=9.3950 ΔR=1.0000 λ*=1 (N=100)
-16:27:50 | INFO | run_evaluation | [tulu2-7b-base_seed1997/jailbroken] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:27:51 | INFO | run_evaluation |   AURC=9.3450 ΔR=1.0000 λ*=1 (N=100)
-16:27:51 | INFO | run_evaluation | [tulu2-7b-base_seed1997/pair] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:27:51 | INFO | run_evaluation |   AURC=9.3700 ΔR=1.0000 λ*=1 (N=100)
-16:27:51 | INFO | run_evaluation | [tulu2-7b-base_seed2/gcg] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:27:51 | INFO | run_evaluation |   AURC=9.3250 ΔR=1.0000 λ*=1 (N=100)
-16:27:51 | INFO | run_evaluation | [tulu2-7b-base_seed2/jailbroken] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:27:51 | INFO | run_evaluation |   AURC=9.3200 ΔR=1.0000 λ*=1 (N=100)
-16:27:51 | INFO | run_evaluation | [tulu2-7b-base_seed2/pair] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:27:51 | INFO | run_evaluation |   AURC=9.2800 ΔR=1.0000 λ*=1 (N=100)
-16:27:51 | INFO | run_evaluation | [tulu2-7b-base_seed2002/gcg] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:27:51 | INFO | run_evaluation |   AURC=9.4600 ΔR=1.0000 λ*=1 (N=100)
-16:27:51 | INFO | run_evaluation | [tulu2-7b-base_seed2002/jailbroken] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:27:52 | INFO | run_evaluation |   AURC=9.3700 ΔR=1.0000 λ*=1 (N=100)
-16:27:52 | INFO | run_evaluation | [tulu2-7b-base_seed2002/pair] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:27:52 | INFO | run_evaluation |   AURC=9.3600 ΔR=1.0000 λ*=1 (N=100)
-16:27:52 | INFO | run_evaluation | [tulu2-7b-base_seed256/gcg] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:27:52 | INFO | run_evaluation |   AURC=9.3400 ΔR=1.0000 λ*=1 (N=100)
-16:27:52 | INFO | run_evaluation | [tulu2-7b-base_seed256/jailbroken] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:27:52 | INFO | run_evaluation |   AURC=9.4050 ΔR=1.0000 λ*=1 (N=100)
-16:27:52 | INFO | run_evaluation | [tulu2-7b-base_seed256/pair] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:27:52 | INFO | run_evaluation |   AURC=9.2900 ΔR=1.0000 λ*=1 (N=100)
-16:27:52 | INFO | run_evaluation | [tulu2-7b-base_seed42/gcg] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:27:52 | INFO | run_evaluation |   AURC=9.3850 ΔR=1.0000 λ*=1 (N=100)
-16:27:52 | INFO | run_evaluation | [tulu2-7b-base_seed42/jailbroken] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:27:53 | INFO | run_evaluation |   AURC=9.3700 ΔR=1.0000 λ*=1 (N=100)
-16:27:53 | INFO | run_evaluation | [tulu2-7b-base_seed42/pair] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:27:53 | INFO | run_evaluation |   AURC=9.3600 ΔR=1.0000 λ*=1 (N=100)
-16:27:53 | INFO | run_evaluation | [tulu2-7b-base_seed5/gcg] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:27:53 | INFO | run_evaluation |   AURC=9.3100 ΔR=1.0000 λ*=1 (N=100)
-16:27:53 | INFO | run_evaluation | [tulu2-7b-base_seed5/jailbroken] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:27:53 | INFO | run_evaluation |   AURC=9.3900 ΔR=1.0000 λ*=1 (N=100)
-16:27:53 | INFO | run_evaluation | [tulu2-7b-base_seed5/pair] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:27:53 | INFO | run_evaluation |   AURC=9.3650 ΔR=1.0000 λ*=1 (N=100)
-16:27:53 | INFO | run_evaluation | [tulu2-7b-base_seed512/gcg] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:27:53 | INFO | run_evaluation |   AURC=9.3650 ΔR=1.0000 λ*=1 (N=100)
-16:27:53 | INFO | run_evaluation | [tulu2-7b-base_seed512/jailbroken] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:27:54 | INFO | run_evaluation |   AURC=9.3000 ΔR=1.0000 λ*=1 (N=100)
-16:27:54 | INFO | run_evaluation | [tulu2-7b-base_seed512/pair] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:27:54 | INFO | run_evaluation |   AURC=9.3200 ΔR=1.0000 λ*=1 (N=100)
-16:27:54 | INFO | run_evaluation | [tulu2-7b-base_seed5431/gcg] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:27:54 | INFO | run_evaluation |   AURC=9.4200 ΔR=1.0000 λ*=1 (N=100)
-16:27:54 | INFO | run_evaluation | [tulu2-7b-base_seed5431/jailbroken] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:27:54 | INFO | run_evaluation |   AURC=9.3400 ΔR=1.0000 λ*=1 (N=100)
-16:27:54 | INFO | run_evaluation | [tulu2-7b-base_seed5431/pair] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
-16:27:54 | INFO | run_evaluation |   AURC=9.3800 ΔR=1.0000 λ*=1 (N=100)
+22:54:26 | INFO | run_evaluation | Found 30 (model, attack) result sets
+22:54:26 | INFO | run_evaluation | [tulu2-7b-base_seed100/gcg] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:54:26 | INFO | run_evaluation |   AURC=9.3550 ΔR=1.0000 λ*=1 (N=100)
+22:54:26 | INFO | run_evaluation | [tulu2-7b-base_seed100/jailbroken] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:54:26 | INFO | run_evaluation |   AURC=9.4000 ΔR=1.0000 λ*=1 (N=100)
+22:54:26 | INFO | run_evaluation | [tulu2-7b-base_seed100/pair] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:54:26 | INFO | run_evaluation |   AURC=9.1350 ΔR=1.0000 λ*=1 (N=100)
+22:54:26 | INFO | run_evaluation | [tulu2-7b-base_seed123/gcg] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:54:26 | INFO | run_evaluation |   AURC=9.4400 ΔR=1.0000 λ*=1 (N=100)
+22:54:26 | INFO | run_evaluation | [tulu2-7b-base_seed123/jailbroken] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:54:26 | INFO | run_evaluation |   AURC=9.4150 ΔR=1.0000 λ*=1 (N=100)
+22:54:26 | INFO | run_evaluation | [tulu2-7b-base_seed123/pair] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:54:27 | INFO | run_evaluation |   AURC=9.3550 ΔR=1.0000 λ*=1 (N=100)
+22:54:27 | INFO | run_evaluation | [tulu2-7b-base_seed1997/gcg] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:54:27 | INFO | run_evaluation |   AURC=9.3950 ΔR=1.0000 λ*=1 (N=100)
+22:54:27 | INFO | run_evaluation | [tulu2-7b-base_seed1997/jailbroken] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:54:27 | INFO | run_evaluation |   AURC=9.3450 ΔR=1.0000 λ*=1 (N=100)
+22:54:27 | INFO | run_evaluation | [tulu2-7b-base_seed1997/pair] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:54:27 | INFO | run_evaluation |   AURC=9.3700 ΔR=1.0000 λ*=1 (N=100)
+22:54:27 | INFO | run_evaluation | [tulu2-7b-base_seed2/gcg] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:54:27 | INFO | run_evaluation |   AURC=9.3250 ΔR=1.0000 λ*=1 (N=100)
+22:54:27 | INFO | run_evaluation | [tulu2-7b-base_seed2/jailbroken] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:54:28 | INFO | run_evaluation |   AURC=9.3200 ΔR=1.0000 λ*=1 (N=100)
+22:54:28 | INFO | run_evaluation | [tulu2-7b-base_seed2/pair] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:54:28 | INFO | run_evaluation |   AURC=9.2800 ΔR=1.0000 λ*=1 (N=100)
+22:54:28 | INFO | run_evaluation | [tulu2-7b-base_seed2002/gcg] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:54:28 | INFO | run_evaluation |   AURC=9.4600 ΔR=1.0000 λ*=1 (N=100)
+22:54:28 | INFO | run_evaluation | [tulu2-7b-base_seed2002/jailbroken] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:54:28 | INFO | run_evaluation |   AURC=9.3700 ΔR=1.0000 λ*=1 (N=100)
+22:54:28 | INFO | run_evaluation | [tulu2-7b-base_seed2002/pair] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:54:28 | INFO | run_evaluation |   AURC=9.3600 ΔR=1.0000 λ*=1 (N=100)
+22:54:28 | INFO | run_evaluation | [tulu2-7b-base_seed256/gcg] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:54:28 | INFO | run_evaluation |   AURC=9.3400 ΔR=1.0000 λ*=1 (N=100)
+22:54:28 | INFO | run_evaluation | [tulu2-7b-base_seed256/jailbroken] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:54:28 | INFO | run_evaluation |   AURC=9.4050 ΔR=1.0000 λ*=1 (N=100)
+22:54:28 | INFO | run_evaluation | [tulu2-7b-base_seed256/pair] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:54:29 | INFO | run_evaluation |   AURC=9.2900 ΔR=1.0000 λ*=1 (N=100)
+22:54:29 | INFO | run_evaluation | [tulu2-7b-base_seed42/gcg] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:54:29 | INFO | run_evaluation |   AURC=9.3850 ΔR=1.0000 λ*=1 (N=100)
+22:54:29 | INFO | run_evaluation | [tulu2-7b-base_seed42/jailbroken] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:54:29 | INFO | run_evaluation |   AURC=9.3700 ΔR=1.0000 λ*=1 (N=100)
+22:54:29 | INFO | run_evaluation | [tulu2-7b-base_seed42/pair] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:54:29 | INFO | run_evaluation |   AURC=9.3600 ΔR=1.0000 λ*=1 (N=100)
+22:54:29 | INFO | run_evaluation | [tulu2-7b-base_seed5/gcg] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:54:29 | INFO | run_evaluation |   AURC=9.3100 ΔR=1.0000 λ*=1 (N=100)
+22:54:29 | INFO | run_evaluation | [tulu2-7b-base_seed5/jailbroken] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:54:30 | INFO | run_evaluation |   AURC=9.3900 ΔR=1.0000 λ*=1 (N=100)
+22:54:30 | INFO | run_evaluation | [tulu2-7b-base_seed5/pair] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:54:30 | INFO | run_evaluation |   AURC=9.3650 ΔR=1.0000 λ*=1 (N=100)
+22:54:30 | INFO | run_evaluation | [tulu2-7b-base_seed512/gcg] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:54:30 | INFO | run_evaluation |   AURC=9.3650 ΔR=1.0000 λ*=1 (N=100)
+22:54:30 | INFO | run_evaluation | [tulu2-7b-base_seed512/jailbroken] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:54:30 | INFO | run_evaluation |   AURC=9.3000 ΔR=1.0000 λ*=1 (N=100)
+22:54:30 | INFO | run_evaluation | [tulu2-7b-base_seed512/pair] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:54:30 | INFO | run_evaluation |   AURC=9.3200 ΔR=1.0000 λ*=1 (N=100)
+22:54:30 | INFO | run_evaluation | [tulu2-7b-base_seed5431/gcg] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:54:31 | INFO | run_evaluation |   AURC=9.4200 ΔR=1.0000 λ*=1 (N=100)
+22:54:31 | INFO | run_evaluation | [tulu2-7b-base_seed5431/jailbroken] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:54:31 | INFO | run_evaluation |   AURC=9.3400 ΔR=1.0000 λ*=1 (N=100)
+22:54:31 | INFO | run_evaluation | [tulu2-7b-base_seed5431/pair] 100 records | pressure_levels=[0, 1, 2, 4, 6, 8, 10]
+22:54:31 | INFO | run_evaluation |   AURC=9.3800 ΔR=1.0000 λ*=1 (N=100)
 
 Model                               Attack           AURC       ΔR     λ*     N
 -------------------------------------------------------------------------------
@@ -92,10 +92,10 @@ tulu2-7b-base_seed512               pair           9.3200   1.0000      1   100
 tulu2-7b-base_seed5431              gcg            9.4200   1.0000      1   100
 tulu2-7b-base_seed5431              jailbroken     9.3400   1.0000      1   100
 tulu2-7b-base_seed5431              pair           9.3800   1.0000      1   100
-16:27:54 | INFO | run_evaluation | CSV metrics written to /home/ehghaghi/scratch/aip-craffel/ehghaghi/prisk-pressure/results/multitrial_experiments/pressure_sensitivity/jailbreakbench/tulu2-7b-base/metrics.csv
-16:27:54 | INFO | run_evaluation | Seed-aggregated summary CSV written to /home/ehghaghi/scratch/aip-craffel/ehghaghi/prisk-pressure/results/multitrial_experiments/pressure_sensitivity/jailbreakbench/tulu2-7b-base/metrics_summary.csv
-16:28:19 | INFO | run_evaluation | Per-category CSV metrics written to /home/ehghaghi/scratch/aip-craffel/ehghaghi/prisk-pressure/results/multitrial_experiments/pressure_sensitivity/jailbreakbench/tulu2-7b-base/metrics_by_category.csv
-16:28:19 | INFO | run_evaluation | Seed-aggregated category summary CSV written to /home/ehghaghi/scratch/aip-craffel/ehghaghi/prisk-pressure/results/multitrial_experiments/pressure_sensitivity/jailbreakbench/tulu2-7b-base/metrics_by_category_summary.csv
+22:54:31 | INFO | run_evaluation | CSV metrics written to /home/ehghaghi/projects/aip-craffel/ehghaghi/prisk-pressure/results/plots/multitrial_experiments/pressure_sensitivity/jailbreakbench/tulu2-7b-base/metrics.csv
+22:54:31 | INFO | run_evaluation | Seed-aggregated summary CSV written to /home/ehghaghi/projects/aip-craffel/ehghaghi/prisk-pressure/results/plots/multitrial_experiments/pressure_sensitivity/jailbreakbench/tulu2-7b-base/metrics_summary.csv
+22:54:55 | INFO | run_evaluation | Per-category CSV metrics written to /home/ehghaghi/projects/aip-craffel/ehghaghi/prisk-pressure/results/plots/multitrial_experiments/pressure_sensitivity/jailbreakbench/tulu2-7b-base/metrics_by_category.csv
+22:54:56 | INFO | run_evaluation | Seed-aggregated category summary CSV written to /home/ehghaghi/projects/aip-craffel/ehghaghi/prisk-pressure/results/plots/multitrial_experiments/pressure_sensitivity/jailbreakbench/tulu2-7b-base/metrics_by_category_summary.csv
 
 ============================================================
 pRisk-Pressure Evaluation Summary
