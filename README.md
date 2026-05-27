@@ -2,12 +2,14 @@
 
 **Compute-Aware Evaluation of Adversarial Robustness in Language Models**
 
-[![Paper](https://img.shields.io/badge/paper-preprint-blue)](https://arxiv.org/abs/2506.01234)
+[![Paper](https://img.shields.io/badge/paper-preprint-blue)](TODO)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Standard jailbreak benchmarks report attack success rate (ASR) at a fixed query budget, treating all attacks as equally cheap. In practice, a GCG step costs orders of magnitude more compute than a JailBroken template swap. **Risk Under Pressure** introduces *risk-compute curves* that map cumulative FLOPs to jailbreak success rate, enabling apples-to-apples comparisons across attack strategies, model families, and alignment stages.
+Most jailbreak benchmarks report attack success rate (ASR) at a fixed query budget — which implicitly treats a cheap template jailbreak and an expensive gradient-based GCG attack as equivalent. They're not: compute costs across attack strategies vary by orders of magnitude, so a high ASR can mean "trivially broken" or "extremely expensive to break," and you can't tell which from ASR alone.
 
-> **Paper**: Ehghaghi, Ecsedi, Chechik & Raffel — *Risk Under Pressure: Compute-Aware Evaluation of Adversarial Robustness in Language Models* (2026)
+**Risk Under Pressure** replaces the query-count axis with cumulative FLOPs — a hardware-agnostic measure of actual attacker effort. Instead of "did the attack succeed within N queries?", you get *risk-compute curves* that show how jailbreak success rate scales with compute budget. Two summary metrics capture what the curve means in practice: how much compute it takes to reach a target risk level, and how much risk you get per FLOP on average.
+
+<!-- > **Paper**: Ehghaghi, Ecsedi, Chechik & Raffel — *Risk Under Pressure: Compute-Aware Evaluation of Adversarial Robustness in Language Models* (2026) -->
 
 ---
 
