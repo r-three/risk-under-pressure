@@ -1,7 +1,7 @@
 # Pressure Sensitivity (HarmBench) — qwen2.5_7b
 name: "HB_qwen2.5_7b"
 benchmark: "harmbench"
-n_prompts: 500
+n_prompts: 200
 pressure_levels: [0, 1, 2, 4, 6, 8, 10]
 lambda_max: 10
 models:
@@ -11,7 +11,6 @@ attacks:
   - "jailbroken"
   - "gcg"
 judge_model: "llama3.1_8b_instruct_judge"
-output_dir: "/home/ehghaghi/scratch/ehghaghi/outputs/pressure_sensitivity"
 seeds: [1997, 2, 100, 42, 5431, 2002, 256, 512, 123, 5]
 tau: 0.5
 n_bootstrap: 1000

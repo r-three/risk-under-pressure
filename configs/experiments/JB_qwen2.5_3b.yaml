@@ -11,7 +11,6 @@ attacks:
   - "jailbroken"
   - "gcg"
 judge_model: "llama3.1_8b_instruct_judge"
-output_dir: "/home/ehghaghi/scratch/ehghaghi/outputs/pressure_sensitivity"
 seeds: [1997, 2, 100, 42, 5431, 2002, 256, 512, 123, 5]
 tau: 0.5
 n_bootstrap: 1000

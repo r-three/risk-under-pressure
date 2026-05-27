@@ -1,6 +1,7 @@
 model_id: "qwen3-4b-saferl"
 backend: "huggingface"
 hf_name: "Qwen/Qwen3-4B-SafeRL"
+params_b: 4.0
 model_type: "instruct"
 model_class: "causal_lm"
 enable_thinking: false

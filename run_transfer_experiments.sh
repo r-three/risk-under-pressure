@@ -36,12 +36,29 @@ SRC_HB_T3DPO="--experiment configs/experiments/HB_tulu3_8b_dpo.yaml --source-res
 SRC_JB_T3DPO="--experiment configs/experiments/JB_tulu3_8b_dpo.yaml --source-results-dir $BASE/jailbreakbench/tulu3-8b-dpo --source-model tulu3-8b-dpo --output-dir $OUTPUT --resume"
 
 # --- tulu3-8b-dpo → Qwen3-8B (text-only: enable_thinking=false in config) ---
-# submit "prisk_tr_gcg_t3dpo_q3_8b_HB_b1" "python scripts/run_transfer_inference.py $SRC_HB_T3DPO --target-models qwen3_8b --seeds 1997 2 100"
-# submit "prisk_tr_gcg_t3dpo_q3_8b_HB_b2" "python scripts/run_transfer_inference.py $SRC_HB_T3DPO --target-models qwen3_8b --seeds 42 5431 2002"
-# submit "prisk_tr_gcg_t3dpo_q3_8b_HB_b3" "python scripts/run_transfer_inference.py $SRC_HB_T3DPO --target-models qwen3_8b --seeds 256 512 123"
-submit "prisk_tr_gcg_t3dpo_q3_8b_HB_b4" "python scripts/run_transfer_inference.py $SRC_HB_T3DPO --target-models qwen3_8b --seeds 5"
-# submit "prisk_tr_gcg_t3dpo_q3_8b_JB_b1" "python scripts/run_transfer_inference.py $SRC_JB_T3DPO --target-models qwen3_8b --seeds 1997 2 100"
-# submit "prisk_tr_gcg_t3dpo_q3_8b_JB_b2" "python scripts/run_transfer_inference.py $SRC_JB_T3DPO --target-models qwen3_8b --seeds 42 5431 2002"
-# submit "prisk_tr_gcg_t3dpo_q3_8b_JB_b3" "python scripts/run_transfer_inference.py $SRC_JB_T3DPO --target-models qwen3_8b --seeds 256 512 123"
-submit "prisk_tr_gcg_t3dpo_q3_8b_JB_b4" "python scripts/run_transfer_inference.py $SRC_JB_T3DPO --target-models qwen3_8b --seeds 5"
+# submit "rup_tr_gcg_t3dpo_q3_8b_HB_b1" "python scripts/run_transfer_inference.py $SRC_HB_T3DPO --target-models qwen3_8b --seeds 1997 2 100"
+# submit "rup_tr_gcg_t3dpo_q3_8b_HB_b2" "python scripts/run_transfer_inference.py $SRC_HB_T3DPO --target-models qwen3_8b --seeds 42 5431 2002"
+# submit "rup_tr_gcg_t3dpo_q3_8b_HB_b3" "python scripts/run_transfer_inference.py $SRC_HB_T3DPO --target-models qwen3_8b --seeds 256 512 123"
+# submit "rup_tr_gcg_t3dpo_q3_8b_HB_b4" "python scripts/run_transfer_inference.py $SRC_HB_T3DPO --target-models qwen3_8b --seeds 5"
+# submit "rup_tr_gcg_t3dpo_q3_8b_JB_b1" "python scripts/run_transfer_inference.py $SRC_JB_T3DPO --target-models qwen3_8b --seeds 1997 2 100"
+# submit "rup_tr_gcg_t3dpo_q3_8b_JB_b2" "python scripts/run_transfer_inference.py $SRC_JB_T3DPO --target-models qwen3_8b --seeds 42 5431 2002"
+# submit "rup_tr_gcg_t3dpo_q3_8b_JB_b3" "python scripts/run_transfer_inference.py $SRC_JB_T3DPO --target-models qwen3_8b --seeds 256 512 123"
+# submit "rup_tr_gcg_t3dpo_q3_8b_JB_b4" "python scripts/run_transfer_inference.py $SRC_JB_T3DPO --target-models qwen3_8b --seeds 5"
+
+# ============================================================
+# Source: qwen2.5-0.5b-instruct → Qwen3-8B
+# ============================================================
+
+SRC_HB_Q25_05B="--experiment configs/experiments/HB_qwen2.5_0.5b.yaml --source-results-dir $BASE/harmbench/qwen2.5-0.5b-instruct --source-model qwen2.5-0.5b-instruct --output-dir $OUTPUT --resume"
+SRC_JB_Q25_05B="--experiment configs/experiments/JB_qwen2.5_0.5b.yaml --source-results-dir $BASE/jailbreakbench/qwen2.5-0.5b-instruct --source-model qwen2.5-0.5b-instruct --output-dir $OUTPUT --resume"
+
+# --- qwen2.5-0.5b-instruct → qwen3-8b ---
+submit "rup_tr_gcg_q25_05b_q3_8b_HB_b1" "python scripts/run_transfer_inference.py $SRC_HB_Q25_05B --target-models qwen3_8b --seeds 1997 2 100"
+submit "rup_tr_gcg_q25_05b_q3_8b_HB_b2" "python scripts/run_transfer_inference.py $SRC_HB_Q25_05B --target-models qwen3_8b --seeds 42 5431 2002"
+submit "rup_tr_gcg_q25_05b_q3_8b_HB_b3" "python scripts/run_transfer_inference.py $SRC_HB_Q25_05B --target-models qwen3_8b --seeds 256 512 123"
+submit "rup_tr_gcg_q25_05b_q3_8b_HB_b4" "python scripts/run_transfer_inference.py $SRC_HB_Q25_05B --target-models qwen3_8b --seeds 5"
+submit "rup_tr_gcg_q25_05b_q3_8b_JB_b1" "python scripts/run_transfer_inference.py $SRC_JB_Q25_05B --target-models qwen3_8b --seeds 1997 2 100"
+submit "rup_tr_gcg_q25_05b_q3_8b_JB_b2" "python scripts/run_transfer_inference.py $SRC_JB_Q25_05B --target-models qwen3_8b --seeds 42 5431 2002"
+submit "rup_tr_gcg_q25_05b_q3_8b_JB_b3" "python scripts/run_transfer_inference.py $SRC_JB_Q25_05B --target-models qwen3_8b --seeds 256 512 123"
+submit "rup_tr_gcg_q25_05b_q3_8b_JB_b4" "python scripts/run_transfer_inference.py $SRC_JB_Q25_05B --target-models qwen3_8b --seeds 5"
 

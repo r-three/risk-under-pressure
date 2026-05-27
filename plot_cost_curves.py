@@ -52,6 +52,27 @@ PALETTE = [
     "#8338ec", "#ff4365", "#06d6a0", "#0d2c54",
 ]
 
+# Fixed per-model colors — grouped by family so related models share a hue.
+# Add new model IDs here; unknown models fall back to PALETTE cycling.
+MODEL_COLORS: dict[str, str] = {
+    # Tulu3 family — blues (light → dark, base → RLVR)
+    "tulu3-8b-base":            "#74c2e1",
+    "tulu3-8b-sft":             "#1976d2",
+    "tulu3-8b-dpo":             "#0d47a1",
+    "tulu3-8b-rlvr":            "#4a0e8f",
+    # Tulu2 family — greens
+    "tulu2-7b-base":            "#81c784",
+    "tulu2-7b-sft":             "#388e3c",
+    "tulu2-7b-dpo":             "#1b5e20",
+    # Qwen2.5 Instruct family — warm oranges/reds (small → large)
+    "qwen2.5-0.5b-instruct":    "#ffca3a",
+    "qwen2.5-3b-instruct":      "#ff7043",
+    "qwen2.5-7b-instruct":      "#b71c1c",
+    # Qwen3 family — purples
+    "qwen3-4b-saferl":          "#ce93d8",
+    "qwen3-8b":                 "#7b1fa2",
+}
+
 _CATEGORY_PALETTE = [
     "#e41a1c", "#377eb8", "#4daf4a", "#984ea3",
     "#ff7f00", "#a65628", "#f781bf", "#999999",
@@ -66,7 +87,28 @@ ATTACK_LINESTYLES = {
 }
 ATTACK_DISPLAY = {
     "gcg": "GCG", "pair": "PAIR",
-    "jailbroken": "Jailbroken", "jailbroken-v1": "Jailbroken-v1",
+    "jailbroken": "JailBroken", "jailbroken-v1": "JailBroken-v1",
+}
+
+CATEGORY_DISPLAY = {
+    # HarmBench categories
+    "chemical_biological":            "Chem. & Bio.",
+    "cybercrime_intrusion":           "Cybercrime",
+    "harassment_bullying":            "Harassment",
+    "harmful":                        "Harmful",
+    "illegal":                        "Illegal",
+    "misinformation_disinformation":  "Misinfo.",
+    # JailbreakBench categories (exact CSV strings)
+    "Disinformation":                 "Disinformation",
+    "Economic harm":                  "Econ. Harm",
+    "Expert advice":                  "Expert Advice",
+    "Fraud/Deception":                "Fraud/Decep.",
+    "Government decision-making":     "Gov. Decision",
+    "Harassment/Discrimination":      "Harassment",
+    "Malware/Hacking":                "Malware/Hack.",
+    "Physical harm":                  "Physical Harm",
+    "Privacy":                        "Privacy",
+    "Sexual/Adult content":           "Sexual/Adult",
 }
 
 SEED_RE = re.compile(r"_seed\d+$")
@@ -79,15 +121,32 @@ COST_COLS_ALL = [
 X_AXIS_META: dict[str, dict] = {
     "tokens": {
         "col":     "mean_total_tokens",
-        "label":   "Avg. cumulative tokens per prompt",
+        "label":   "Cumulative tokens",
         "k_scale": True,
     },
     "flops": {
         "col":     "mean_total_tflops",
-        "label":   "Avg. cumulative TFLOPs per prompt",
+        "label":   "Cumulative TFLOPs",
         "k_scale": False,
     },
 }
+
+MODEL_DISPLAY = {
+    "tulu3-8b-base":         "Tulu3-Base",
+    "tulu3-8b-sft":          "Tulu3-SFT",
+    "tulu3-8b-dpo":          "Tulu3-DPO",
+    "tulu3-8b-rlvr":         "Tulu3-RLVR",
+    "tulu2-7b-base":         "Tulu2-Base",
+    "tulu2-7b-sft":          "Tulu2-SFT",
+    "tulu2-7b-dpo":          "Tulu2-DPO",
+    "qwen2.5-0.5b-instruct": "Qwen2.5-0.5B",
+    "qwen2.5-3b-instruct":   "Qwen2.5-3B",
+    "qwen2.5-7b-instruct":   "Qwen2.5-7B",
+    "qwen3-4b-saferl":       "Qwen3-4B-SafeRL",
+    "qwen3-8b":              "Qwen3-8B",
+}
+
+MODEL_LINESTYLES_LIST = ["-", "-.", ":", "--"]
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
@@ -96,7 +155,7 @@ X_AXIS_META: dict[str, dict] = {
 def _setup_style() -> None:
     sns.set_style("white")
     sns.set_style("ticks")
-    sns.set_context("notebook", font_scale=1.3)
+    sns.set_context("notebook", font_scale=1.4)
     font_path = Path("AtkinsonHyperlegible-Regular.ttf")
     if font_path.exists():
         matplotlib.font_manager.fontManager.addfont(str(font_path))
@@ -104,11 +163,40 @@ def _setup_style() -> None:
 
 
 def _attack_label(a: str) -> str:
-    return ATTACK_DISPLAY.get(a, a)
+    if a in ATTACK_DISPLAY:
+        return ATTACK_DISPLAY[a]
+    m = re.match(r"transfer_(\w+)_from_(.*)", a)
+    if m:
+        return f"{m.group(1).upper()} Transfer"
+    return a
+
+
+def _model_label(m: str) -> str:
+    return MODEL_DISPLAY.get(m, m)
+
+
+def _category_label(c: str) -> str:
+    return CATEGORY_DISPLAY.get(c, c.replace("_", " ").title())
+
+
+def _reformat_title(s: str) -> str:
+    """Convert 'Benchmark — Rest of title' to 'Rest of title (Benchmark)'."""
+    if " — " in s:
+        benchmark, rest = s.split(" — ", 1)
+        return f"{rest} ({benchmark})"
+    return s
 
 
 def _model_color(models: list[str]) -> dict[str, str]:
-    return {m: PALETTE[i % len(PALETTE)] for i, m in enumerate(sorted(set(models)))}
+    result: dict[str, str] = {}
+    fallback_idx = 0
+    for m in sorted(set(models)):
+        if m in MODEL_COLORS:
+            result[m] = MODEL_COLORS[m]
+        else:
+            result[m] = PALETTE[fallback_idx % len(PALETTE)]
+            fallback_idx += 1
+    return result
 
 
 def _category_color(categories: list[str]) -> dict[str, str]:
@@ -127,17 +215,16 @@ def _style_axes(ax: plt.Axes, title: str, x_max: float, x_axis: str) -> None:
     meta   = X_AXIS_META[x_axis]
     xlabel = meta["label"]
     if meta["k_scale"] and x_max > 2000:
-        xlabel = xlabel + " (k)"
         ax.xaxis.set_major_formatter(
-            mticker.FuncFormatter(lambda v, _: f"{v / 1000:.1f}k")
+            mticker.FuncFormatter(lambda v, _: f"{v / 1000:.0f}k")
         )
     ax.set_xlabel(xlabel)
     ax.set_ylabel(r"Risk $\hat{R}(M, \lambda)$")
-    ax.set_title(title, fontweight="bold")
+    ax.set_title(title, fontweight="bold", fontsize=15)
     ax.set_xlim(left=0, right=x_max * 1.05)
     ax.set_ylim(-0.02, 1.05)
     ax.yaxis.set_major_formatter(mticker.PercentFormatter(xmax=1, decimals=0))
-    ax.grid(axis="y", linestyle="--", linewidth=0.5, alpha=0.6)
+    ax.grid(axis="y", linestyle="--", linewidth=0.4, alpha=0.5)
     sns.despine(ax=ax)
     ax.tick_params(direction="out", which="both")
 
@@ -426,8 +513,8 @@ def plot_model_aggregated(
                 df_a[xcol], df_a["risk"],
                 color=color, label=label,
                 marker=ATTACK_MARKERS.get(attack, "o"),
-                linestyle=ATTACK_LINESTYLES.get(attack, "-"),
-                linewidth=1.8, markersize=5, zorder=3,
+                linestyle="-",
+                linewidth=1.8, markersize=8, zorder=3,
             )
             has_ci = "n_seeds" in df_a.columns and (df_a["n_seeds"] > 1).any()
             if has_ci:
@@ -436,11 +523,12 @@ def plot_model_aggregated(
                     color=color, alpha=0.18, zorder=2,
                 )
 
-        _style_axes(ax, f"Cost-Risk Curves — {model}", x_max, x_axis)
+        _style_axes(ax, f"Cost-Risk Curves — {_model_label(model)}", x_max, x_axis)
         ax.legend(
-            title="Attack", fontsize=9, title_fontsize=9,
-            loc="lower right", framealpha=0.9,
-            borderpad=0.8, labelspacing=0.4,
+            title="Attack",
+            loc="upper center", bbox_to_anchor=(0.5, -0.18),
+            ncols=len(attacks),
+            frameon=False, borderpad=0.6, labelspacing=0.4,
         )
         fig.tight_layout(pad=0.5)
 
@@ -472,12 +560,14 @@ def plot_comparison(
     models    = sorted(df_agg["model_id"].unique())
     attacks   = sorted(df_agg["attack_id"].unique())
     color_map = _model_color(models)
+    ls_map    = {m: MODEL_LINESTYLES_LIST[i % len(MODEL_LINESTYLES_LIST)]
+                 for i, m in enumerate(models)}
 
     for attack in attacks:
         df_a  = df_agg[df_agg["attack_id"] == attack]
         x_max = float(df_a[xcol].max()) if not df_a.empty else 1.0
 
-        fig, ax = plt.subplots(figsize=(7, 5))
+        fig, ax = plt.subplots(figsize=(7, 4.5))
         for model in models:
             df_m = df_a[df_a["model_id"] == model].sort_values(xcol)
             if df_m.empty:
@@ -485,9 +575,10 @@ def plot_comparison(
             color = color_map[model]
             ax.plot(
                 df_m[xcol], df_m["risk"],
-                color=color, label=model,
+                color=color, label=_model_label(model),
                 marker=ATTACK_MARKERS.get(attack, "o"),
-                linewidth=1.8, markersize=5, zorder=3,
+                linestyle="-",
+                linewidth=2.0, markersize=8, zorder=3,
             )
             has_ci = "n_seeds" in df_m.columns and (df_m["n_seeds"] > 1).any()
             if has_ci:
@@ -496,16 +587,27 @@ def plot_comparison(
                     color=color, alpha=0.15, zorder=2,
                 )
 
-        _style_axes(
-            ax, f"Cost-Risk Curves — {_attack_label(attack)}", x_max, x_axis
-        )
-        ax.legend(
-            title="Model", fontsize=9, title_fontsize=9,
-            loc="lower right", framealpha=0.9,
-            borderpad=0.8, labelspacing=0.4,
-        )
-        if suptitle:
-            fig.suptitle(suptitle, fontsize=11, fontweight="bold", y=1.01)
+        ax_title = _reformat_title(suptitle) if suptitle else _attack_label(attack)
+        _style_axes(ax, ax_title, x_max, x_axis)
+
+        label_offset = x_max * 0.03
+        for model in models:
+            df_m = df_a[df_a["model_id"] == model].sort_values(xcol)
+            if df_m.empty:
+                continue
+            x_last = float(df_m[xcol].iloc[-1])
+            y_last = float(df_m["risk"].iloc[-1])
+            y_text = min(max(y_last, 0.04), 0.96)
+            va = "top" if y_last > 0.88 else ("bottom" if y_last < 0.08 else "center")
+            ax.text(
+                x_last + label_offset, y_text,
+                _model_label(model),
+                color=color_map[model],
+                fontsize=11, va=va, ha="left",
+                fontweight="bold",
+                clip_on=False,
+            )
+
         fig.tight_layout(pad=0.5)
 
         out_path = output_dir / f"cost_comparison_{attack}.{fmt}"
@@ -533,12 +635,14 @@ def plot_combined(
     models    = sorted(df_agg["model_id"].unique())
     attacks   = sorted(df_agg["attack_id"].unique())
     color_map = _model_color(models)
+    ls_map    = {m: MODEL_LINESTYLES_LIST[i % len(MODEL_LINESTYLES_LIST)]
+                 for i, m in enumerate(models)}
     x_max     = float(df_agg[xcol].max())
 
     from matplotlib.lines import Line2D
     from matplotlib.patches import Patch
 
-    fig, ax = plt.subplots(figsize=(10, 5))
+    fig, ax = plt.subplots(figsize=(8, 4.5))
 
     for model in models:
         for attack in attacks:
@@ -551,43 +655,50 @@ def plot_combined(
                 df_p[xcol], df_p["risk"],
                 color=color_map[model],
                 marker=ATTACK_MARKERS.get(attack, "o"),
-                linestyle=ATTACK_LINESTYLES.get(attack, "-"),
-                linewidth=1.4, markersize=4, alpha=0.85,
+                linestyle="-",
+                linewidth=2.0, markersize=7, alpha=0.9,
             )
 
-    model_handles  = [Patch(color=color_map[m], label=m) for m in models]
+    model_handles  = [
+        Line2D([0], [0], color=color_map[m], linestyle="-",
+               linewidth=2.0, label=_model_label(m))
+        for m in models
+    ]
     attack_handles = [
         Line2D(
             [0], [0], color="gray",
-            linestyle=ATTACK_LINESTYLES.get(a, "-"),
+            linestyle="-",
             marker=ATTACK_MARKERS.get(a, "o"),
+            linewidth=2.0, markersize=8,
             label=_attack_label(a),
         )
         for a in attacks
     ]
+    _leg_style = dict(
+        frameon=True, facecolor="white", edgecolor="#bbbbbb",
+        framealpha=0.9, borderpad=0.5, labelspacing=0.4,
+        handlelength=1.0, handletextpad=0.5,
+    )
     leg1 = ax.legend(
         handles=model_handles, title="Model",
-        fontsize=8, title_fontsize=9,
-        loc="upper left", bbox_to_anchor=(1.01, 1), framealpha=0.9,
-        borderpad=0.8, labelspacing=0.4,
+        loc="upper left", bbox_to_anchor=(1.02, 1),
+        **_leg_style,
     )
     ax.add_artist(leg1)
-    ax.legend(
+    leg2 = ax.legend(
         handles=attack_handles, title="Attack",
-        fontsize=8, title_fontsize=9,
-        loc="upper left", bbox_to_anchor=(1.01, 0.45), framealpha=0.9,
-        borderpad=0.8, labelspacing=0.4,
+        loc="upper left", bbox_to_anchor=(1.02, 0.45),
+        **_leg_style,
     )
 
-    _style_axes(ax, "Cost-Risk Curves — All Models & Attacks", x_max, x_axis)
-    if suptitle:
-        fig.suptitle(suptitle, fontsize=11, fontweight="bold", y=1.01)
-    fig.subplots_adjust(right=0.68)
+    ax_title = _reformat_title(suptitle) if suptitle else "Cost-Risk Curves — All Models & Attacks"
+    _style_axes(ax, ax_title, x_max, x_axis)
+    fig.subplots_adjust(right=0.70)
     out_path = output_dir / f"cost_combined.{fmt}"
     out_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(
-        out_path, dpi=150, bbox_inches="tight", pad_inches=0,
-        bbox_extra_artists=(leg1,),
+        out_path, dpi=150, bbox_inches="tight", pad_inches=0.05,
+        bbox_extra_artists=(leg1, leg2),
     )
     plt.close(fig)
     print(f"  Saved: {out_path}")
@@ -602,6 +713,7 @@ def plot_cost_category_curves(
     output_dir: Path,
     fmt: str,
     x_axis: str = "flops",
+    suptitle: str = "",
 ) -> None:
     """One figure per (base_model × attack): per-category risk vs compute cost."""
     xcol = _xcol(x_axis)
@@ -622,26 +734,51 @@ def plot_cost_category_curves(
                 continue
 
             x_max = float(df_m[xcol].max())
-            fig, ax = plt.subplots(figsize=(7, 5))
+            fig, ax = plt.subplots(figsize=(7, 4.5))
             for cat in categories:
                 df_c = df_m[df_m["category"] == cat].sort_values(xcol)
                 if df_c.empty:
                     continue
                 ax.plot(
                     df_c[xcol], df_c["risk"],
-                    color=color_map[cat], label=cat,
-                    marker="o", linestyle="-", linewidth=1.6, markersize=4, zorder=3,
+                    color=color_map[cat], label=_category_label(cat),
+                    marker="o", linestyle="-", linewidth=2.0, markersize=4, zorder=3,
                 )
-                has_ci = "n_seeds" in df_c.columns and (df_c["n_seeds"] > 1).any()
-                if has_ci:
-                    ax.fill_between(
-                        df_c[xcol], df_c["risk_lower"], df_c["risk_upper"],
-                        color=color_map[cat], alpha=0.15, zorder=2,
-                    )
-            _style_axes(ax, f"{model} — {_attack_label(attack)}", x_max, x_axis)
-            ax.legend(title="Category", fontsize=7, title_fontsize=8,
-                      loc="lower right", framealpha=0.9,
-                      borderpad=0.8, labelspacing=0.4)
+            atk_name = _attack_label(attack)
+            # Infer benchmark from suptitle or output_dir path
+            if suptitle and " — " in suptitle:
+                benchmark = suptitle.split(" — ")[0]
+            else:
+                _p = str(output_dir).lower()
+                if "jailbreakbench" in _p:
+                    benchmark = "JailbreakBench"
+                elif "harmbench" in _p:
+                    benchmark = "HarmBench"
+                else:
+                    benchmark = suptitle
+            ax_title = (
+                f"{atk_name}: Per-Category Risk-Compute Curves ({benchmark})"
+                if benchmark else
+                f"{atk_name}: Per-Category Risk-Compute Curves"
+            )
+            _style_axes(ax, ax_title, x_max, x_axis)
+            ax.yaxis.set_major_locator(mticker.MultipleLocator(0.2))
+            ax.legend(
+                loc="upper right",
+                ncols=1,
+                frameon=False,
+                fontsize=9,
+                borderpad=0.4, labelspacing=0.3,
+                handlelength=1.2, handletextpad=0.4,
+            )
+            # Model name as grey annotation inside top-left
+            ax.text(
+                0.03, 0.97, _model_label(model),
+                transform=ax.transAxes,
+                fontsize=10, color="#888888",
+                va="top", ha="left", style="italic",
+                fontweight="bold",
+            )
             fig.tight_layout(pad=0.5)
             safe_m = model.replace("/", "_")
             out_path = output_dir / f"cost_category_curves_{attack}_{safe_m}.{fmt}"
@@ -743,7 +880,7 @@ def plot_cost_category_comparison(
                     df_m[xcol], df_m["risk"],
                     color=color, label=model,
                     marker=ATTACK_MARKERS.get(attack, "o"),
-                    linestyle="-", linewidth=1.8, markersize=5, zorder=3,
+                    linestyle="-", linewidth=1.8, markersize=8, zorder=3,
                 )
                 has_ci = "n_seeds" in df_m.columns and (df_m["n_seeds"] > 1).any()
                 if has_ci:
@@ -756,7 +893,7 @@ def plot_cost_category_comparison(
                       loc="lower right", framealpha=0.9,
                       borderpad=0.8, labelspacing=0.4)
             if suptitle:
-                fig.suptitle(suptitle, fontsize=11, fontweight="bold", y=1.01)
+                fig.suptitle(suptitle, fontsize=15, fontweight="bold", y=1.01)
             fig.tight_layout(pad=0.5)
 
             safe_cat = category.replace("/", "_").replace(" ", "_")
@@ -967,7 +1104,7 @@ def main() -> None:
 
         if mode in ("all", "aggregated"):
             print("\nGenerating per-category cost curves…")
-            plot_cost_category_curves(df_cat_agg, cat_dir, args.format, x_axis=args.x_axis)
+            plot_cost_category_curves(df_cat_agg, cat_dir, args.format, x_axis=args.x_axis, suptitle=args.title)
 
         print("\nGenerating per-category cost heatmap…")
         plot_cost_category_heatmap(df_cat_agg, cat_dir, args.format, x_axis=args.x_axis)

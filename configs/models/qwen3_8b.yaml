@@ -1,6 +1,7 @@
 model_id: "qwen3-8b"
 backend: "huggingface"
 hf_name: "Qwen/Qwen3-8B"
+params_b: 8.19
 model_type: "instruct"
 model_class: "causal_lm"
 enable_thinking: false

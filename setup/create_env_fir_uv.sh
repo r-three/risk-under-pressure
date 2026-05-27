@@ -26,7 +26,7 @@ fi
 
 echo "UV version: $(uv --version)"
 
-echo "Installing prisk-pressure with dependencies..."
+echo "Installing risk-under-pressure with dependencies..."
 uv sync
 
 source .venv/bin/activate

@@ -42,13 +42,13 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from prisk.metrics.cost_mapper import aggregate_costs
-from prisk.metrics.cost_summary import (
+from rup.metrics.cost_mapper import aggregate_costs
+from rup.metrics.cost_summary import (
     compute_cost_summary_metrics,
     compute_cost_summary_by_category,
 )
-from prisk.utils.io import TrialRecord, read_jsonl
-from prisk.utils.logging import get_logger
+from rup.utils.io import TrialRecord, read_jsonl
+from rup.utils.logging import get_logger
 
 logger = get_logger("compute_attack_costs")
 
@@ -86,6 +86,9 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--judge-model", default="llama3.1_8b_instruct",
                    help="Model ID of the safety judge used during inference "
                         "(default: llama3.1_8b_instruct). Used to compute judge token/FLOP costs.")
+    p.add_argument("--configs-dir", default="configs",
+                   help="Directory containing model configs (default: configs). "
+                        "Used to load the model registry for FLOP/token computation.")
     return p.parse_args()
 
 
@@ -150,6 +153,7 @@ def main() -> None:
             records, pressure_levels,
             judge_model_id=args.judge_model,
             gcg_backward_mult=args.gcg_backward_mult,
+            configs_dir=args.configs_dir,
         )
 
         cost_lookup[key] = costs

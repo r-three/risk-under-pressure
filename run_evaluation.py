@@ -41,11 +41,11 @@ from scipy import stats as scipy_stats
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from prisk.metrics import compute_all_metrics, format_metrics_table
-from prisk.metrics.risk_curve import bootstrap_risk_curve, build_risk_curve
-from prisk.utils.config import ExperimentConfig
-from prisk.utils.io import TrialRecord, read_jsonl
-from prisk.utils.logging import get_logger
+from rup.metrics import compute_all_metrics, format_metrics_table
+from rup.metrics.risk_curve import bootstrap_risk_curve, build_risk_curve
+from rup.utils.config import ExperimentConfig
+from rup.utils.io import TrialRecord, read_jsonl
+from rup.utils.logging import get_logger
 
 logger = get_logger("run_evaluation")
 

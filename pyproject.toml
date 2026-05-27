@@ -3,10 +3,26 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "prisk-pressure"
+name = "risk-under-pressure"
 version = "0.1.0"
-description = "pRisk-Pressure: A Pressure-Conditioned Probabilistic Metric for Evaluating LLM Safety"
+description = "Compute-aware evaluation of adversarial robustness in language models"
+readme = "README.md"
+license = {file = "LICENSE"}
 requires-python = ">=3.10"
+authors = [
+  {name = "Malikeh Ehghaghi", email = "malikehehghaghi@gmail.com"},
+  {name = "Boglarka Ecsedi", email = "ecsedi.bogi@gmail.com"}
+]
+keywords = ["llm", "adversarial robustness", "jailbreak", "safety", "red-teaming"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+[project.urls]
+Repository = "https://github.com/Malikeh97/risk-under-pressure"
+Paper = "TBD"
 dependencies = [
     # Core ML
     "torch>=2.1.0",
@@ -47,7 +63,7 @@ dev = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/prisk"]
+packages = ["src/rup"]
 
 [tool.uv]
 package = true

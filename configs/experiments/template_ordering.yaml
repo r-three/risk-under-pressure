@@ -8,16 +8,23 @@ n_prompts: 50
 pressure_levels: [1]
 lambda_max: 1
 models:
+  # Qwen 2.5 (3 sizes)
   # - "qwen2.5_0.5b"
   # - "qwen2.5_3b"
   # - "qwen2.5_7b"
-  # - "llama3.1_8b_instruct"
-  # - "tulu3_8b_sft"
-  # - "tulu2_7b_dpo"
+  # Qwen 3 SafeRL
   - "qwen3_4b_saferl"
+  # Tulu 2
+  - "tulu2_7b_base"
+  - "tulu2_7b_sft"
+  # - "tulu2_7b_dpo"
+  # Tulu 3
+  - "tulu3_8b_base"
+  # - "tulu3_8b_sft"
+  - "tulu3_8b_dpo"
+  - "tulu3_8b_rlvr"
 attacks: []  # not used by this script; SingleTemplateAttack is instantiated directly
 judge_model: "llama3.1_8b_instruct_judge"
-output_dir: "/home/ehghaghi/scratch/ehghaghi/outputs/template_ordering"
 seeds: [1997, 2, 100, 42, 5431, 2002, 256, 512, 123, 5]
 tau: 0.5
 n_bootstrap: 1000

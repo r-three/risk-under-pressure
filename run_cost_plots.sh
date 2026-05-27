@@ -52,59 +52,59 @@ JB_MODELS=(
     tulu3-8b-rlvr
 )
 
-# --------------------------------------------------------------------------- #
-# Per-model plots (seed traces + seed-aggregated CI)
-# --------------------------------------------------------------------------- #
+# # --------------------------------------------------------------------------- #
+# # Per-model plots (seed traces + seed-aggregated CI)
+# # --------------------------------------------------------------------------- #
 
-echo "=== Per-model cost plots: HarmBench ==="
-for model in "${HB_MODELS[@]}"; do
-    COST_CSV=$PLOTS_BASE/harmbench/$model/cost/cost_metrics.csv
-    CAT_CSV=$PLOTS_BASE/harmbench/$model/cost/cost_metrics_by_category.csv
-    if [ ! -f "$COST_CSV" ]; then
-        echo "  Skipping $model (no cost data)"
-        continue
-    fi
-    echo "  $model — tokens"
-    python plot_cost_curves.py \
-        --cost-csv  "$COST_CSV" \
-        --cost-category-csv "$CAT_CSV" \
-        --output-dir "$OUTPUT/harmbench/$model/tokens" \
-        --x-axis tokens \
-        --skip-missing
+# echo "=== Per-model cost plots: HarmBench ==="
+# for model in "${HB_MODELS[@]}"; do
+#     COST_CSV=$PLOTS_BASE/harmbench/$model/cost/cost_metrics.csv
+#     CAT_CSV=$PLOTS_BASE/harmbench/$model/cost/cost_metrics_by_category.csv
+#     if [ ! -f "$COST_CSV" ]; then
+#         echo "  Skipping $model (no cost data)"
+#         continue
+#     fi
+#     echo "  $model — tokens"
+#     python plot_cost_curves.py \
+#         --cost-csv  "$COST_CSV" \
+#         --cost-category-csv "$CAT_CSV" \
+#         --output-dir "$OUTPUT/harmbench/$model/tokens" \
+#         --x-axis tokens \
+#         --skip-missing
 
-    echo "  $model — flops"
-    python plot_cost_curves.py \
-        --cost-csv  "$COST_CSV" \
-        --cost-category-csv "$CAT_CSV" \
-        --output-dir "$OUTPUT/harmbench/$model/flops" \
-        --x-axis flops \
-        --skip-missing
-done
+#     echo "  $model — flops"
+#     python plot_cost_curves.py \
+#         --cost-csv  "$COST_CSV" \
+#         --cost-category-csv "$CAT_CSV" \
+#         --output-dir "$OUTPUT/harmbench/$model/flops" \
+#         --x-axis flops \
+#         --skip-missing
+# done
 
-echo "=== Per-model cost plots: JailbreakBench ==="
-for model in "${JB_MODELS[@]}"; do
-    COST_CSV=$PLOTS_BASE/jailbreakbench/$model/cost/cost_metrics.csv
-    CAT_CSV=$PLOTS_BASE/jailbreakbench/$model/cost/cost_metrics_by_category.csv
-    if [ ! -f "$COST_CSV" ]; then
-        echo "  Skipping $model (no cost data)"
-        continue
-    fi
-    echo "  $model — tokens"
-    python plot_cost_curves.py \
-        --cost-csv  "$COST_CSV" \
-        --cost-category-csv "$CAT_CSV" \
-        --output-dir "$OUTPUT/jailbreakbench/$model/tokens" \
-        --x-axis tokens \
-        --skip-missing
+# echo "=== Per-model cost plots: JailbreakBench ==="
+# for model in "${JB_MODELS[@]}"; do
+#     COST_CSV=$PLOTS_BASE/jailbreakbench/$model/cost/cost_metrics.csv
+#     CAT_CSV=$PLOTS_BASE/jailbreakbench/$model/cost/cost_metrics_by_category.csv
+#     if [ ! -f "$COST_CSV" ]; then
+#         echo "  Skipping $model (no cost data)"
+#         continue
+#     fi
+#     echo "  $model — tokens"
+#     python plot_cost_curves.py \
+#         --cost-csv  "$COST_CSV" \
+#         --cost-category-csv "$CAT_CSV" \
+#         --output-dir "$OUTPUT/jailbreakbench/$model/tokens" \
+#         --x-axis tokens \
+#         --skip-missing
 
-    echo "  $model — flops"
-    python plot_cost_curves.py \
-        --cost-csv  "$COST_CSV" \
-        --cost-category-csv "$CAT_CSV" \
-        --output-dir "$OUTPUT/jailbreakbench/$model/flops" \
-        --x-axis flops \
-        --skip-missing
-done
+#     echo "  $model — flops"
+#     python plot_cost_curves.py \
+#         --cost-csv  "$COST_CSV" \
+#         --cost-category-csv "$CAT_CSV" \
+#         --output-dir "$OUTPUT/jailbreakbench/$model/flops" \
+#         --x-axis flops \
+#         --skip-missing
+# done
 
 # --------------------------------------------------------------------------- #
 # Per-model plots: qwen3-8b (separate — not in HB_MODELS/JB_MODELS)
@@ -271,7 +271,7 @@ python plot_cost_curves.py \
         "$PLOTS_BASE/harmbench/qwen2.5-7b-instruct/cost/cost_metrics_by_category.csv" \
     --output-dir "$OUTPUT/harmbench/ablations/qwen_size/tokens" \
     --x-axis tokens \
-    --title "HarmBench — Qwen2.5 Size Ablation" \
+    --title "HarmBench — Model Size Effect" \
     --mode comparison \
     --skip-missing
 
@@ -287,7 +287,7 @@ python plot_cost_curves.py \
         "$PLOTS_BASE/harmbench/qwen2.5-7b-instruct/cost/cost_metrics_by_category.csv" \
     --output-dir "$OUTPUT/harmbench/ablations/qwen_size/flops" \
     --x-axis flops \
-    --title "HarmBench — Qwen2.5 Size Ablation" \
+    --title "HarmBench — Model Size Effect" \
     --mode comparison \
     --skip-missing
 
@@ -303,7 +303,7 @@ python plot_cost_curves.py \
         "$PLOTS_BASE/jailbreakbench/qwen2.5-7b-instruct/cost/cost_metrics_by_category.csv" \
     --output-dir "$OUTPUT/jailbreakbench/ablations/qwen_size/tokens" \
     --x-axis tokens \
-    --title "JailbreakBench — Qwen2.5 Size Ablation" \
+    --title "JailbreakBench — Model Size Effect" \
     --mode comparison \
     --skip-missing
 
@@ -319,7 +319,7 @@ python plot_cost_curves.py \
         "$PLOTS_BASE/jailbreakbench/qwen2.5-7b-instruct/cost/cost_metrics_by_category.csv" \
     --output-dir "$OUTPUT/jailbreakbench/ablations/qwen_size/flops" \
     --x-axis flops \
-    --title "JailbreakBench — Qwen2.5 Size Ablation" \
+    --title "JailbreakBench — Model Size Effect" \
     --mode comparison \
     --skip-missing
 
@@ -341,7 +341,7 @@ python plot_cost_curves.py \
         "$PLOTS_BASE/harmbench/tulu3-8b-rlvr/cost/cost_metrics_by_category.csv" \
     --output-dir "$OUTPUT/harmbench/ablations/tulu3_training/tokens" \
     --x-axis tokens \
-    --title "HarmBench — Tulu3 Training Phase Ablation" \
+    --title "HarmBench — Training Stage Effect" \
     --mode comparison \
     --skip-missing
 
@@ -359,7 +359,7 @@ python plot_cost_curves.py \
         "$PLOTS_BASE/harmbench/tulu3-8b-rlvr/cost/cost_metrics_by_category.csv" \
     --output-dir "$OUTPUT/harmbench/ablations/tulu3_training/flops" \
     --x-axis flops \
-    --title "HarmBench — Tulu3 Training Phase Ablation" \
+    --title "HarmBench — Training Stage Effect" \
     --mode comparison \
     --skip-missing
 
@@ -377,7 +377,7 @@ python plot_cost_curves.py \
         "$PLOTS_BASE/jailbreakbench/tulu3-8b-rlvr/cost/cost_metrics_by_category.csv" \
     --output-dir "$OUTPUT/jailbreakbench/ablations/tulu3_training/tokens" \
     --x-axis tokens \
-    --title "JailbreakBench — Tulu3 Training Phase Ablation" \
+    --title "JailbreakBench — Training Stage Effect" \
     --mode comparison \
     --skip-missing
 
@@ -395,7 +395,7 @@ python plot_cost_curves.py \
         "$PLOTS_BASE/jailbreakbench/tulu3-8b-rlvr/cost/cost_metrics_by_category.csv" \
     --output-dir "$OUTPUT/jailbreakbench/ablations/tulu3_training/flops" \
     --x-axis flops \
-    --title "JailbreakBench — Tulu3 Training Phase Ablation" \
+    --title "JailbreakBench — Training Stage Effect" \
     --mode comparison \
     --skip-missing
 
@@ -415,7 +415,7 @@ python plot_cost_curves.py \
         "$PLOTS_BASE/harmbench/tulu2-7b-dpo/cost/cost_metrics_by_category.csv" \
     --output-dir "$OUTPUT/harmbench/ablations/tulu2_training/tokens" \
     --x-axis tokens \
-    --title "HarmBench — Tulu2 Training Phase Ablation" \
+    --title "HarmBench — Training Stage Effect" \
     --mode comparison \
     --skip-missing
 
@@ -431,7 +431,7 @@ python plot_cost_curves.py \
         "$PLOTS_BASE/harmbench/tulu2-7b-dpo/cost/cost_metrics_by_category.csv" \
     --output-dir "$OUTPUT/harmbench/ablations/tulu2_training/flops" \
     --x-axis flops \
-    --title "HarmBench — Tulu2 Training Phase Ablation" \
+    --title "HarmBench — Training Stage Effect" \
     --mode comparison \
     --skip-missing
 
@@ -447,7 +447,7 @@ python plot_cost_curves.py \
         "$PLOTS_BASE/jailbreakbench/tulu2-7b-dpo/cost/cost_metrics_by_category.csv" \
     --output-dir "$OUTPUT/jailbreakbench/ablations/tulu2_training/tokens" \
     --x-axis tokens \
-    --title "JailbreakBench — Tulu2 Training Phase Ablation" \
+    --title "JailbreakBench — Training Stage Effect" \
     --mode comparison \
     --skip-missing
 
@@ -463,7 +463,7 @@ python plot_cost_curves.py \
         "$PLOTS_BASE/jailbreakbench/tulu2-7b-dpo/cost/cost_metrics_by_category.csv" \
     --output-dir "$OUTPUT/jailbreakbench/ablations/tulu2_training/flops" \
     --x-axis flops \
-    --title "JailbreakBench — Tulu2 Training Phase Ablation" \
+    --title "JailbreakBench — Training Stage Effect" \
     --mode comparison \
     --skip-missing
 
@@ -544,66 +544,88 @@ python plot_cost_curves.py \
     --skip-missing
 
 # --------------------------------------------------------------------------- #
-# Ablation 5: Attack transfer (GCG only) — qwen3-8b vs tulu3-8b-dpo
+# Ablation 5: Attack transfer (GCG) — qwen2.5-0.5b-instruct → qwen3-8b
+# Normalize transfer_gcg_from_* → gcg in temp CSVs so both models appear on
+# the same per-attack comparison figure.
 # --------------------------------------------------------------------------- #
+
+_normalize_attack() {
+    local src="$1" dst="$2"
+    python3 -c "
+import pandas as pd, sys
+df = pd.read_csv('$src')
+df['attack_id'] = df['attack_id'].str.replace(r'transfer_gcg_from_.*', 'gcg', regex=True)
+df.to_csv('$dst', index=False)
+" 2>/dev/null || cp "$src" "$dst"
+}
+
+NORM_HB_Q3=/tmp/norm_hb_qwen3_cost.csv
+NORM_JB_Q3=/tmp/norm_jb_qwen3_cost.csv
+NORM_HB_Q3_CAT=/tmp/norm_hb_qwen3_cost_cat.csv
+NORM_JB_Q3_CAT=/tmp/norm_jb_qwen3_cost_cat.csv
+
+_normalize_attack "$PLOTS_BASE/harmbench/qwen3-8b/cost/cost_metrics.csv"             "$NORM_HB_Q3"
+_normalize_attack "$PLOTS_BASE/jailbreakbench/qwen3-8b/cost/cost_metrics.csv"         "$NORM_JB_Q3"
+_normalize_attack "$PLOTS_BASE/harmbench/qwen3-8b/cost/cost_metrics_by_category.csv"  "$NORM_HB_Q3_CAT"
+_normalize_attack "$PLOTS_BASE/jailbreakbench/qwen3-8b/cost/cost_metrics_by_category.csv" "$NORM_JB_Q3_CAT"
 
 echo "=== Ablation: Attack transfer GCG — HarmBench (tokens) ==="
 python plot_cost_curves.py \
     --cost-csv \
-        "$PLOTS_BASE/harmbench/qwen3-8b/cost/cost_metrics.csv" \
-        "$PLOTS_BASE/harmbench/tulu3-8b-dpo/cost/cost_metrics.csv" \
+        "$PLOTS_BASE/harmbench/qwen2.5-0.5b-instruct/cost/cost_metrics.csv" \
+        "$NORM_HB_Q3" \
     --cost-category-csv \
-        "$PLOTS_BASE/harmbench/qwen3-8b/cost/cost_metrics_by_category.csv" \
-        "$PLOTS_BASE/harmbench/tulu3-8b-dpo/cost/cost_metrics_by_category.csv" \
+        "$PLOTS_BASE/harmbench/qwen2.5-0.5b-instruct/cost/cost_metrics_by_category.csv" \
+        "$NORM_HB_Q3_CAT" \
     --output-dir "$OUTPUT/harmbench/ablations/attack_transfer_gcg/tokens" \
     --x-axis tokens \
     --attacks gcg \
-    --title "HarmBench — Attack Transfer (GCG)" \
+    --title "HarmBench — GCG Transfer: Qwen2.5-0.5B → Qwen3-8B" \
     --mode comparison \
     --skip-missing
 
 echo "=== Ablation: Attack transfer GCG — HarmBench (flops) ==="
 python plot_cost_curves.py \
     --cost-csv \
-        "$PLOTS_BASE/harmbench/qwen3-8b/cost/cost_metrics.csv" \
-        "$PLOTS_BASE/harmbench/tulu3-8b-dpo/cost/cost_metrics.csv" \
+        "$PLOTS_BASE/harmbench/qwen2.5-0.5b-instruct/cost/cost_metrics.csv" \
+        "$NORM_HB_Q3" \
     --cost-category-csv \
-        "$PLOTS_BASE/harmbench/qwen3-8b/cost/cost_metrics_by_category.csv" \
-        "$PLOTS_BASE/harmbench/tulu3-8b-dpo/cost/cost_metrics_by_category.csv" \
+        "$PLOTS_BASE/harmbench/qwen2.5-0.5b-instruct/cost/cost_metrics_by_category.csv" \
+        "$NORM_HB_Q3_CAT" \
     --output-dir "$OUTPUT/harmbench/ablations/attack_transfer_gcg/flops" \
     --x-axis flops \
     --attacks gcg \
-    --title "HarmBench — Attack Transfer (GCG)" \
+    --title "HarmBench — GCG Transfer: Qwen2.5-0.5B → Qwen3-8B" \
     --mode comparison \
     --skip-missing
 
 echo "=== Ablation: Attack transfer GCG — JailbreakBench (tokens) ==="
 python plot_cost_curves.py \
     --cost-csv \
-        "$PLOTS_BASE/jailbreakbench/qwen3-8b/cost/cost_metrics.csv" \
-        "$PLOTS_BASE/jailbreakbench/tulu3-8b-dpo/cost/cost_metrics.csv" \
+        "$PLOTS_BASE/jailbreakbench/qwen2.5-0.5b-instruct/cost/cost_metrics.csv" \
+        "$NORM_JB_Q3" \
     --cost-category-csv \
-        "$PLOTS_BASE/jailbreakbench/qwen3-8b/cost/cost_metrics_by_category.csv" \
-        "$PLOTS_BASE/jailbreakbench/tulu3-8b-dpo/cost/cost_metrics_by_category.csv" \
+        "$PLOTS_BASE/jailbreakbench/qwen2.5-0.5b-instruct/cost/cost_metrics_by_category.csv" \
+        "$NORM_JB_Q3_CAT" \
     --output-dir "$OUTPUT/jailbreakbench/ablations/attack_transfer_gcg/tokens" \
     --x-axis tokens \
     --attacks gcg \
-    --title "JailbreakBench — Attack Transfer (GCG)" \
+    --title "JailbreakBench — GCG Transfer: Qwen2.5-0.5B → Qwen3-8B" \
     --mode comparison \
     --skip-missing
 
 echo "=== Ablation: Attack transfer GCG — JailbreakBench (flops) ==="
 python plot_cost_curves.py \
     --cost-csv \
-        "$PLOTS_BASE/jailbreakbench/qwen3-8b/cost/cost_metrics.csv" \
-        "$PLOTS_BASE/jailbreakbench/tulu3-8b-dpo/cost/cost_metrics.csv" \
+        "$PLOTS_BASE/jailbreakbench/qwen2.5-0.5b-instruct/cost/cost_metrics.csv" \
+        "$NORM_JB_Q3" \
     --cost-category-csv \
-        "$PLOTS_BASE/jailbreakbench/qwen3-8b/cost/cost_metrics_by_category.csv" \
-        "$PLOTS_BASE/jailbreakbench/tulu3-8b-dpo/cost/cost_metrics_by_category.csv" \
+        "$PLOTS_BASE/jailbreakbench/qwen2.5-0.5b-instruct/cost/cost_metrics_by_category.csv" \
+        "$NORM_JB_Q3_CAT" \
     --output-dir "$OUTPUT/jailbreakbench/ablations/attack_transfer_gcg/flops" \
     --x-axis flops \
     --attacks gcg \
-    --title "JailbreakBench — Attack Transfer (GCG)" \
+    --title "JailbreakBench — GCG Transfer: Qwen2.5-0.5B → Qwen3-8B" \
     --mode comparison \
     --skip-missing
 

@@ -1,6 +1,7 @@
 model_id: "qwen2.5-3b-instruct"
 backend: "huggingface"
 hf_name: "Qwen/Qwen2.5-3B-Instruct"
+params_b: 3.09
 model_type: "instruct"
 quantization: "4bit"
 device: "cuda"

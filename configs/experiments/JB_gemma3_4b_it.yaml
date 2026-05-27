@@ -1,11 +1,11 @@
-# Pressure Sensitivity (JailBreakBench) — qwen2.5_7b
-name: "JB_qwen2.5_7b"
+# Pressure Sensitivity (JailBreakBench) — gemma3_4b_it
+name: "JB_gemma3_4b_it"
 benchmark: "jailbreakbench"
 n_prompts: 100
 pressure_levels: [0, 1, 2, 4, 6, 8, 10]
 lambda_max: 10
 models:
-  - "qwen2.5_7b"
+  - "gemma3_4b_it"
 attacks:
   - "pair"
   - "jailbroken"

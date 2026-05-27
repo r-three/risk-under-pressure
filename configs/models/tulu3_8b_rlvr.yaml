@@ -1,6 +1,7 @@
 model_id: "tulu3-8b-rlvr"
 backend: "huggingface"
 hf_name: "allenai/Llama-3.1-Tulu-3-8B"
+params_b: 8.03
 model_type: "instruct"
 quantization: "4bit"
 device: "cuda"

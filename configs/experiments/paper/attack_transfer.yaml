@@ -1,0 +1,21 @@
+# Paper §4 — Attack Transfer Study (Figure 2 left)
+# GCG suffix optimized on Tulu3-8B-DPO transferred to Qwen3-8B
+# Run this with: python scripts/run_transfer_inference.py
+#   --experiment configs/experiments/paper/attack_transfer.yaml
+#   --source-model tulu3_8b_dpo
+#   --source-attack gcg
+#   --target-models qwen3_8b
+name: "paper_attack_transfer"
+benchmark: "harmbench"
+n_prompts: 200
+pressure_levels: [0, 1, 2, 4, 6, 8, 10]
+lambda_max: 10
+models:
+  - "qwen2.5_0.5b"   # source (surrogate)
+  - "qwen3_8b"       # target (closed proxy)
+attacks:
+  - "gcg"
+judge_model: "llama3.1_8b_instruct_judge"
+seeds: [1997, 2, 100, 42, 5431, 2002, 256, 512, 123, 5]
+tau: 0.5
+n_bootstrap: 1000

@@ -33,15 +33,15 @@ import yaml
 from dotenv import load_dotenv
 from tqdm import tqdm
 
-from prisk.attacks.jailbroken_attack import TEMPLATE_REGISTRY, SingleTemplateAttack
-from prisk.benchmarks import get_benchmark
-from prisk.judges import get_judge
-from prisk.metrics.risk_curve import compute_risk_at_pressure
-from prisk.models.factory import load_model
-from prisk.pipeline import run_trial
-from prisk.utils.config import ExperimentConfig, load_model_config
-from prisk.utils.io import append_jsonl, load_completed_ids, read_jsonl
-from prisk.utils.logging import get_logger
+from rup.attacks.jailbroken_attack import TEMPLATE_REGISTRY, SingleTemplateAttack
+from rup.benchmarks import get_benchmark
+from rup.judges import get_judge
+from rup.metrics.risk_curve import compute_risk_at_pressure
+from rup.models.factory import load_model
+from rup.pipeline import run_trial
+from rup.utils.config import ExperimentConfig, load_model_config
+from rup.utils.io import append_jsonl, load_completed_ids, read_jsonl
+from rup.utils.logging import get_logger
 
 load_dotenv()
 logger = get_logger("compute_template_ordering")

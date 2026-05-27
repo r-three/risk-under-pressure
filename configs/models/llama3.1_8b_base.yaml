@@ -1,6 +1,7 @@
 model_id: "llama3.1-8b-base"
 backend: "huggingface"
 hf_name: "meta-llama/Llama-3.1-8B"
+params_b: 8.03
 model_type: "base"
 quantization: "4bit"
 device: "cuda"

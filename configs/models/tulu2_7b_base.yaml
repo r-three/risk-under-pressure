@@ -1,6 +1,7 @@
 model_id: "tulu2-7b-base"
 backend: "huggingface"
 hf_name: "meta-llama/Llama-2-7b-hf"
+params_b: 6.74
 model_type: "base"
 quantization: "4bit"
 device: "cuda"

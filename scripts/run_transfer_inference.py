@@ -43,14 +43,14 @@ import yaml
 from dotenv import load_dotenv
 from tqdm import tqdm
 
-from prisk.attacks.transfer_attack import TransferAttack
-from prisk.benchmarks import get_benchmark
-from prisk.judges import get_judge
-from prisk.models.factory import load_model
-from prisk.pipeline import run_trial
-from prisk.utils.config import ExperimentConfig, load_model_config
-from prisk.utils.io import append_jsonl, load_completed_ids, read_jsonl
-from prisk.utils.logging import get_logger
+from rup.attacks.transfer_attack import TransferAttack
+from rup.benchmarks import get_benchmark
+from rup.judges import get_judge
+from rup.models.factory import load_model
+from rup.pipeline import run_trial
+from rup.utils.config import ExperimentConfig, load_model_config
+from rup.utils.io import append_jsonl, load_completed_ids, read_jsonl
+from rup.utils.logging import get_logger
 
 load_dotenv()
 logger = get_logger("run_transfer_inference")
