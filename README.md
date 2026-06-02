@@ -11,6 +11,8 @@ Most jailbreak benchmarks report attack success rate (ASR) at a fixed query budg
 
 <!-- > **Paper**: Ehghaghi, Ecsedi, Chechik & Raffel — *Risk Under Pressure: Compute-Aware Evaluation of Adversarial Robustness in Language Models* (2026) -->
 
+![Risk Under Pressure Framework](figures/rup_framework.png)
+
 ---
 
 ## Quick Start
