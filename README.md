@@ -1,4 +1,7 @@
-# Risk Under Pressure
+<h1>
+  <img src="figures/logo.png" height="60" alt="Risk Under Pressure logo" style="vertical-align: middle; margin-right: 12px;"/>
+  Risk Under Pressure
+</h1>
 
 **Compute-Aware Evaluation of Adversarial Robustness in Language Models**
 
