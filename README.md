@@ -268,6 +268,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for full details.
 | | `qwen2.5_7b` | Qwen/Qwen2.5-7B-Instruct | 7B | HuggingFace |
 | **Qwen3** | `qwen3_4b_saferl` | Qwen/Qwen3-4B-SafeRL | 4B | HuggingFace |
 | | `qwen3_8b` | Qwen/Qwen3-8B | 8B | HuggingFace |
+| **Qwen3.5** | `qwen3_4b` | Qwen/Qwen3.5-4B | 4B | HuggingFace |
 | **Tulu3** | `tulu3_8b_base` | meta-llama/Llama-3.1-8B | 8B | HuggingFace |
 | | `tulu3_8b_sft` | allenai/Llama-3.1-Tulu-3-8B-SFT | 8B | HuggingFace |
 | | `tulu3_8b_dpo` | allenai/Llama-3.1-Tulu-3-8B-DPO | 8B | HuggingFace |
@@ -331,7 +332,51 @@ cp .env.example .env
 # HF_TOKEN          — for gated HuggingFace models (Llama, Tulu)
 ```
 
-For HPC cluster deployment (SLURM), see [docs/cluster.md](docs/cluster.md).
+### Killarney Cluster (SLURM)
+
+All bash scripts must be run from the project root on a `klogin*` login node. The `submit` helper in `setup/start_env.sh` wraps `sbatch` and automatically skips jobs that are already running or completed in the last 2 days.
+
+**1. Create the environment (once)**
+
+```bash
+mkdir -p logs && sbatch setup/create_env_killarney_uv.sh
+# Wait for the job to finish, then the .venv is ready.
+# Logs: logs/<jobid>_create_env_killarney.out
+```
+
+Subsequent scripts activate the environment automatically via `source setup/start_env.sh`.
+
+**2. Run attacks (Phase 1) — submits GPU jobs**
+
+```bash
+bash run_HB_experiments.sh   # HarmBench
+bash run_JB_experiments.sh   # JailbreakBench
+```
+
+Each call to `submit` dispatches one `sbatch` job. Edit the scripts to comment/uncomment model and seed batches as needed.
+
+**3. Compute metrics (Phase 2) — runs on login node, no GPU**
+
+```bash
+bash run_evaluations.sh
+```
+
+Produces `metrics.csv` and `metrics_by_category.csv` for every model directory.
+
+**4. Compute FLOP costs (Phase 2.5) — runs on login node, no GPU**
+
+```bash
+bash run_cost_evaluations.sh
+```
+
+Derives exact token counts and TFLOPs from stored JSONL records. Augments `metrics.csv` → `cost_metrics.csv`.
+
+**5. Generate plots (Phase 3) — runs on login node**
+
+```bash
+bash run_plots.sh        # risk-pressure curves (λ axis)
+bash run_cost_plots.sh   # risk-compute curves (tokens / TFLOPs axis)
+```
 
 ---
 
