@@ -54,6 +54,8 @@ def parse_args():
     p.add_argument("--lambda-max", type=int, help="Override: maximum pressure budget")
     p.add_argument("--n-prompts", type=int, help="Override: number of prompts to use")
     p.add_argument("--seeds", type=int, nargs="+", help="Override: list of seeds (e.g. --seeds 42 123 456)")
+    p.add_argument("--benchmark", help="Override: benchmark (harmbench or jailbreakbench)")
+    p.add_argument("--output-dir", help="Override: root directory for results (e.g. $SCRATCH)")
     p.add_argument("--configs-dir", default="configs", help="Root directory for configs")
     p.add_argument("--resume", action="store_true",
                    help="Skip prompts already in results files")
@@ -81,6 +83,10 @@ def main():
         config.n_prompts = args.n_prompts
     if args.seeds:
         config.seeds = args.seeds
+    if args.benchmark:
+        config.benchmark = args.benchmark
+    if args.output_dir:
+        config.output_dir = args.output_dir
 
     output_dir = Path(config.output_dir)
     configs_dir = Path(args.configs_dir)
@@ -147,9 +153,8 @@ def main():
                     else:
                         folder_id = attack_config.attack_id
 
-                    # Output path: outputs/{experiment}/{benchmark}/{model_id}_seed{seed}/{folder_id}/results.jsonl
-                    model_seed_dir = f"{model_config.model_id}_seed{seed}"
-                    out_path = output_dir / config.benchmark / model_seed_dir / folder_id / "results.jsonl"
+                    # Output path: outputs/{benchmark}/{model_id}/{seed}/{folder_id}/results.jsonl
+                    out_path = output_dir / config.benchmark / model_config.model_id / str(seed) / folder_id / "results.jsonl"
 
                     # Determine completed IDs (resume) or clear the file (fresh run)
                     if args.resume:
@@ -161,7 +166,7 @@ def main():
                             logger.info(f"Cleared existing results: {out_path}")
                     remaining = [p for p in prompts if p.prompt_id not in done_ids]
 
-                    desc = f"{model_seed_dir}/{folder_id}"
+                    desc = f"{model_config.model_id}/{seed}/{folder_id}"
 
                     if done_ids:
                         logger.info(f"[{desc}] Resuming: {len(done_ids)} done, {len(remaining)} remaining")

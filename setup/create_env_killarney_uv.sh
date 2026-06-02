@@ -5,8 +5,13 @@
 #SBATCH --mem=32GB
 #SBATCH --partition=gpubase_l40s_b3
 #SBATCH --account=aip-craffel
+#SBATCH --job-name=create_env_killarney
+#SBATCH --output=logs/%j_create_env_killarney.out
+#SBATCH --error=logs/%j_create_env_killarney.out
 
 set -e
+
+mkdir -p logs
 
 echo "============================================"
 echo "Creating pRisk-Pressure environment with UV at $(date)"
@@ -15,8 +20,6 @@ echo "============================================"
 # Load modules BEFORE creating/activating venv
 module load cuda/12.6
 module load gcc arrow/19.0.1 python/3.11
-
-mkdir -p logs
 
 # Install UV if not available
 if ! command -v uv &> /dev/null; then

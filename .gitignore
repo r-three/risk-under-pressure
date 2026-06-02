@@ -218,3 +218,5 @@ logs/*
 
 
 results/
+.env.example
+logs/*
