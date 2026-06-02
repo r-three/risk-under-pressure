@@ -1,7 +1,9 @@
-<h1>
-  <img src="figures/logo.png" height="60" alt="Risk Under Pressure logo" style="vertical-align: middle; margin-right: 12px;"/>
-  Risk Under Pressure
-</h1>
+<table border="0" cellpadding="0" cellspacing="0">
+  <tr>
+    <td><img src="figures/logo.png" height="60" alt="Risk Under Pressure logo"/></td>
+    <td valign="middle" style="padding-left: 12px;"><h1 style="margin: 0;">Risk Under Pressure</h1></td>
+  </tr>
+</table>
 
 **Compute-Aware Evaluation of Adversarial Robustness in Language Models**
 
