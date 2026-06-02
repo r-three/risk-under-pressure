@@ -17,9 +17,11 @@ Most jailbreak benchmarks report attack success rate (ASR) at a fixed query budg
 
 ```bash
 # Install (requires Python 3.10+)
+python -m venv .venv && source .venv/bin/activate
 pip install risk-under-pressure
 # or from source:
 git clone https://github.com/Malikeh97/risk-under-pressure && cd risk-under-pressure
+uv venv && source .venv/bin/activate
 uv pip install -e .
 
 # Copy and fill in API keys
