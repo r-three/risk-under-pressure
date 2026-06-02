@@ -1,7 +1,7 @@
-<table border="0" cellpadding="0" cellspacing="0">
-  <tr>
-    <td><img src="figures/logo.png" height="60" alt="Risk Under Pressure logo"/></td>
-    <td valign="middle" style="padding-left: 12px;"><h1 style="margin: 0;">Risk Under Pressure</h1></td>
+<table border="0" cellpadding="0" cellspacing="0" style="border: none; border-collapse: collapse; background: transparent;">
+  <tr style="border: none; background: transparent;">
+    <td style="border: none; padding: 0;"><img src="figures/logo.png" height="60" alt="Risk Under Pressure logo"/></td>
+    <td valign="middle" style="border: none; padding-left: 12px;"><h1 style="margin: 0;">Risk Under Pressure</h1></td>
   </tr>
 </table>
 
