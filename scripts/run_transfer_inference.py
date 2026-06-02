@@ -70,6 +70,7 @@ def parse_args():
                    help="Config names of target models (e.g. tulu3_8b_base qwen2.5_7b)")
     p.add_argument("--output-dir", required=True, type=Path,
                    help="Root output directory (benchmark/ subdir is appended automatically)")
+    p.add_argument("--benchmark", help="Override: benchmark (harmbench or jailbreakbench)")
     p.add_argument("--seeds", type=int, nargs="+",
                    help="Override seeds from experiment config")
     p.add_argument("--n-prompts", type=int,
@@ -97,6 +98,8 @@ def main():
     with open(args.experiment) as f:
         config = ExperimentConfig(**yaml.safe_load(f))
 
+    if args.benchmark:
+        config.benchmark = args.benchmark
     if args.seeds:
         config.seeds = args.seeds
     if args.n_prompts:
@@ -128,7 +131,8 @@ def main():
 
         source_jsonl = (
             args.source_results_dir
-            / f"{args.source_model}_seed{seed}"
+            / args.source_model
+            / str(seed)
             / args.source_attack
             / "results.jsonl"
         )
@@ -160,7 +164,8 @@ def main():
             out_path = (
                 args.output_dir
                 / config.benchmark
-                / f"{model_config.model_id}_seed{seed}"
+                / model_config.model_id
+                / str(seed)
                 / transfer_attack_id
                 / "results.jsonl"
             )
@@ -178,7 +183,7 @@ def main():
                 if p.prompt_id not in done_ids and p.prompt_id in trajectories
             ]
 
-            desc = f"{model_config.model_id}_seed{seed}/{transfer_attack_id}"
+            desc = f"{model_config.model_id}/{seed}/{transfer_attack_id}"
             if done_ids:
                 logger.info(f"[{desc}] Resuming: {len(done_ids)} done, {len(remaining)} remaining")
 
