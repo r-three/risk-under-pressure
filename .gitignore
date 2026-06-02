@@ -220,3 +220,4 @@ logs/*
 results/
 .env.example
 logs/*
+.nfs*

@@ -1,139 +1,137 @@
 #!/bin/bash
-# Submit all pRisk-Pressure experiments to the Killarney cluster.
-# Usage: bash run_experiments.sh
+# Submit JailbreakBench per-model pressure sensitivity experiments.
+# Usage: bash run_JB_experiments.sh
 # Requires: must be run from the project root on a klogin* node.
+#
+# All runs use configs/experiments/base.yaml with --benchmark jailbreakbench --n-prompts 100.
+# Each seed is submitted as a separate job for fine-grained control.
+# To add a new model, add a 10-line block following the same pattern.
 
 set -e
 
 source setup/start_env.sh
 
-# --- JailBreakBench pressure sensitivity (10 seeds) ---
+BASE="python scripts/run_inference.py --experiment configs/experiments/base.yaml --benchmark jailbreakbench --n-prompts 100 --output-dir $SCRATCH/rup --resume"
 
-# Qwen models
-submit "rup_JB_qwen2.5_0.5b_batch1" \
-    "python scripts/run_inference.py --experiment configs/experiments/JB_qwen2.5_0.5b.yaml --seeds 1997 2 100 --resume"
-submit "rup_JB_qwen2.5_0.5b_batch2" \
-    "python scripts/run_inference.py --experiment configs/experiments/JB_qwen2.5_0.5b.yaml --seeds 42 5431 2002 --resume"
-submit "rup_JB_qwen2.5_0.5b_batch3" \
-    "python scripts/run_inference.py --experiment configs/experiments/JB_qwen2.5_0.5b.yaml --seeds 256 512 123 --resume"
-submit "rup_JB_qwen2.5_0.5b_batch4" \
-    "python scripts/run_inference.py --experiment configs/experiments/JB_qwen2.5_0.5b.yaml --seeds 5 --resume"
+# =============================================================================
+# MODEL SIZE STUDY — Qwen2.5-Instruct: 0.5B, 3B, 7B
+# Paper: Figure 1 right
+# =============================================================================
 
-# submit "rup_JB_qwen2.5_3b_batch1" \
-#     "python scripts/run_inference.py --experiment configs/experiments/JB_qwen2.5_3b.yaml --seeds 1997 2 100 --resume"
-# submit "rup_JB_qwen2.5_3b_batch2" \
-#     "python scripts/run_inference.py --experiment configs/experiments/JB_qwen2.5_3b.yaml --seeds 42 5431 2002 --resume"
-# submit "rup_JB_qwen2.5_3b_batch3" \
-#     "python scripts/run_inference.py --experiment configs/experiments/JB_qwen2.5_3b.yaml --seeds 256 512 123 --resume"
-# submit "rup_JB_qwen2.5_3b_batch4" \
-#     "python scripts/run_inference.py --experiment configs/experiments/JB_qwen2.5_3b.yaml --seeds 5 --resume"
+# --- Qwen2.5-0.5B (also gcg surrogate for attack transfer) ---
+# submit "rup_JB_qwen2.5_0.5b_s1997" "$BASE --model qwen2.5_0.5b --seeds 1997"
+# submit "rup_JB_qwen2.5_0.5b_s2"    "$BASE --model qwen2.5_0.5b --seeds 2"
+# submit "rup_JB_qwen2.5_0.5b_s100"  "$BASE --model qwen2.5_0.5b --seeds 100"
+# submit "rup_JB_qwen2.5_0.5b_s42"   "$BASE --model qwen2.5_0.5b --seeds 42"
+# submit "rup_JB_qwen2.5_0.5b_s5431" "$BASE --model qwen2.5_0.5b --seeds 5431"
+# submit "rup_JB_qwen2.5_0.5b_s2002" "$BASE --model qwen2.5_0.5b --seeds 2002"
+# submit "rup_JB_qwen2.5_0.5b_s256"  "$BASE --model qwen2.5_0.5b --seeds 256"
+# submit "rup_JB_qwen2.5_0.5b_s512"  "$BASE --model qwen2.5_0.5b --seeds 512"
+# submit "rup_JB_qwen2.5_0.5b_s123"  "$BASE --model qwen2.5_0.5b --seeds 123"
+# submit "rup_JB_qwen2.5_0.5b_s5"    "$BASE --model qwen2.5_0.5b --seeds 5"
 
-# submit "rup_JB_qwen2.5_7b_batch1" \
-#     "python scripts/run_inference.py --experiment configs/experiments/JB_qwen2.5_7b.yaml --seeds 1997 2 100 --resume"
-# submit "rup_JB_qwen2.5_7b_batch2" \
-#     "python scripts/run_inference.py --experiment configs/experiments/JB_qwen2.5_7b.yaml --seeds 42 5431 2002 --resume"
-# submit "rup_JB_qwen2.5_7b_batch3" \
-#     "python scripts/run_inference.py --experiment configs/experiments/JB_qwen2.5_7b.yaml --seeds 256 512 123 --resume"
-# submit "rup_JB_qwen2.5_7b_batch4" \
-#     "python scripts/run_inference.py --experiment configs/experiments/JB_qwen2.5_7b.yaml --seeds 5 --resume"
+# --- Qwen2.5-3B ---
+# submit "rup_JB_qwen2.5_3b_s1997" "$BASE --model qwen2.5_3b --seeds 1997"
+# submit "rup_JB_qwen2.5_3b_s2"    "$BASE --model qwen2.5_3b --seeds 2"
+# submit "rup_JB_qwen2.5_3b_s100"  "$BASE --model qwen2.5_3b --seeds 100"
+# submit "rup_JB_qwen2.5_3b_s42"   "$BASE --model qwen2.5_3b --seeds 42"
+# submit "rup_JB_qwen2.5_3b_s5431" "$BASE --model qwen2.5_3b --seeds 5431"
+# submit "rup_JB_qwen2.5_3b_s2002" "$BASE --model qwen2.5_3b --seeds 2002"
+# submit "rup_JB_qwen2.5_3b_s256"  "$BASE --model qwen2.5_3b --seeds 256"
+# submit "rup_JB_qwen2.5_3b_s512"  "$BASE --model qwen2.5_3b --seeds 512"
+# submit "rup_JB_qwen2.5_3b_s123"  "$BASE --model qwen2.5_3b --seeds 123"
+# submit "rup_JB_qwen2.5_3b_s5"    "$BASE --model qwen2.5_3b --seeds 5"
 
-# Qwen safety model
-# submit "rup_JB_qwen3_4b_saferl_s1997" \
-#     "python scripts/run_inference.py --experiment configs/experiments/JB_qwen3_4b_saferl.yaml --seeds 1997 --resume"
-# submit "rup_JB_qwen3_4b_saferl_s2" \
-#     "python scripts/run_inference.py --experiment configs/experiments/JB_qwen3_4b_saferl.yaml --seeds 2 --resume"
-# submit "rup_JB_qwen3_4b_saferl_s100" \
-#     "python scripts/run_inference.py --experiment configs/experiments/JB_qwen3_4b_saferl.yaml --seeds 100 --resume"
-# submit "rup_JB_qwen3_4b_saferl_s42" \
-#     "python scripts/run_inference.py --experiment configs/experiments/JB_qwen3_4b_saferl.yaml --seeds 42 --resume"
-# submit "rup_JB_qwen3_4b_saferl_s5431" \
-#     "python scripts/run_inference.py --experiment configs/experiments/JB_qwen3_4b_saferl.yaml --seeds 5431 --resume"
-# submit "rup_JB_qwen3_4b_saferl_s2002" \
-#     "python scripts/run_inference.py --experiment configs/experiments/JB_qwen3_4b_saferl.yaml --seeds 2002 --resume"
-# submit "rup_JB_qwen3_4b_saferl_s256" \
-#     "python scripts/run_inference.py --experiment configs/experiments/JB_qwen3_4b_saferl.yaml --seeds 256 --resume"
-# submit "rup_JB_qwen3_4b_saferl_s512" \
-#     "python scripts/run_inference.py --experiment configs/experiments/JB_qwen3_4b_saferl.yaml --seeds 512 --resume"
-# submit "rup_JB_qwen3_4b_saferl_s123" \
-#     "python scripts/run_inference.py --experiment configs/experiments/JB_qwen3_4b_saferl.yaml --seeds 123 --resume"
-# submit "rup_JB_qwen3_4b_saferl_s5" \
-#     "python scripts/run_inference.py --experiment configs/experiments/JB_qwen3_4b_saferl.yaml --seeds 5 --resume"
+# --- Qwen2.5-7B ---
+# submit "rup_JB_qwen2.5_7b_s1997" "$BASE --model qwen2.5_7b --seeds 1997"
+# submit "rup_JB_qwen2.5_7b_s2"    "$BASE --model qwen2.5_7b --seeds 2"
+# submit "rup_JB_qwen2.5_7b_s100"  "$BASE --model qwen2.5_7b --seeds 100"
+# submit "rup_JB_qwen2.5_7b_s42"   "$BASE --model qwen2.5_7b --seeds 42"
+# submit "rup_JB_qwen2.5_7b_s5431" "$BASE --model qwen2.5_7b --seeds 5431"
+# submit "rup_JB_qwen2.5_7b_s2002" "$BASE --model qwen2.5_7b --seeds 2002"
+# submit "rup_JB_qwen2.5_7b_s256"  "$BASE --model qwen2.5_7b --seeds 256"
+# submit "rup_JB_qwen2.5_7b_s512"  "$BASE --model qwen2.5_7b --seeds 512"
+# submit "rup_JB_qwen2.5_7b_s123"  "$BASE --model qwen2.5_7b --seeds 123"
+# submit "rup_JB_qwen2.5_7b_s5"    "$BASE --model qwen2.5_7b --seeds 5"
 
-# Tulu2 models
-# submit "rup_JB_tulu2_7b_base_batch1" \
-#     "python scripts/run_inference.py --experiment configs/experiments/JB_tulu2_7b_base.yaml --seeds 1997 2 100 --resume"
-# submit "rup_JB_tulu2_7b_base_batch2" \
-#     "python scripts/run_inference.py --experiment configs/experiments/JB_tulu2_7b_base.yaml --seeds 42 5431 2002 --resume"
-# submit "rup_JB_tulu2_7b_base_batch3" \
-#     "python scripts/run_inference.py --experiment configs/experiments/JB_tulu2_7b_base.yaml --seeds 256 512 123 --resume"
-# submit "rup_JB_tulu2_7b_base_batch4" \
-#     "python scripts/run_inference.py --experiment configs/experiments/JB_tulu2_7b_base.yaml --seeds 5 --resume"
+# =============================================================================
+# TRAINING STAGE STUDY — Tulu3 8B: Base → SFT → DPO → RLVR
+# Paper: Table 1, Figure 1 left
+# =============================================================================
 
-# submit "rup_JB_tulu2_7b_sft_batch1" \
-#     "python scripts/run_inference.py --experiment configs/experiments/JB_tulu2_7b_sft.yaml --seeds 1997 2 100 --resume"
-# submit "rup_JB_tulu2_7b_sft_batch2" \
-#     "python scripts/run_inference.py --experiment configs/experiments/JB_tulu2_7b_sft.yaml --seeds 42 5431 2002 --resume"
-# submit "rup_JB_tulu2_7b_sft_batch3" \
-#     "python scripts/run_inference.py --experiment configs/experiments/JB_tulu2_7b_sft.yaml --seeds 256 512 123 --resume"
-# submit "rup_JB_tulu2_7b_sft_batch4" \
-#     "python scripts/run_inference.py --experiment configs/experiments/JB_tulu2_7b_sft.yaml --seeds 5 --resume"
+# --- Tulu3-8B Base ---
+# submit "rup_JB_tulu3_8b_base_s1997" "$BASE --model tulu3_8b_base --seeds 1997"
+# submit "rup_JB_tulu3_8b_base_s2"    "$BASE --model tulu3_8b_base --seeds 2   "
+# submit "rup_JB_tulu3_8b_base_s100"  "$BASE --model tulu3_8b_base --seeds 100 "
+# submit "rup_JB_tulu3_8b_base_s42"   "$BASE --model tulu3_8b_base --seeds 42  "
+# submit "rup_JB_tulu3_8b_base_s5431" "$BASE --model tulu3_8b_base --seeds 5431"
+# submit "rup_JB_tulu3_8b_base_s2002" "$BASE --model tulu3_8b_base --seeds 2002"
+# submit "rup_JB_tulu3_8b_base_s256"  "$BASE --model tulu3_8b_base --seeds 256 "
+# submit "rup_JB_tulu3_8b_base_s512"  "$BASE --model tulu3_8b_base --seeds 512 "
+# submit "rup_JB_tulu3_8b_base_s123"  "$BASE --model tulu3_8b_base --seeds 123 "
+# submit "rup_JB_tulu3_8b_base_s5"    "$BASE --model tulu3_8b_base --seeds 5   "
 
-# submit "rup_JB_tulu2_7b_dpo_batch1" \
-#     "python scripts/run_inference.py --experiment configs/experiments/JB_tulu2_7b_dpo.yaml --seeds 1997 2 100 --resume"
-# submit "rup_JB_tulu2_7b_dpo_batch2" \
-#     "python scripts/run_inference.py --experiment configs/experiments/JB_tulu2_7b_dpo.yaml --seeds 42 5431 2002 --resume"
-# submit "rup_JB_tulu2_7b_dpo_batch3" \
-#     "python scripts/run_inference.py --experiment configs/experiments/JB_tulu2_7b_dpo.yaml --seeds 256 512 123 --resume"
-# submit "rup_JB_tulu2_7b_dpo_batch4" \
-#     "python scripts/run_inference.py --experiment configs/experiments/JB_tulu2_7b_dpo.yaml --seeds 5 --resume"
+# --- Tulu3-8B SFT ---
+# submit "rup_JB_tulu3_8b_sft_s1997" "$BASE --model tulu3_8b_sft --seeds 1997"
+# submit "rup_JB_tulu3_8b_sft_s2"    "$BASE --model tulu3_8b_sft --seeds 2   "
+# submit "rup_JB_tulu3_8b_sft_s100"  "$BASE --model tulu3_8b_sft --seeds 100 "
+# submit "rup_JB_tulu3_8b_sft_s42"   "$BASE --model tulu3_8b_sft --seeds 42  "
+# submit "rup_JB_tulu3_8b_sft_s5431" "$BASE --model tulu3_8b_sft --seeds 5431"
+# submit "rup_JB_tulu3_8b_sft_s2002" "$BASE --model tulu3_8b_sft --seeds 2002"
+# submit "rup_JB_tulu3_8b_sft_s256"  "$BASE --model tulu3_8b_sft --seeds 256 "
+# submit "rup_JB_tulu3_8b_sft_s512"  "$BASE --model tulu3_8b_sft --seeds 512 "
+# submit "rup_JB_tulu3_8b_sft_s123"  "$BASE --model tulu3_8b_sft --seeds 123 "
+# submit "rup_JB_tulu3_8b_sft_s5"    "$BASE --model tulu3_8b_sft --seeds 5   "
 
-# Tulu3 models
-# submit "rup_JB_tulu3_8b_base_batch1" \
-#     "python scripts/run_inference.py --experiment configs/experiments/JB_tulu3_8b_base.yaml --seeds 1997 2 100 --resume"
-# submit "rup_JB_tulu3_8b_base_batch2" \
-#     "python scripts/run_inference.py --experiment configs/experiments/JB_tulu3_8b_base.yaml --seeds 42 5431 2002 --resume"
-# submit "rup_JB_tulu3_8b_base_batch3" \
-#     "python scripts/run_inference.py --experiment configs/experiments/JB_tulu3_8b_base.yaml --seeds 256 512 123 --resume"
-# submit "rup_JB_tulu3_8b_base_batch4" \
-#     "python scripts/run_inference.py --experiment configs/experiments/JB_tulu3_8b_base.yaml --seeds 5 --resume"
+# --- Tulu3-8B DPO ---
+# submit "rup_JB_tulu3_8b_dpo_s1997" "$BASE --model tulu3_8b_dpo --seeds 1997"
+# submit "rup_JB_tulu3_8b_dpo_s2"    "$BASE --model tulu3_8b_dpo --seeds 2   "
+# submit "rup_JB_tulu3_8b_dpo_s100"  "$BASE --model tulu3_8b_dpo --seeds 100 "
+# submit "rup_JB_tulu3_8b_dpo_s42"   "$BASE --model tulu3_8b_dpo --seeds 42  "
+# submit "rup_JB_tulu3_8b_dpo_s5431" "$BASE --model tulu3_8b_dpo --seeds 5431"
+# submit "rup_JB_tulu3_8b_dpo_s2002" "$BASE --model tulu3_8b_dpo --seeds 2002"
+# submit "rup_JB_tulu3_8b_dpo_s256"  "$BASE --model tulu3_8b_dpo --seeds 256 "
+# submit "rup_JB_tulu3_8b_dpo_s512"  "$BASE --model tulu3_8b_dpo --seeds 512 "
+# submit "rup_JB_tulu3_8b_dpo_s123"  "$BASE --model tulu3_8b_dpo --seeds 123 "
+# submit "rup_JB_tulu3_8b_dpo_s5"    "$BASE --model tulu3_8b_dpo --seeds 5   "
 
-# submit "rup_JB_tulu3_8b_sft_batch1" \
-#     "python scripts/run_inference.py --experiment configs/experiments/JB_tulu3_8b_sft.yaml --seeds 1997 2 100 --resume"
-# submit "rup_JB_tulu3_8b_sft_batch2" \
-#     "python scripts/run_inference.py --experiment configs/experiments/JB_tulu3_8b_sft.yaml --seeds 42 5431 2002 --resume"
-# submit "rup_JB_tulu3_8b_sft_batch3" \
-#     "python scripts/run_inference.py --experiment configs/experiments/JB_tulu3_8b_sft.yaml --seeds 256 512 123 --resume"
-# submit "rup_JB_tulu3_8b_sft_batch4" \
-#     "python scripts/run_inference.py --experiment configs/experiments/JB_tulu3_8b_sft.yaml --seeds 5 --resume"
-
-# submit "rup_JB_tulu3_8b_dpo_batch1" \
-#     "python scripts/run_inference.py --experiment configs/experiments/JB_tulu3_8b_dpo.yaml --seeds 1997 2 100 --resume"
-# submit "rup_JB_tulu3_8b_dpo_batch2" \
-#     "python scripts/run_inference.py --experiment configs/experiments/JB_tulu3_8b_dpo.yaml --seeds 42 5431 2002 --resume"
-# submit "rup_JB_tulu3_8b_dpo_batch3" \
-#     "python scripts/run_inference.py --experiment configs/experiments/JB_tulu3_8b_dpo.yaml --seeds 256 512 123 --resume"
-# submit "rup_JB_tulu3_8b_dpo_batch4" \
-#     "python scripts/run_inference.py --experiment configs/experiments/JB_tulu3_8b_dpo.yaml --seeds 5 --resume"
-submit "rup_JB_tulu3_8b_dpo_batch1" \
-    "python scripts/run_inference.py --experiment configs/experiments/JB_tulu3_8b_dpo.yaml --seeds 100 --resume"
-submit "rup_JB_tulu3_8b_dpo_batch2" \
-    "python scripts/run_inference.py --experiment configs/experiments/JB_tulu3_8b_dpo.yaml --seeds 2002 --resume"
-submit "rup_JB_tulu3_8b_dpo_batch3" \
-    "python scripts/run_inference.py --experiment configs/experiments/JB_tulu3_8b_dpo.yaml --seeds 123 --resume"
+# --- Tulu3-8B RLVR ---
+# submit "rup_JB_tulu3_8b_rlvr_s1997" "$BASE --model tulu3_8b_rlvr --seeds 1997"
+# submit "rup_JB_tulu3_8b_rlvr_s2"    "$BASE --model tulu3_8b_rlvr --seeds 2   "
+# submit "rup_JB_tulu3_8b_rlvr_s100"  "$BASE --model tulu3_8b_rlvr --seeds 100 "
+# submit "rup_JB_tulu3_8b_rlvr_s42"   "$BASE --model tulu3_8b_rlvr --seeds 42  "
+# submit "rup_JB_tulu3_8b_rlvr_s5431" "$BASE --model tulu3_8b_rlvr --seeds 5431"
+# submit "rup_JB_tulu3_8b_rlvr_s2002" "$BASE --model tulu3_8b_rlvr --seeds 2002"
+# submit "rup_JB_tulu3_8b_rlvr_s256"  "$BASE --model tulu3_8b_rlvr --seeds 256 "
+# submit "rup_JB_tulu3_8b_rlvr_s512"  "$BASE --model tulu3_8b_rlvr --seeds 512 "
+# submit "rup_JB_tulu3_8b_rlvr_s123"  "$BASE --model tulu3_8b_rlvr --seeds 123 "
+# submit "rup_JB_tulu3_8b_rlvr_s5"    "$BASE --model tulu3_8b_rlvr --seeds 5   "
 
 
-# submit "rup_JB_tulu3_8b_rlvr_batch1" \
-#     "python scripts/run_inference.py --experiment configs/experiments/JB_tulu3_8b_rlvr.yaml --seeds 1997 2 100 --resume"
-# submit "rup_JB_tulu3_8b_rlvr_batch2" \
-#     "python scripts/run_inference.py --experiment configs/experiments/JB_tulu3_8b_rlvr.yaml --seeds 42 5431 2002 --resume"
-# submit "rup_JB_tulu3_8b_rlvr_batch3" \
-#     "python scripts/run_inference.py --experiment configs/experiments/JB_tulu3_8b_rlvr.yaml --seeds 256 512 123 --resume"
-# submit "rup_JB_tulu3_8b_rlvr_batch4" \
-#     "python scripts/run_inference.py --experiment configs/experiments/JB_tulu3_8b_rlvr.yaml --seeds 5 --resume"
+# =============================================================================
+# SAFETY ALIGNMENT STUDY — Qwen3-4B base vs Qwen3-4B-SafeRL
+# =============================================================================
 
-submit "rup_JB_tulu3_8b_rlvr_batch1" \
-    "python scripts/run_inference.py --experiment configs/experiments/JB_tulu3_8b_rlvr.yaml --seeds 100 --resume"
-submit "rup_JB_tulu3_8b_rlvr_batch2" \
-    "python scripts/run_inference.py --experiment configs/experiments/JB_tulu3_8b_rlvr.yaml --seeds 2002 --resume"
-submit "rup_JB_tulu3_8b_rlvr_batch3" \
-    "python scripts/run_inference.py --experiment configs/experiments/JB_tulu3_8b_rlvr.yaml --seeds 123 --resume"
+# --- Qwen3-4B (base) ---
+submit "rup_JB_qwen3_4b_s1997" "$BASE --model qwen3_4b --seeds 1997"
+submit "rup_JB_qwen3_4b_s2"    "$BASE --model qwen3_4b --seeds 2"
+submit "rup_JB_qwen3_4b_s100"  "$BASE --model qwen3_4b --seeds 100"
+submit "rup_JB_qwen3_4b_s42"   "$BASE --model qwen3_4b --seeds 42"
+submit "rup_JB_qwen3_4b_s5431" "$BASE --model qwen3_4b --seeds 5431"
+submit "rup_JB_qwen3_4b_s2002" "$BASE --model qwen3_4b --seeds 2002"
+submit "rup_JB_qwen3_4b_s256"  "$BASE --model qwen3_4b --seeds 256"
+submit "rup_JB_qwen3_4b_s512"  "$BASE --model qwen3_4b --seeds 512"
+submit "rup_JB_qwen3_4b_s123"  "$BASE --model qwen3_4b --seeds 123"
+submit "rup_JB_qwen3_4b_s5"    "$BASE --model qwen3_4b --seeds 5"
+
+# --- Qwen3-4B-SafeRL ---
+# submit "rup_JB_qwen3_4b_saferl_s1997" "$BASE --model qwen3_4b_saferl --seeds 1997"
+# submit "rup_JB_qwen3_4b_saferl_s2"    "$BASE --model qwen3_4b_saferl --seeds 2"
+# submit "rup_JB_qwen3_4b_saferl_s100"  "$BASE --model qwen3_4b_saferl --seeds 100"
+# submit "rup_JB_qwen3_4b_saferl_s42"   "$BASE --model qwen3_4b_saferl --seeds 42"
+# submit "rup_JB_qwen3_4b_saferl_s5431" "$BASE --model qwen3_4b_saferl --seeds 5431"
+# submit "rup_JB_qwen3_4b_saferl_s2002" "$BASE --model qwen3_4b_saferl --seeds 2002"
+# submit "rup_JB_qwen3_4b_saferl_s256"  "$BASE --model qwen3_4b_saferl --seeds 256"
+# submit "rup_JB_qwen3_4b_saferl_s512"  "$BASE --model qwen3_4b_saferl --seeds 512"
+# submit "rup_JB_qwen3_4b_saferl_s123"  "$BASE --model qwen3_4b_saferl --seeds 123"
+# submit "rup_JB_qwen3_4b_saferl_s5"    "$BASE --model qwen3_4b_saferl --seeds 5"
