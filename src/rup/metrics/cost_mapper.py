@@ -328,7 +328,7 @@ def cumulative_costs(
 def aggregate_costs(
     records: List[TrialRecord],
     pressure_levels: List[int],
-    judge_model_id: str = "llama3.1_8b_instruct",
+    judge_model_id: str = "llama3.1-8b-instruct",
     gcg_backward_mult: float = 3.0,
     configs_dir: Optional[str | Path] = None,
 ) -> Dict[int, Dict[str, float]]:

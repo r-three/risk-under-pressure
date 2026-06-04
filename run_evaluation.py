@@ -76,12 +76,23 @@ def discover_results(results_dir: Path) -> dict[tuple[str, str], Path]:
     """
     Discover all results.jsonl files under results_dir.
     Returns dict mapping (model_id, attack_id) → file path.
+
+    Supports two directory layouts:
+    - Legacy:  results_dir / model_id / attack_id / results.jsonl
+    - Current: results_dir / seed     / attack_id / results.jsonl
+      (produced by run_inference.py when results_dir is the per-model output dir)
+      In this case model_id is synthesised as "{results_dir.name}_seed{seed}".
     """
     found = {}
     for f in results_dir.rglob("results.jsonl"):
-        # Expect structure: results_dir / model_id / attack_id / results.jsonl
         attack_id = f.parent.name
-        model_id = f.parent.parent.name
+        seed_or_model_dir = f.parent.parent
+        if seed_or_model_dir.parent == results_dir:
+            # Current format: results_dir / seed / attack_id / results.jsonl
+            model_id = f"{results_dir.name}_seed{seed_or_model_dir.name}"
+        else:
+            # Legacy format: results_dir / model_id / attack_id / results.jsonl
+            model_id = seed_or_model_dir.name
         found[(model_id, attack_id)] = f
     return found
 

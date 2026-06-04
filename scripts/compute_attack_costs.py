@@ -63,10 +63,24 @@ COST_COLS = [
 
 
 def discover_results(results_dir: Path) -> dict[tuple[str, str], Path]:
+    """
+    Supports two directory layouts:
+    - Legacy:  results_dir / model_id / attack_id / results.jsonl
+    - Current: results_dir / seed     / attack_id / results.jsonl
+      (produced by run_inference.py when results_dir is the per-model output dir)
+      In this case model_id is synthesised as "{results_dir.name}_seed{seed}",
+      matching the keys written by run_evaluation.py into metrics.csv.
+    """
     found: dict[tuple[str, str], Path] = {}
     for f in results_dir.rglob("results.jsonl"):
         attack_id = f.parent.name
-        model_id  = f.parent.parent.name
+        seed_or_model_dir = f.parent.parent
+        if seed_or_model_dir.parent == results_dir:
+            # Current format: results_dir / seed / attack_id / results.jsonl
+            model_id = f"{results_dir.name}_seed{seed_or_model_dir.name}"
+        else:
+            # Legacy format: results_dir / model_id / attack_id / results.jsonl
+            model_id = seed_or_model_dir.name
         found[(model_id, attack_id)] = f
     return found
 
@@ -83,9 +97,9 @@ def parse_args() -> argparse.Namespace:
                    help="FLOPs multiplier for the GCG gradient step only (default 3.0 = "
                         "1 forward + 1 backward). The 128 candidate forward passes are "
                         "always counted separately and are not affected by this flag.")
-    p.add_argument("--judge-model", default="llama3.1_8b_instruct",
+    p.add_argument("--judge-model", default="llama3.1-8b-instruct",
                    help="Model ID of the safety judge used during inference "
-                        "(default: llama3.1_8b_instruct). Used to compute judge token/FLOP costs.")
+                        "(default: llama3.1-8b-instruct). Used to compute judge token/FLOP costs.")
     p.add_argument("--configs-dir", default="configs",
                    help="Directory containing model configs (default: configs). "
                         "Used to load the model registry for FLOP/token computation.")

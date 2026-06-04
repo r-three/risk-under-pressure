@@ -1,8 +1,7 @@
 #!/bin/bash
 # Run Phase 2 evaluation for all experiments (metrics + metrics by category).
-# Produces metrics.csv and metrics_by_category.csv for every model directory.
-# Bootstrap CIs (1000 resamples) are computed here and stored in risk_lower/risk_upper.
-# Seed-based CIs are computed at plot time — no extra evaluation step needed.
+# Reads from $SCRATCH/rup, which is where run_HB_experiments.sh / run_JB_experiments.sh
+# write their inference output. Produces metrics.csv and summary.txt per model directory.
 #
 # Usage: bash run_evaluations.sh
 # Requires: must be run from the project root.
@@ -12,206 +11,122 @@ set -e
 
 source setup/start_env.sh
 
-BASE=/home/ehghaghi/projects/aip-craffel/ehghaghi/prisk-pressure/results/multitrial_experiments/pressure_sensitivity
-OUTPUT=/home/ehghaghi/projects/aip-craffel/ehghaghi/prisk-pressure/results/plots/multitrial_experiments/pressure_sensitivity
+BASE=$SCRATCH/rup
+OUTPUT=$SCRATCH/rup/plots
 
-# --------------------------------------------------------------------------- #
+EVAL="python run_evaluation.py --experiment configs/experiments/base.yaml --format csv --print-table"
+
+# =============================================================================
 # HarmBench
-# --------------------------------------------------------------------------- #
+# =============================================================================
 
-# python run_evaluation.py \
-#     --experiment configs/experiments/HB_qwen2.5_0.5b.yaml \
+# --- MODEL SIZE STUDY — Qwen2.5-Instruct: 0.5B, 3B, 7B ---
+# Paper: Figure 1 right
+
+# $EVAL \
 #     --results-dir $BASE/harmbench/qwen2.5-0.5b-instruct \
-#     --format csv \
 #     --output $OUTPUT/harmbench/qwen2.5-0.5b-instruct/metrics.csv \
-#     --print-table \
 #     | tee $BASE/harmbench/qwen2.5-0.5b-instruct/summary.txt
 
-# python run_evaluation.py \
-#     --experiment configs/experiments/HB_qwen2.5_3b.yaml \
+# $EVAL \
 #     --results-dir $BASE/harmbench/qwen2.5-3b-instruct \
-#     --format csv \
 #     --output $OUTPUT/harmbench/qwen2.5-3b-instruct/metrics.csv \
-#     --print-table \
 #     | tee $BASE/harmbench/qwen2.5-3b-instruct/summary.txt
 
-# python run_evaluation.py \
-#     --experiment configs/experiments/HB_qwen2.5_7b.yaml \
+# $EVAL \
 #     --results-dir $BASE/harmbench/qwen2.5-7b-instruct \
-#     --format csv \
 #     --output $OUTPUT/harmbench/qwen2.5-7b-instruct/metrics.csv \
-#     --print-table \
 #     | tee $BASE/harmbench/qwen2.5-7b-instruct/summary.txt
 
-# python run_evaluation.py \
-#     --experiment configs/experiments/HB_qwen3_4b_saferl.yaml \
-#     --results-dir $BASE/harmbench/qwen3-4b-saferl \
-#     --format csv \
-#     --output $OUTPUT/harmbench/qwen3-4b-saferl/metrics.csv \
-#     --print-table \
-#     | tee $BASE/harmbench/qwen3-4b-saferl/summary.txt
+# --- TRAINING STAGE STUDY — Tulu3 8B: Base → SFT → DPO → RLVR ---
+# Paper: Table 1, Figure 1 left
 
-# python run_evaluation.py \
-#     --experiment configs/experiments/HB_tulu2_7b_base.yaml \
-#     --results-dir $BASE/harmbench/tulu2-7b-base \
-#     --format csv \
-#     --output $OUTPUT/harmbench/tulu2-7b-base/metrics.csv \
-#     --print-table \
-#     | tee $BASE/harmbench/tulu2-7b-base/summary.txt
-
-# python run_evaluation.py \
-#     --experiment configs/experiments/HB_tulu2_7b_sft.yaml \
-#     --results-dir $BASE/harmbench/tulu2-7b-sft \
-#     --format csv \
-#     --output $OUTPUT/harmbench/tulu2-7b-sft/metrics.csv \
-#     --print-table \
-#     | tee $BASE/harmbench/tulu2-7b-sft/summary.txt
-
-# python run_evaluation.py \
-#     --experiment configs/experiments/HB_tulu2_7b_dpo.yaml \
-#     --results-dir $BASE/harmbench/tulu2-7b-dpo \
-#     --format csv \
-#     --output $OUTPUT/harmbench/tulu2-7b-dpo/metrics.csv \
-#     --print-table \
-#     | tee $BASE/harmbench/tulu2-7b-dpo/summary.txt
-
-# python run_evaluation.py \
-#     --experiment configs/experiments/HB_tulu3_8b_base.yaml \
+# $EVAL \
 #     --results-dir $BASE/harmbench/tulu3-8b-base \
-#     --format csv \
 #     --output $OUTPUT/harmbench/tulu3-8b-base/metrics.csv \
-#     --print-table \
 #     | tee $BASE/harmbench/tulu3-8b-base/summary.txt
 
-# python run_evaluation.py \
-#     --experiment configs/experiments/HB_tulu3_8b_sft.yaml \
+# $EVAL \
 #     --results-dir $BASE/harmbench/tulu3-8b-sft \
-#     --format csv \
 #     --output $OUTPUT/harmbench/tulu3-8b-sft/metrics.csv \
-#     --print-table \
 #     | tee $BASE/harmbench/tulu3-8b-sft/summary.txt
 
-# python run_evaluation.py \
-#     --experiment configs/experiments/HB_tulu3_8b_dpo.yaml \
+# $EVAL \
 #     --results-dir $BASE/harmbench/tulu3-8b-dpo \
-#     --format csv \
 #     --output $OUTPUT/harmbench/tulu3-8b-dpo/metrics.csv \
-#     --print-table \
 #     | tee $BASE/harmbench/tulu3-8b-dpo/summary.txt
 
-# python run_evaluation.py \
-#     --experiment configs/experiments/HB_tulu3_8b_rlvr.yaml \
+# $EVAL \
 #     --results-dir $BASE/harmbench/tulu3-8b-rlvr \
-#     --format csv \
 #     --output $OUTPUT/harmbench/tulu3-8b-rlvr/metrics.csv \
-#     --print-table \
 #     | tee $BASE/harmbench/tulu3-8b-rlvr/summary.txt
 
-python run_evaluation.py \
-    --experiment configs/experiments/HB_qwen3_8b.yaml \
-    --results-dir $BASE/harmbench/qwen3-8b \
-    --format csv \
-    --output $OUTPUT/harmbench/qwen3-8b/metrics.csv \
-    --print-table \
-    | tee $BASE/harmbench/qwen3-8b/summary.txt
+# --- SAFETY ALIGNMENT STUDY — Qwen3-4B base vs Qwen3-4B-SafeRL ---
+# Paper: Table 1 (Qwen3 rows)
 
-# --------------------------------------------------------------------------- #
+$EVAL \
+    --results-dir $BASE/harmbench/qwen3-4b \
+    --output $OUTPUT/harmbench/qwen3-4b/metrics.csv \
+    | tee $BASE/harmbench/qwen3-4b/summary.txt
+
+# $EVAL \
+#     --results-dir $BASE/harmbench/qwen3-4b-saferl \
+#     --output $OUTPUT/harmbench/qwen3-4b-saferl/metrics.csv \
+#     | tee $BASE/harmbench/qwen3-4b-saferl/summary.txt
+
+# =============================================================================
 # JailbreakBench
-# --------------------------------------------------------------------------- #
+# =============================================================================
 
-# python run_evaluation.py \
-#     --experiment configs/experiments/JB_qwen2.5_0.5b.yaml \
+# --- MODEL SIZE STUDY — Qwen2.5-Instruct: 0.5B, 3B, 7B ---
+# Paper: Figure 1 right
+
+# $EVAL \
 #     --results-dir $BASE/jailbreakbench/qwen2.5-0.5b-instruct \
-#     --format csv \
 #     --output $OUTPUT/jailbreakbench/qwen2.5-0.5b-instruct/metrics.csv \
-#     --print-table \
 #     | tee $BASE/jailbreakbench/qwen2.5-0.5b-instruct/summary.txt
 
-# python run_evaluation.py \
-#     --experiment configs/experiments/JB_qwen2.5_3b.yaml \
+# $EVAL \
 #     --results-dir $BASE/jailbreakbench/qwen2.5-3b-instruct \
-#     --format csv \
 #     --output $OUTPUT/jailbreakbench/qwen2.5-3b-instruct/metrics.csv \
-#     --print-table \
 #     | tee $BASE/jailbreakbench/qwen2.5-3b-instruct/summary.txt
 
-# python run_evaluation.py \
-#     --experiment configs/experiments/JB_qwen2.5_7b.yaml \
+# $EVAL \
 #     --results-dir $BASE/jailbreakbench/qwen2.5-7b-instruct \
-#     --format csv \
 #     --output $OUTPUT/jailbreakbench/qwen2.5-7b-instruct/metrics.csv \
-#     --print-table \
 #     | tee $BASE/jailbreakbench/qwen2.5-7b-instruct/summary.txt
 
-# python run_evaluation.py \
-#     --experiment configs/experiments/JB_qwen3_4b_saferl.yaml \
-#     --results-dir $BASE/jailbreakbench/qwen3-4b-saferl \
-#     --format csv \
-#     --output $OUTPUT/jailbreakbench/qwen3-4b-saferl/metrics.csv \
-#     --print-table \
-#     | tee $BASE/jailbreakbench/qwen3-4b-saferl/summary.txt
+# --- TRAINING STAGE STUDY — Tulu3 8B: Base → SFT → DPO → RLVR ---
+# Paper: Table 1, Figure 1 left
 
-# python run_evaluation.py \
-#     --experiment configs/experiments/JB_tulu2_7b_base.yaml \
-#     --results-dir $BASE/jailbreakbench/tulu2-7b-base \
-#     --format csv \
-#     --output $OUTPUT/jailbreakbench/tulu2-7b-base/metrics.csv \
-#     --print-table \
-#     | tee $BASE/jailbreakbench/tulu2-7b-base/summary.txt
-
-# python run_evaluation.py \
-#     --experiment configs/experiments/JB_tulu2_7b_sft.yaml \
-#     --results-dir $BASE/jailbreakbench/tulu2-7b-sft \
-#     --format csv \
-#     --output $OUTPUT/jailbreakbench/tulu2-7b-sft/metrics.csv \
-#     --print-table \
-#     | tee $BASE/jailbreakbench/tulu2-7b-sft/summary.txt
-
-# python run_evaluation.py \
-#     --experiment configs/experiments/JB_tulu2_7b_dpo.yaml \
-#     --results-dir $BASE/jailbreakbench/tulu2-7b-dpo \
-#     --format csv \
-#     --output $OUTPUT/jailbreakbench/tulu2-7b-dpo/metrics.csv \
-#     --print-table \
-#     | tee $BASE/jailbreakbench/tulu2-7b-dpo/summary.txt
-
-# python run_evaluation.py \
-#     --experiment configs/experiments/JB_tulu3_8b_base.yaml \
+# $EVAL \
 #     --results-dir $BASE/jailbreakbench/tulu3-8b-base \
-#     --format csv \
 #     --output $OUTPUT/jailbreakbench/tulu3-8b-base/metrics.csv \
-#     --print-table \
 #     | tee $BASE/jailbreakbench/tulu3-8b-base/summary.txt
 
-# python run_evaluation.py \
-#     --experiment configs/experiments/JB_tulu3_8b_sft.yaml \
+# $EVAL \
 #     --results-dir $BASE/jailbreakbench/tulu3-8b-sft \
-#     --format csv \
 #     --output $OUTPUT/jailbreakbench/tulu3-8b-sft/metrics.csv \
-#     --print-table \
 #     | tee $BASE/jailbreakbench/tulu3-8b-sft/summary.txt
 
-# python run_evaluation.py \
-#     --experiment configs/experiments/JB_tulu3_8b_dpo.yaml \
+# $EVAL \
 #     --results-dir $BASE/jailbreakbench/tulu3-8b-dpo \
-#     --format csv \
 #     --output $OUTPUT/jailbreakbench/tulu3-8b-dpo/metrics.csv \
-#     --print-table \
 #     | tee $BASE/jailbreakbench/tulu3-8b-dpo/summary.txt
 
-# python run_evaluation.py \
-#     --experiment configs/experiments/JB_tulu3_8b_rlvr.yaml \
+# $EVAL \
 #     --results-dir $BASE/jailbreakbench/tulu3-8b-rlvr \
-#     --format csv \
 #     --output $OUTPUT/jailbreakbench/tulu3-8b-rlvr/metrics.csv \
-#     --print-table \
 #     | tee $BASE/jailbreakbench/tulu3-8b-rlvr/summary.txt
 
-python run_evaluation.py \
-    --experiment configs/experiments/JB_qwen3_8b.yaml \
-    --results-dir $BASE/jailbreakbench/qwen3-8b \
-    --format csv \
-    --output $OUTPUT/jailbreakbench/qwen3-8b/metrics.csv \
-    --print-table \
-    | tee $BASE/jailbreakbench/qwen3-8b/summary.txt
+# --- SAFETY ALIGNMENT STUDY — Qwen3-4B base vs Qwen3-4B-SafeRL ---
 
+$EVAL \
+    --results-dir $BASE/jailbreakbench/qwen3-4b \
+    --output $OUTPUT/jailbreakbench/qwen3-4b/metrics.csv \
+    | tee $BASE/jailbreakbench/qwen3-4b/summary.txt
+
+# $EVAL \
+#     --results-dir $BASE/jailbreakbench/qwen3-4b-saferl \
+#     --output $OUTPUT/jailbreakbench/qwen3-4b-saferl/metrics.csv \
+#     | tee $BASE/jailbreakbench/qwen3-4b-saferl/summary.txt
