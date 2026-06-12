@@ -48,7 +48,7 @@ Phase 2a automatically writes both `metrics.csv` (overall) and `metrics_by_categ
 
 ---
 
-### Model Size Effect (§4, Figure 1 right)
+### Model Size Effect
 
 Qwen2.5-Instruct at 0.5B, 3B, and 7B on HarmBench and JailbreakBench.
 
@@ -77,7 +77,7 @@ python scripts/plot_results.py \
     --category-metrics-csv outputs/model_size/metrics_by_category.csv \
     --output-dir outputs/model_size/plots
 
-# Phase 3 — Plot risk-compute curves (x-axis = TFLOPs) — paper Figure 1 right
+# Phase 3 — Plot risk-compute curves (x-axis = TFLOPs)
 python scripts/plot_cost_curves.py \
     --cost-csv outputs/model_size/cost_metrics.csv \
     --output-dir outputs/model_size/cost_plots \
@@ -86,7 +86,7 @@ python scripts/plot_cost_curves.py \
 
 ---
 
-### Training Stage Effect (§4, Table 1 + Figure 1 left)
+### Training Stage Effect
 
 Tulu3 8B across four training stages: Base → SFT → DPO → RLVR.
 
@@ -115,7 +115,7 @@ python scripts/plot_results.py \
     --category-metrics-csv outputs/training_stage/metrics_by_category.csv \
     --output-dir outputs/training_stage/plots
 
-# Phase 3 — Plot risk-compute curves — paper Figure 1 left
+# Phase 3 — Plot risk-compute curves
 python scripts/plot_cost_curves.py \
     --cost-csv outputs/training_stage/cost_metrics.csv \
     --output-dir outputs/training_stage/cost_plots \
@@ -124,7 +124,7 @@ python scripts/plot_cost_curves.py \
 
 ---
 
-### Safety Alignment Effect (§4, Table 1 — Qwen3 rows)
+### Safety Alignment Effect
 
 Qwen3-4B (no safety training) vs Qwen3-4B-SafeRL (safety RL fine-tuned).
 
@@ -161,7 +161,7 @@ python scripts/plot_cost_curves.py \
 
 ---
 
-### Attack Transfer (§4, Figure 2 left)
+### Attack Transfer
 
 GCG suffix optimised on Qwen2.5-0.5B (surrogate), then replayed against Qwen3-8B (target). Phase 1a can be skipped if the model size experiment has already been run (the source results are reused).
 
@@ -195,7 +195,7 @@ python scripts/compute_attack_costs.py \
     --results-dir outputs/attack_transfer \
     --metrics-csv outputs/attack_transfer/metrics.csv
 
-# Phase 3 — Plot — paper Figure 2 left
+# Phase 3 — Plot
 python scripts/plot_results.py \
     --metrics-csv outputs/attack_transfer/metrics.csv \
     --output-dir outputs/attack_transfer/plots
@@ -208,13 +208,13 @@ python scripts/plot_cost_curves.py \
 
 ---
 
-### Per-Category Analysis (§4, Figure 2 right)
+### Per-Category Analysis
 
 Per-category breakdown is produced automatically by `scripts/run_evaluation.py` (with `--format csv`) alongside the overall `metrics.csv`. Pass the category CSV to the plotting scripts with `--category-metrics-csv` as shown above to get one figure per harm category. No additional experiment runs are needed.
 
 ---
 
-### Summary Metrics (Table 1)
+### Summary Metrics
 
 To print a formatted summary table (C@τ, AE, CAURC) for any experiment after Phase 2:
 
