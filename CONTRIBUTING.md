@@ -72,6 +72,8 @@ def load_attack(cfg: AttackConfig) -> AttackPolicy:
         return MyAttack(cfg)
 ```
 
+4. **Add the FLOPs formula** in `src/rup/metrics/cost_mapper.py`, inside `step_cost()`. The cost metrics (C@τ, AE, CAURC) depend on accurate per-step TFLOPs accounting. Add a branch for your attack alongside the existing `gcg` and `pair` cases. The base formula for a single forward pass is `2 × N_B × L / 1000` TFLOPs, where `N_B` is model size in billions and `L` is sequence length in tokens. Judge cost (`judge_tfl`) is already computed for all attacks — only add extra terms your attack introduces beyond target + judge. If your attack reuses a helper model (e.g. an attacker LLM like PAIR's), add its forward pass cost analogously to the `pair` branch. Also update the docstring table in `README.md` under **Supported Attacks**.
+
 ---
 
 ## Adding a New Benchmark

@@ -281,7 +281,7 @@ class MyAttack(AttackPolicy):
 
 3. Register in `src/rup/attacks/factory.py`.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for full details.
+4. Add the FLOPs formula in `src/rup/metrics/cost_mapper.py` inside `step_cost()` — the cost metrics depend on accurate per-step TFLOPs accounting. See [CONTRIBUTING.md](CONTRIBUTING.md) for full details.
 
 ### Adding a New Benchmark
 
