@@ -31,7 +31,7 @@ git clone https://github.com/Malikeh97/risk-under-pressure && cd risk-under-pres
 uv venv && source .venv/bin/activate
 uv pip install -e .
 
-# Copy and fill in API keys
+# Copy and fill in your HuggingFace token
 cp .env.example .env
 
 # Phase 1 — Run attacks
@@ -154,8 +154,6 @@ models:
   - "my_llama_3b"
 ```
 
-For **API models** (OpenAI, Anthropic, Google), set `backend` to `"openai"`, `"anthropic"`, or `"google"` and use `hf_name` for the API model name. `params_b` can be omitted (FLOP computation is skipped for API models).
-
 ### Adding a New Attack
 
 1. Create `configs/attacks/my_attack.yaml`:
@@ -193,17 +191,17 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for full details.
 
 ## Supported Models
 
-| Family | Config | HuggingFace name | Size | Backend |
-|---|---|---|---|---|
-| **Qwen2.5 Instruct** | `qwen2.5_0.5b` | Qwen/Qwen2.5-0.5B-Instruct | 0.5B | HuggingFace |
-| | `qwen2.5_3b` | Qwen/Qwen2.5-3B-Instruct | 3B | HuggingFace |
-| | `qwen2.5_7b` | Qwen/Qwen2.5-7B-Instruct | 7B | HuggingFace |
-| **Qwen3** | `qwen3_4b_saferl` | Qwen/Qwen3-4B-SafeRL | 4B | HuggingFace |
-| | `qwen3_8b` | Qwen/Qwen3-8B | 8B | HuggingFace |
-| **Tulu3** | `tulu3_8b_base` | meta-llama/Llama-3.1-8B | 8B | HuggingFace |
-| | `tulu3_8b_sft` | allenai/Llama-3.1-Tulu-3-8B-SFT | 8B | HuggingFace |
-| | `tulu3_8b_dpo` | allenai/Llama-3.1-Tulu-3-8B-DPO | 8B | HuggingFace |
-| | `tulu3_8b_rlvr` | allenai/Llama-3.1-Tulu-3-8B | 8B | HuggingFace |
+| Family | Config | HuggingFace name | Size |
+|---|---|---|---|
+| **Qwen2.5 Instruct** | `qwen2.5_0.5b` | Qwen/Qwen2.5-0.5B-Instruct | 0.5B |
+| | `qwen2.5_3b` | Qwen/Qwen2.5-3B-Instruct | 3B |
+| | `qwen2.5_7b` | Qwen/Qwen2.5-7B-Instruct | 7B |
+| **Qwen3** | `qwen3_4b_saferl` | Qwen/Qwen3-4B-SafeRL | 4B |
+| | `qwen3_8b` | Qwen/Qwen3-8B | 8B |
+| **Tulu3** | `tulu3_8b_base` | meta-llama/Llama-3.1-8B | 8B |
+| | `tulu3_8b_sft` | allenai/Llama-3.1-Tulu-3-8B-SFT | 8B |
+| | `tulu3_8b_dpo` | allenai/Llama-3.1-Tulu-3-8B-DPO | 8B |
+| | `tulu3_8b_rlvr` | allenai/Llama-3.1-Tulu-3-8B | 8B |
 
 **GPU memory guide:** 0.5–1B with `quantization: none` (~2 GB); 3B with `4bit` (~4 GB); 7–8B with `4bit` (~6–8 GB).
 
@@ -250,10 +248,7 @@ Where N = target params (B), N_A = attacker params, N_J = judge params, L = sequ
 ```bash
 cp .env.example .env
 # Fill in:
-# OPENAI_API_KEY    — for PAIR with GPT-4o-mini attacker or API target models
-# ANTHROPIC_API_KEY — for Claude target models
-# GOOGLE_API_KEY    — for Gemini target models
-# HF_TOKEN          — for gated HuggingFace models (Llama, Tulu)
+# HF_TOKEN — for gated HuggingFace models (Llama, Tulu)
 ```
 
 ### Killarney Cluster (SLURM)
@@ -316,7 +311,14 @@ from rup.metrics import compute_all_metrics
 from rup.utils.io import read_jsonl
 from pathlib import Path
 
-model_cfg = ModelConfig(model_id="gpt-4o-mini", backend="openai", hf_name="gpt-4o-mini")
+model_cfg = ModelConfig(
+    model_id="qwen2.5-7b-instruct",
+    backend="huggingface",
+    hf_name="Qwen/Qwen2.5-7B-Instruct",
+    params_b=7.62,
+    model_type="instruct",
+    quantization="4bit",
+)
 target_model = load_model(model_cfg)
 judge = get_judge("llm", model=load_model(model_cfg))
 
