@@ -313,7 +313,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for full details.
 
 | Attack | Type | Per-step compute | Notes |
 |---|---|---|---|
-| **GCG** | White-box, gradient | `(β_bwd + 128) × 2N × L_opt + 2N × L_gen` TFLOPs | Requires local HuggingFace model |
+| **GCG** | White-box, gradient | `(β_bwd + 128) × 2N × L_opt + 2N × L_gen + 2N_J × L_J` TFLOPs | Requires local HuggingFace model |
 | **PAIR** | Black-box, LLM | `2N_T × L_gen + 2N_A × L_att + 2N_J × L_J` TFLOPs | Attacker: Qwen2.5-7B-Instruct |
 | **JailBroken** | Black-box, template | `2N × L_gen + 2N_J × L_J` TFLOPs | 8 obfuscation templates; no setup |
 | **TransferAttack** | Black-box, replay | same as JailBroken | Replays GCG trajectories from a surrogate |
