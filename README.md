@@ -7,7 +7,7 @@
 
 **Compute-Aware Evaluation of Adversarial Robustness in Language Models**
 
-[![Paper](https://img.shields.io/badge/paper-preprint-blue)](TODO)
+[![Paper](https://img.shields.io/badge/paper-preprint-blue)](https://arxiv.org/pdf/2606.11409)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 Most jailbreak benchmarks report attack success rate (ASR) at a fixed query budget — which implicitly treats a cheap template jailbreak and an expensive gradient-based GCG attack as equivalent. They're not: compute costs across attack strategies vary by orders of magnitude, so a high ASR can mean "trivially broken" or "extremely expensive to break," and you can't tell which from ASR alone.
@@ -125,81 +125,6 @@ python plot_results.py \
 
 ---
 
-## Reproducing Paper Results
-
-Each study below maps to one paper experiment config. Run Phase 1 → 2 → 3 for each.
-
-### Training Stage Study (Table 1, Figure 1 left)
-
-Tulu3 8B family: Base → SFT → DPO → RLVR on HarmBench.
-
-```bash
-python scripts/run_inference.py \
-    --experiment configs/experiments/paper/training_stage.yaml \
-    --output-dir outputs/paper/training_stage
-
-python scripts/compute_attack_costs.py \
-    --results-dir outputs/paper/training_stage \
-    --metrics-csv outputs/paper/training_stage/metrics.csv
-
-python plot_cost_curves.py \
-    --cost-csv outputs/paper/training_stage/cost_metrics.csv \
-    --output-dir outputs/paper/training_stage/plots
-```
-
-### Model Size Study (Figure 1 right)
-
-Qwen2.5-Instruct at 0.5B, 3B, 7B on HarmBench.
-
-```bash
-python scripts/run_inference.py \
-    --experiment configs/experiments/paper/model_size.yaml \
-    --output-dir outputs/paper/model_size
-```
-
-### Attack Transfer Study (Figure 2 left)
-
-GCG suffix optimized on Qwen2.5-0.5B, replayed against Qwen3-8B (treated as closed target).
-
-```bash
-# Step 1: Run GCG on surrogate (Qwen2.5-0.5B) if not already done
-python scripts/run_inference.py \
-    --experiment configs/experiments/HB_qwen2.5_0.5b.yaml \
-    --attack gcg --output-dir outputs/paper/surrogate
-
-# Step 2: Transfer to target (Qwen3-8B)
-python scripts/run_transfer_inference.py \
-    --experiment configs/experiments/paper/attack_transfer.yaml \
-    --source-results-dir outputs/paper/surrogate \
-    --source-model qwen2.5-0.5b-instruct \
-    --source-attack gcg \
-    --target-models qwen3_8b \
-    --output-dir outputs/paper/transfer
-```
-
-### Safety Alignment Study (Table 1, Qwen3 rows)
-
-Qwen3-4B-SafeRL vs Qwen2.5-7B on HarmBench.
-
-```bash
-python scripts/run_inference.py \
-    --experiment configs/experiments/paper/safety_alignment.yaml \
-    --output-dir outputs/paper/safety_alignment
-```
-
-### Category Analysis (Table 2, Figure 2 right)
-
-Add `--category-metrics-csv` to any plot command to get per-category breakdowns. The `metrics_by_category.csv` file is produced automatically by `run_evaluation.py`.
-
-```bash
-python plot_results.py \
-    --metrics-csv outputs/paper/training_stage/metrics.csv \
-    --category-metrics-csv outputs/paper/training_stage/metrics_by_category.csv \
-    --output-dir outputs/paper/training_stage/plots
-```
-
----
-
 ## Extending the Framework
 
 ### Adding a New Model (YAML only)
@@ -275,18 +200,10 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for full details.
 | | `qwen2.5_7b` | Qwen/Qwen2.5-7B-Instruct | 7B | HuggingFace |
 | **Qwen3** | `qwen3_4b_saferl` | Qwen/Qwen3-4B-SafeRL | 4B | HuggingFace |
 | | `qwen3_8b` | Qwen/Qwen3-8B | 8B | HuggingFace |
-| **Qwen3.5** | `qwen3_4b` | Qwen/Qwen3.5-4B | 4B | HuggingFace |
 | **Tulu3** | `tulu3_8b_base` | meta-llama/Llama-3.1-8B | 8B | HuggingFace |
 | | `tulu3_8b_sft` | allenai/Llama-3.1-Tulu-3-8B-SFT | 8B | HuggingFace |
 | | `tulu3_8b_dpo` | allenai/Llama-3.1-Tulu-3-8B-DPO | 8B | HuggingFace |
 | | `tulu3_8b_rlvr` | allenai/Llama-3.1-Tulu-3-8B | 8B | HuggingFace |
-| **Tulu2** | `tulu2_7b_base` | meta-llama/Llama-2-7b-hf | 7B | HuggingFace |
-| | `tulu2_7b_sft` | allenai/tulu-2-7b | 7B | HuggingFace |
-| | `tulu2_7b_dpo` | allenai/tulu-2-dpo-7b | 7B | HuggingFace |
-| **Gemma3** | `gemma3_4b_it` | google/gemma-3-4b-it | 4B | HuggingFace |
-| **API** | `gpt4o_mini` | gpt-4o-mini | — | OpenAI |
-| | `claude35_sonnet` | claude-3-5-sonnet-20241022 | — | Anthropic |
-| | `gemini_flash` | gemini-3-flash-preview | — | Google |
 
 **GPU memory guide:** 0.5–1B with `quantization: none` (~2 GB); 3B with `4bit` (~4 GB); 7–8B with `4bit` (~6–8 GB).
 
@@ -430,10 +347,14 @@ print(f"AURC: {metrics['aurc']:.4f}  ΔR: {metrics['delta_r']:.4f}  λ*: {metric
 
 ```bibtex
 @article{ehghaghi2026riskpressure,
-  title   = {Risk Under Pressure: Compute-Aware Evaluation of Adversarial Robustness in Language Models},
-  author  = {Ehghaghi, Malikeh and Ecsedi, Boglarka and Chechik, Marsha and Raffel, Colin},
-  journal = {Preprint},
-  year    = {2026},
+  title         = {Risk Under Pressure: Compute-Aware Evaluation of Adversarial Robustness in Language Models},
+  author        = {Ehghaghi, Malikeh and Ecsedi, Boglarka and Chechik, Marsha and Raffel, Colin},
+  journal       = {arXiv preprint arXiv:2606.11409},
+  year          = {2026},
+  eprint        = {2606.11409},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.LG},
+  url           = {https://arxiv.org/abs/2606.11409},
 }
 ```
 

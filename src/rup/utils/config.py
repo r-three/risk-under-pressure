@@ -19,7 +19,7 @@ class GenerationConfig(BaseModel):
 
 class ModelConfig(BaseModel):
     model_id: str
-    backend: Literal["huggingface", "openai", "anthropic", "google"]
+    backend: Literal["huggingface"]
     hf_name: Optional[str] = None           # HuggingFace model name/path
     hf_tokenizer_id: Optional[str] = None   # override tokenizer if it differs from hf_name
     params_b: Optional[float] = None        # parameter count in billions (for FLOP calculation)
