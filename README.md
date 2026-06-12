@@ -20,108 +20,210 @@ Most jailbreak benchmarks report attack success rate (ASR) at a fixed query budg
 
 ---
 
-## Quick Start
+## Setup
 
 ```bash
-# Install (requires Python 3.10+)
-python -m venv .venv && source .venv/bin/activate
-pip install risk-under-pressure
-# or from source:
 git clone https://github.com/Malikeh97/risk-under-pressure && cd risk-under-pressure
 uv venv && source .venv/bin/activate
 uv pip install -e .
 
 # Copy and fill in your HuggingFace token
 cp .env.example .env
-
-# Phase 1 — Run attacks
-python scripts/run_inference.py \
-    --experiment configs/experiments/paper/model_size.yaml \
-    --output-dir outputs/model_size
-
-# Phase 2 — Compute FLOP costs (no GPU needed)
-python scripts/compute_attack_costs.py \
-    --results-dir outputs/model_size \
-    --metrics-csv outputs/model_size/metrics.csv
-
-# Phase 3 — Plot risk-compute curves
-python plot_cost_curves.py \
-    --cost-csv outputs/model_size/cost_metrics.csv \
-    --output-dir outputs/model_size/plots
 ```
 
 ---
 
-## The Pipeline
+## Replicating Paper Experiments
 
-### Phase 1 — Run Attacks
+Each experiment follows the same three phases:
 
-Runs Algorithm 1 (Budgeted Iterative Refinement) across all `(model, attack, prompt, seed)` combinations and writes crash-resilient JSONL output. Runs with `--resume` to continue interrupted jobs.
+| Phase | Script | GPU? |
+|---|---|---|
+| **1 — Run attacks** | `scripts/run_inference.py` | Yes |
+| **2a — Compute risk metrics** | `run_evaluation.py` | No |
+| **2b — Compute FLOP costs** | `scripts/compute_attack_costs.py` | No |
+| **3 — Plot** | `plot_results.py`, `plot_cost_curves.py` | No |
+
+Phase 2a automatically writes both `metrics.csv` (overall) and `metrics_by_category.csv` (per harm category) when run with `--format csv`.
+
+---
+
+### Model Size Effect (§4, Figure 1 right)
+
+Qwen2.5-Instruct at 0.5B, 3B, and 7B on HarmBench and JailbreakBench.
 
 ```bash
+# Phase 1 — Run attacks (GPU required)
+python scripts/run_inference.py \
+    --experiment configs/experiments/paper/model_size.yaml \
+    --output-dir outputs/model_size
+
+# Phase 2a — Compute risk metrics
+python run_evaluation.py \
+    --results-dir outputs/model_size \
+    --experiment configs/experiments/paper/model_size.yaml \
+    --format csv \
+    --output outputs/model_size/metrics.csv
+
+# Phase 2b — Compute FLOP costs
+python scripts/compute_attack_costs.py \
+    --results-dir outputs/model_size \
+    --metrics-csv outputs/model_size/metrics.csv
+# → outputs/model_size/cost_metrics.csv
+
+# Phase 3 — Plot risk-pressure curves (x-axis = λ)
+python plot_results.py \
+    --metrics-csv outputs/model_size/metrics.csv \
+    --category-metrics-csv outputs/model_size/metrics_by_category.csv \
+    --output-dir outputs/model_size/plots
+
+# Phase 3 — Plot risk-compute curves (x-axis = TFLOPs) — paper Figure 1 right
+python plot_cost_curves.py \
+    --cost-csv outputs/model_size/cost_metrics.csv \
+    --output-dir outputs/model_size/cost_plots \
+    --x-axis tflops
+```
+
+---
+
+### Training Stage Effect (§4, Table 1 + Figure 1 left)
+
+Tulu3 8B across four training stages: Base → SFT → DPO → RLVR.
+
+```bash
+# Phase 1 — Run attacks (GPU required)
 python scripts/run_inference.py \
     --experiment configs/experiments/paper/training_stage.yaml \
     --output-dir outputs/training_stage
-```
 
-**Key experiment YAML fields:**
+# Phase 2a — Compute risk metrics
+python run_evaluation.py \
+    --results-dir outputs/training_stage \
+    --experiment configs/experiments/paper/training_stage.yaml \
+    --format csv \
+    --output outputs/training_stage/metrics.csv
 
-| Field | Description |
-|---|---|
-| `benchmark` | `"harmbench"` or `"jailbreakbench"` |
-| `n_prompts` | Number of behaviors to evaluate (HarmBench: 200, JBB: 100) |
-| `pressure_levels` | λ values, e.g. `[0, 1, 2, 4, 6, 8, 10]` |
-| `models` | List of model config names (from `configs/models/`) |
-| `attacks` | List of attack config names (from `configs/attacks/`) |
-| `seeds` | List of random seeds (10 seeds used in the paper) |
-
-Output: `outputs/<name>/<model>_seed<N>/<attack>/results.jsonl` — one JSON line per prompt.
-
-### Phase 2 — Compute FLOP Costs
-
-Derives exact token counts (using each model's HuggingFace tokenizer) and TFLOPs (`2 × N_B × L / 1000`) from stored trial records. No model calls — runs on CPU in minutes.
-
-```bash
+# Phase 2b — Compute FLOP costs
 python scripts/compute_attack_costs.py \
     --results-dir outputs/training_stage \
-    --metrics-csv outputs/training_stage/metrics.csv \
-    --judge-model llama3.1_8b_instruct
-```
+    --metrics-csv outputs/training_stage/metrics.csv
+# → outputs/training_stage/cost_metrics.csv
 
-Output adds these columns to `metrics.csv` → `cost_metrics.csv`:
-
-| Column | Meaning |
-|---|---|
-| `mean_total_tflops` | Avg cumulative TFLOPs per prompt at this λ |
-| `mean_total_tokens` | Avg cumulative tokens (target + judge + attacker) |
-| `mean_target_tflops` | Target model only |
-| `mean_judge_tflops` | Safety judge only |
-
-### Phase 3 — Generate Plots
-
-Two plotting scripts, each reads the CSV output from Phase 2:
-
-```bash
-# Risk-compute curves (x-axis = TFLOPs) — main paper figures
-python plot_cost_curves.py \
-    --cost-csv outputs/training_stage/cost_metrics.csv \
-    --output-dir outputs/training_stage/plots \
-    --x-axis tflops
-
-# Risk-pressure curves (x-axis = λ steps)
+# Phase 3 — Plot risk-pressure curves
 python plot_results.py \
     --metrics-csv outputs/training_stage/metrics.csv \
-    --output-dir outputs/training_stage/plots \
-    --ci-method seeds          # "bootstrap" (default) or "seeds"
+    --category-metrics-csv outputs/training_stage/metrics_by_category.csv \
+    --output-dir outputs/training_stage/plots
+
+# Phase 3 — Plot risk-compute curves — paper Figure 1 left
+python plot_cost_curves.py \
+    --cost-csv outputs/training_stage/cost_metrics.csv \
+    --output-dir outputs/training_stage/cost_plots \
+    --x-axis tflops
 ```
 
-**Key flags:**
+---
 
-| Flag | Options | Default |
-|---|---|---|
-| `--x-axis` | `lambda`, `tokens`, `tflops` | `tflops` |
-| `--ci-method` | `bootstrap`, `seeds` | `bootstrap` |
-| `--format` | `png`, `pdf`, `svg` | `png` |
+### Safety Alignment Effect (§4, Table 1 — Qwen3 rows)
+
+Qwen3-4B (no safety training) vs Qwen3-4B-SafeRL (safety RL fine-tuned).
+
+```bash
+# Phase 1 — Run attacks (GPU required)
+python scripts/run_inference.py \
+    --experiment configs/experiments/paper/safety_alignment.yaml \
+    --output-dir outputs/safety_alignment
+
+# Phase 2a — Compute risk metrics
+python run_evaluation.py \
+    --results-dir outputs/safety_alignment \
+    --experiment configs/experiments/paper/safety_alignment.yaml \
+    --format csv \
+    --output outputs/safety_alignment/metrics.csv
+
+# Phase 2b — Compute FLOP costs
+python scripts/compute_attack_costs.py \
+    --results-dir outputs/safety_alignment \
+    --metrics-csv outputs/safety_alignment/metrics.csv
+# → outputs/safety_alignment/cost_metrics.csv
+
+# Phase 3 — Plot
+python plot_results.py \
+    --metrics-csv outputs/safety_alignment/metrics.csv \
+    --category-metrics-csv outputs/safety_alignment/metrics_by_category.csv \
+    --output-dir outputs/safety_alignment/plots
+
+python plot_cost_curves.py \
+    --cost-csv outputs/safety_alignment/cost_metrics.csv \
+    --output-dir outputs/safety_alignment/cost_plots \
+    --x-axis tflops
+```
+
+---
+
+### Attack Transfer (§4, Figure 2 left)
+
+GCG suffix optimised on Qwen2.5-0.5B (surrogate), then replayed against Qwen3-8B (target). Phase 1a can be skipped if the model size experiment has already been run (the source results are reused).
+
+```bash
+# Phase 1a — Run GCG on the source model (skip if already done via model_size)
+python scripts/run_inference.py \
+    --experiment configs/experiments/paper/model_size.yaml \
+    --model qwen2.5_0.5b \
+    --attack gcg \
+    --output-dir outputs/model_size
+
+# Phase 1b — Replay GCG trajectories on the target model
+python scripts/run_transfer_inference.py \
+    --experiment configs/experiments/paper/attack_transfer.yaml \
+    --source-results-dir outputs/model_size \
+    --source-model qwen2.5-0.5b-instruct \
+    --source-attack gcg \
+    --target-models qwen3_8b \
+    --output-dir outputs/attack_transfer \
+    --resume
+
+# Phase 2a — Compute risk metrics
+python run_evaluation.py \
+    --results-dir outputs/attack_transfer \
+    --experiment configs/experiments/paper/attack_transfer.yaml \
+    --format csv \
+    --output outputs/attack_transfer/metrics.csv
+
+# Phase 2b — Compute FLOP costs
+python scripts/compute_attack_costs.py \
+    --results-dir outputs/attack_transfer \
+    --metrics-csv outputs/attack_transfer/metrics.csv
+
+# Phase 3 — Plot — paper Figure 2 left
+python plot_results.py \
+    --metrics-csv outputs/attack_transfer/metrics.csv \
+    --output-dir outputs/attack_transfer/plots
+
+python plot_cost_curves.py \
+    --cost-csv outputs/attack_transfer/cost_metrics.csv \
+    --output-dir outputs/attack_transfer/cost_plots \
+    --x-axis tflops
+```
+
+---
+
+### Per-Category Analysis (§4, Figure 2 right)
+
+Per-category breakdown is produced automatically by `run_evaluation.py` (with `--format csv`) alongside the overall `metrics.csv`. Pass the category CSV to the plotting scripts with `--category-metrics-csv` as shown above to get one figure per harm category. No additional experiment runs are needed.
+
+---
+
+### Summary Metrics (Table 1)
+
+To print a formatted summary table (C@τ, AE, CAURC) for any experiment after Phase 2:
+
+```bash
+python run_evaluation.py \
+    --results-dir outputs/<exp> \
+    --experiment configs/experiments/paper/<exp>.yaml \
+    --print-table
+```
 
 ---
 
