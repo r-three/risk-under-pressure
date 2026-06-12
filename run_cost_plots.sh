@@ -20,7 +20,7 @@ source setup/start_env.sh
 
 OUTPUT=$SCRATCH/rup/plots
 
-COST_PLOT="python plot_cost_curves.py"
+COST_PLOT="python scripts/plot_cost_curves.py"
 
 # =============================================================================
 # Per-model plots (seed-aggregated CI)

@@ -14,7 +14,7 @@ source setup/start_env.sh
 BASE=$SCRATCH/rup
 OUTPUT=$SCRATCH/rup/plots
 
-EVAL="python run_evaluation.py --experiment configs/experiments/base.yaml --format csv --print-table"
+EVAL="python scripts/run_evaluation.py --experiment configs/experiments/base.yaml --format csv --print-table"
 
 # =============================================================================
 # HarmBench

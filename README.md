@@ -40,9 +40,9 @@ Each experiment follows the same three phases:
 | Phase | Script | GPU? |
 |---|---|---|
 | **1 — Run attacks** | `scripts/run_inference.py` | Yes |
-| **2a — Compute risk metrics** | `run_evaluation.py` | No |
+| **2a — Compute risk metrics** | `scripts/run_evaluation.py` | No |
 | **2b — Compute FLOP costs** | `scripts/compute_attack_costs.py` | No |
-| **3 — Plot** | `plot_results.py`, `plot_cost_curves.py` | No |
+| **3 — Plot** | `scripts/plot_results.py`, `scripts/plot_cost_curves.py` | No |
 
 Phase 2a automatically writes both `metrics.csv` (overall) and `metrics_by_category.csv` (per harm category) when run with `--format csv`.
 
@@ -59,7 +59,7 @@ python scripts/run_inference.py \
     --output-dir outputs/model_size
 
 # Phase 2a — Compute risk metrics
-python run_evaluation.py \
+python scripts/run_evaluation.py \
     --results-dir outputs/model_size \
     --experiment configs/experiments/paper/model_size.yaml \
     --format csv \
@@ -72,13 +72,13 @@ python scripts/compute_attack_costs.py \
 # → outputs/model_size/cost_metrics.csv
 
 # Phase 3 — Plot risk-pressure curves (x-axis = λ)
-python plot_results.py \
+python scripts/plot_results.py \
     --metrics-csv outputs/model_size/metrics.csv \
     --category-metrics-csv outputs/model_size/metrics_by_category.csv \
     --output-dir outputs/model_size/plots
 
 # Phase 3 — Plot risk-compute curves (x-axis = TFLOPs) — paper Figure 1 right
-python plot_cost_curves.py \
+python scripts/plot_cost_curves.py \
     --cost-csv outputs/model_size/cost_metrics.csv \
     --output-dir outputs/model_size/cost_plots \
     --x-axis tflops
@@ -97,7 +97,7 @@ python scripts/run_inference.py \
     --output-dir outputs/training_stage
 
 # Phase 2a — Compute risk metrics
-python run_evaluation.py \
+python scripts/run_evaluation.py \
     --results-dir outputs/training_stage \
     --experiment configs/experiments/paper/training_stage.yaml \
     --format csv \
@@ -110,13 +110,13 @@ python scripts/compute_attack_costs.py \
 # → outputs/training_stage/cost_metrics.csv
 
 # Phase 3 — Plot risk-pressure curves
-python plot_results.py \
+python scripts/plot_results.py \
     --metrics-csv outputs/training_stage/metrics.csv \
     --category-metrics-csv outputs/training_stage/metrics_by_category.csv \
     --output-dir outputs/training_stage/plots
 
 # Phase 3 — Plot risk-compute curves — paper Figure 1 left
-python plot_cost_curves.py \
+python scripts/plot_cost_curves.py \
     --cost-csv outputs/training_stage/cost_metrics.csv \
     --output-dir outputs/training_stage/cost_plots \
     --x-axis tflops
@@ -135,7 +135,7 @@ python scripts/run_inference.py \
     --output-dir outputs/safety_alignment
 
 # Phase 2a — Compute risk metrics
-python run_evaluation.py \
+python scripts/run_evaluation.py \
     --results-dir outputs/safety_alignment \
     --experiment configs/experiments/paper/safety_alignment.yaml \
     --format csv \
@@ -148,12 +148,12 @@ python scripts/compute_attack_costs.py \
 # → outputs/safety_alignment/cost_metrics.csv
 
 # Phase 3 — Plot
-python plot_results.py \
+python scripts/plot_results.py \
     --metrics-csv outputs/safety_alignment/metrics.csv \
     --category-metrics-csv outputs/safety_alignment/metrics_by_category.csv \
     --output-dir outputs/safety_alignment/plots
 
-python plot_cost_curves.py \
+python scripts/plot_cost_curves.py \
     --cost-csv outputs/safety_alignment/cost_metrics.csv \
     --output-dir outputs/safety_alignment/cost_plots \
     --x-axis tflops
@@ -184,7 +184,7 @@ python scripts/run_transfer_inference.py \
     --resume
 
 # Phase 2a — Compute risk metrics
-python run_evaluation.py \
+python scripts/run_evaluation.py \
     --results-dir outputs/attack_transfer \
     --experiment configs/experiments/paper/attack_transfer.yaml \
     --format csv \
@@ -196,11 +196,11 @@ python scripts/compute_attack_costs.py \
     --metrics-csv outputs/attack_transfer/metrics.csv
 
 # Phase 3 — Plot — paper Figure 2 left
-python plot_results.py \
+python scripts/plot_results.py \
     --metrics-csv outputs/attack_transfer/metrics.csv \
     --output-dir outputs/attack_transfer/plots
 
-python plot_cost_curves.py \
+python scripts/plot_cost_curves.py \
     --cost-csv outputs/attack_transfer/cost_metrics.csv \
     --output-dir outputs/attack_transfer/cost_plots \
     --x-axis tflops
@@ -210,7 +210,7 @@ python plot_cost_curves.py \
 
 ### Per-Category Analysis (§4, Figure 2 right)
 
-Per-category breakdown is produced automatically by `run_evaluation.py` (with `--format csv`) alongside the overall `metrics.csv`. Pass the category CSV to the plotting scripts with `--category-metrics-csv` as shown above to get one figure per harm category. No additional experiment runs are needed.
+Per-category breakdown is produced automatically by `scripts/run_evaluation.py` (with `--format csv`) alongside the overall `metrics.csv`. Pass the category CSV to the plotting scripts with `--category-metrics-csv` as shown above to get one figure per harm category. No additional experiment runs are needed.
 
 ---
 
@@ -219,7 +219,7 @@ Per-category breakdown is produced automatically by `run_evaluation.py` (with `-
 To print a formatted summary table (C@τ, AE, CAURC) for any experiment after Phase 2:
 
 ```bash
-python run_evaluation.py \
+python scripts/run_evaluation.py \
     --results-dir outputs/<exp> \
     --experiment configs/experiments/paper/<exp>.yaml \
     --print-table
@@ -355,7 +355,7 @@ cp .env.example .env
 
 ### Killarney Cluster (SLURM)
 
-All bash scripts must be run from the project root on a `klogin*` login node. The `submit` helper in `setup/start_env.sh` wraps `sbatch` and automatically skips jobs that are already running or completed in the last 2 days.
+All bash scripts must be run from the project root on a `klogin*` login node. The `submit` helper in `setup/start_env.sh` wraps `sbatch` and automatically skips jobs that are already running or completed in the last 2 days. Inference results are written to `$SCRATCH/rup/`; evaluated metrics and plots go to `$SCRATCH/rup/plots/`.
 
 **1. Create the environment (once)**
 
@@ -369,12 +369,26 @@ Subsequent scripts activate the environment automatically via `source setup/star
 
 **2. Run attacks (Phase 1) — submits GPU jobs**
 
+`run_HB_experiments.sh` and `run_JB_experiments.sh` are each divided into labelled sections matching the paper experiments. Uncomment the section(s) you want to replicate, then run:
+
 ```bash
 bash run_HB_experiments.sh   # HarmBench
 bash run_JB_experiments.sh   # JailbreakBench
 ```
 
-Each call to `submit` dispatches one `sbatch` job. Edit the scripts to comment/uncomment model and seed batches as needed.
+| Paper experiment | Section label in the scripts |
+|---|---|
+| Model Size Effect (Fig. 1 right) | `MODEL SIZE STUDY` |
+| Training Stage Effect (Table 1, Fig. 1 left) | `TRAINING STAGE STUDY` |
+| Safety Alignment Effect (Table 1, Qwen3 rows) | `SAFETY ALIGNMENT STUDY` |
+
+Each seed is submitted as a separate `sbatch` job for fine-grained control.
+
+For the **Attack Transfer** experiment, first ensure the Qwen2.5-0.5B GCG blocks from the Model Size section are uncommented and run (that model is the GCG surrogate). Then uncomment the seed blocks in `run_transfer_experiments.sh` and run:
+
+```bash
+bash run_transfer_experiments.sh
+```
 
 **3. Compute metrics (Phase 2) — runs on login node, no GPU**
 
@@ -382,7 +396,7 @@ Each call to `submit` dispatches one `sbatch` job. Edit the scripts to comment/u
 bash run_evaluations.sh
 ```
 
-Produces `metrics.csv` and `metrics_by_category.csv` for every model directory.
+Produces `metrics.csv` and `metrics_by_category.csv` under `$SCRATCH/rup/plots/<model>/`. Uncomment the blocks corresponding to the experiments you ran in Phase 1.
 
 **4. Compute FLOP costs (Phase 2.5) — runs on login node, no GPU**
 
@@ -390,7 +404,7 @@ Produces `metrics.csv` and `metrics_by_category.csv` for every model directory.
 bash run_cost_evaluations.sh
 ```
 
-Derives exact token counts and TFLOPs from stored JSONL records. Augments `metrics.csv` → `cost_metrics.csv`.
+Derives exact token counts and TFLOPs from stored JSONL records. Augments `metrics.csv` → `cost_metrics.csv` in the same directory. Uncomment the blocks corresponding to the experiments you ran.
 
 **5. Generate plots (Phase 3) — runs on login node**
 
@@ -398,6 +412,8 @@ Derives exact token counts and TFLOPs from stored JSONL records. Augments `metri
 bash run_plots.sh        # risk-pressure curves (λ axis)
 bash run_cost_plots.sh   # risk-compute curves (tokens / TFLOPs axis)
 ```
+
+Each script has two parts: per-model plots at the top, and cross-model comparison/ablation plots at the bottom. Uncomment the blocks for the experiments and comparisons you want to generate.
 
 ---
 
