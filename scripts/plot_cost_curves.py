@@ -80,14 +80,15 @@ _CATEGORY_PALETTE = [
 ]
 
 ATTACK_MARKERS = {
-    "gcg": "o", "pair": "s", "jailbroken": "^", "jailbroken-v1": "D",
+    "gcg": "o", "pair": "s", "jailbroken": "^", "jailbroken-v1": "D", "rl": "P",
 }
 ATTACK_LINESTYLES = {
-    "gcg": "-", "pair": "--", "jailbroken": ":", "jailbroken-v1": "-.",
+    "gcg": "-", "pair": "--", "jailbroken": ":", "jailbroken-v1": "-.", "rl": (0, (3, 1, 1, 1)),
 }
 ATTACK_DISPLAY = {
     "gcg": "GCG", "pair": "PAIR",
     "jailbroken": "JailBroken", "jailbroken-v1": "JailBroken-v1",
+    "rl": "RL (GRPO)",
 }
 
 CATEGORY_DISPLAY = {

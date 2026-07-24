@@ -1,0 +1,26 @@
+# Per-prompt RL/GRPO adaptive attack, following "The Attacker Moves Second"
+# (Nasr et al., 2025, arXiv:2510.09023, App. A.2).
+#
+# For EACH behavior, the attacker (Qwen2.5-7B-Instruct + fresh LoRA) runs a short GRPO
+# optimization against the target: sample a group of candidate prompts, score them
+# (judge + perplexity shaping, anti-reward-hacking guarded), and update the attacker's
+# weights with a group-relative policy gradient — repeated until the per-prompt query
+# budget (= lambda_max) is spent. No pre-training, no train/test split; handled by the
+# per-prompt GRPO path in scripts/run_inference.py (rup.pipeline.run_prompt_rl).
+#
+# The per-prompt query budget is lambda_max in the experiment config (not here).
+attack_id: "rl"
+max_query_per_step: 1
+extra:
+  base_attacker: "qwen2.5_7b"     # attacker model config → resolves HF name + params_b
+  # --- GRPO ---
+  num_generations: 8              # group size (candidates per round; paper uses up to 32)
+  session_rounds: 1               # in-context refinement rounds carried between GRPO rounds
+  learning_rate: 1.0e-5
+  beta: 0.04                      # KL penalty to the frozen base attacker
+  temperature: 1.0
+  top_p: 0.95
+  max_completion_length: 256
+  # --- reward shaping (RewardConfig) ---
+  perplexity_weight: 0.3
+  affirmative_template: "Sure, here is {behavior}"

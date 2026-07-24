@@ -89,6 +89,23 @@ class HFModel(BaseModel):
 
         if quant_config is None:
             self._model = self._model.to(self._config.device)
+
+        # Optionally apply a PEFT/LoRA adapter (e.g. a GRPO-trained RL attacker).
+        # The adapter rides on top of the (possibly quantized) base model for cheap inference.
+        adapter_path = self._config.adapter_path
+        if adapter_path:
+            from pathlib import Path
+
+            if Path(adapter_path).exists():
+                from peft import PeftModel
+
+                logger.info(f"Applying PEFT adapter: {adapter_path}")
+                self._model = PeftModel.from_pretrained(self._model, adapter_path)
+            else:
+                logger.warning(
+                    f"adapter_path {adapter_path!r} does not exist; using base model without adapter."
+                )
+
         self._model.eval()
         logger.info(f"Loaded {self._config.hf_name}")
 
@@ -186,3 +203,41 @@ class HFModel(BaseModel):
                 output_ids = self._model.generate(**inputs, **generate_kwargs)
             new_tokens = output_ids[0][inputs["input_ids"].shape[1]:]
             return self._processor.decode(new_tokens, skip_special_tokens=True).strip()
+
+    def sequence_nll(self, context: str, continuation: str, max_length: int = 2048) -> float:
+        """Mean per-token negative log-likelihood (nats) of `continuation` given `context`.
+
+        Used as a dense reward-shaping signal for the RL attacker: a lower NLL of an
+        affirmative/harmful continuation means the adversarial `context` is more likely to
+        elicit it. Teacher-forced single forward pass; context tokens are masked out of the
+        loss. perplexity = exp(sequence_nll(...)).
+        """
+        import torch
+
+        if self._config.model_class != "causal_lm":
+            raise NotImplementedError("sequence_nll is only supported for causal_lm models.")
+
+        tok = self._processor
+        formatted_ctx = self._format_prompt(context)
+        ctx_ids = tok(formatted_ctx, return_tensors="pt", add_special_tokens=False).input_ids
+        cont_ids = tok(continuation, return_tensors="pt", add_special_tokens=False).input_ids
+
+        if cont_ids.shape[1] == 0:
+            return float("inf")
+
+        input_ids = torch.cat([ctx_ids, cont_ids], dim=1)
+        ctx_len = ctx_ids.shape[1]
+        # If too long, truncate the context from the left (keep the whole continuation).
+        if input_ids.shape[1] > max_length:
+            overflow = input_ids.shape[1] - max_length
+            keep_ctx = max(0, ctx_len - overflow)
+            input_ids = torch.cat([ctx_ids[:, ctx_len - keep_ctx:], cont_ids], dim=1)
+            ctx_len = keep_ctx
+
+        input_ids = input_ids.to(self._config.device)
+        labels = input_ids.clone()
+        labels[:, :ctx_len] = -100  # ignore context tokens in the loss
+
+        with torch.no_grad():
+            out = self._model(input_ids=input_ids, labels=labels)
+        return float(out.loss)

@@ -208,6 +208,63 @@ python scripts/plot_cost_curves.py \
 
 ---
 
+### RL-Based Adaptive Attack (GRPO)
+
+A **per-prompt** adaptive attacker following *["The Attacker Moves Second"](https://arxiv.org/abs/2510.09023)*
+(Nasr et al., 2025). For **each behavior**, Qwen2.5-7B-Instruct (+ a fresh LoRA) runs a short
+GRPO optimization against the target — sample a group of candidate prompts, score them
+(judge + perplexity shaping, guarded against reward hacking), and update the attacker's weights —
+until the per-prompt query budget (`--lambda-max`) is spent. There is **no separate training
+phase and no train/test split**: it runs like any other attack, straight through
+`run_inference.py --attack rl`.
+
+```bash
+# Phase 1 — Run the per-prompt RL attack (GPU required; 7B bf16 attacker + LoRA)
+#   COMPUTE: this is the most expensive attack — start on a subset with a modest budget.
+python scripts/run_inference.py \
+    --experiment configs/experiments/paper/model_size.yaml \
+    --attack rl --n-prompts 50 --lambda-max 16 \
+    --output-dir outputs/model_size
+
+# Phase 2a — Compute risk metrics
+python scripts/run_evaluation.py \
+    --results-dir outputs/model_size \
+    --experiment configs/experiments/paper/model_size.yaml \
+    --format csv --output outputs/model_size/metrics.csv
+
+# Phase 2b — Compute FLOP costs (RL's per-query cost includes the attacker weight-update term)
+python scripts/compute_attack_costs.py \
+    --results-dir outputs/model_size \
+    --metrics-csv outputs/model_size/metrics.csv
+
+# Phase 3 — Plot risk-compute curves (the `RL (GRPO)` series appears automatically)
+python scripts/plot_cost_curves.py \
+    --cost-csv outputs/model_size/cost_metrics.csv \
+    --output-dir outputs/model_size/cost_plots \
+    --x-axis tflops
+```
+
+The same recipe applies to the **Training Stage** ablation — point `--experiment` at
+`training_stage.yaml` (targets `tulu3_8b_base/sft/dpo/rlvr`).
+
+**Per-prompt GRPO knobs** live in `configs/attacks/rl.yaml` `extra`: `num_generations` (GRPO
+group size; paper uses up to 32), `session_rounds`, `beta` (KL penalty), `learning_rate`,
+`max_completion_length`, `perplexity_weight` (α on the reward-shaping term). The **per-prompt
+query budget** is `--lambda-max` (or `pressure_levels`/`lambda_max` in the experiment YAML).
+
+> **Compute:** per-prompt GRPO does a mini optimization *per behavior* (with backward passes),
+> so it is far more expensive than the other attacks. Start with `--n-prompts ~50` (the paper's
+> ~60-sample scale) and a modest `--lambda-max` / `num_generations`, and watch 48 GB VRAM
+> (7B bf16 attacker + LoRA optimizer + 4-bit target + 4-bit judge + KV caches).
+
+For a quick end-to-end check on a GPU node, submit the smoke test (2 prompts, budget 8):
+
+```bash
+mkdir -p logs && bash run_rl_smoke.sh    # submits one GPU job; prints "SMOKE TEST PASSED"
+```
+
+---
+
 ### Per-Category Analysis
 
 Per-category breakdown is produced automatically by `scripts/run_evaluation.py` (with `--format csv`) alongside the overall `metrics.csv`. Pass the category CSV to the plotting scripts with `--category-metrics-csv` as shown above to get one figure per harm category. No additional experiment runs are needed.
@@ -315,10 +372,13 @@ class MyAttack(AttackPolicy):
 |---|---|---|---|
 | **GCG** | White-box, gradient | `(β_bwd + 128) × 2N × L_opt + 2N × L_gen + 2N_J × L_J` TFLOPs | Requires local HuggingFace model |
 | **PAIR** | Black-box, LLM | `2N_T × L_gen + 2N_A × L_att + 2N_J × L_J` TFLOPs | Attacker: Qwen2.5-7B-Instruct |
+| **RL (GRPO)** | Black-box, adaptive | `6N_A × L_att + 2N_T × L_gen + 2N_J × L_J` TFLOPs per query | Per-prompt GRPO: attacker optimized on each behavior (weight updates → `6N` attacker term). No pre-training. |
 | **JailBroken** | Black-box, template | `2N × L_gen + 2N_J × L_J` TFLOPs | 8 obfuscation templates; no setup |
 | **TransferAttack** | Black-box, replay | same as JailBroken | Replays GCG trajectories from a surrogate |
 
-Where N = target params (B), N_A = attacker params, N_J = judge params, L = sequence length in tokens.
+Where N = target params (B), N_A = attacker params, N_J = judge params, L = sequence length in tokens. RL's attacker term uses `6N` (not `2N`) because each query also drives a weight update (≈ forward + backward).
+
+> **RL (GRPO) adaptive attack** — a **per-prompt** adaptive attacker following *["The Attacker Moves Second"](https://arxiv.org/abs/2510.09023)* (Nasr et al., 2025). For **each behavior**, Qwen2.5-7B-Instruct (+ a fresh LoRA) runs a short GRPO optimization against the target — sample a group of candidate prompts, score them (safety-judge success + perplexity shaping, guarded against reward hacking), and update the attacker's weights — until a per-prompt query budget (= λ) is spent. Each prompt starts from a reset adapter, so it is optimized on itself (worst-case adaptive, like GCG/PAIR — **no pre-training, no train/test split**). Cost is purely per-query. See [RL-Based Adaptive Attack](#rl-based-adaptive-attack-grpo) below to run it.
 
 ---
 
@@ -376,13 +436,37 @@ bash run_HB_experiments.sh   # HarmBench
 bash run_JB_experiments.sh   # JailbreakBench
 ```
 
-| Paper experiment | Section label in the scripts |
+| Paper experiment | Script / section label |
 |---|---|
-| Model Size Effect (Fig. 1 right) | `MODEL SIZE STUDY` |
-| Training Stage Effect (Table 1, Fig. 1 left) | `TRAINING STAGE STUDY` |
-| Safety Alignment Effect (Table 1, Qwen3 rows) | `SAFETY ALIGNMENT STUDY` |
+| Model Size Effect (Fig. 1 right) | `run_HB/JB_experiments.sh` → `MODEL SIZE STUDY` |
+| Training Stage Effect (Table 1, Fig. 1 left) | `run_HB/JB_experiments.sh` → `TRAINING STAGE STUDY` |
+| Safety Alignment Effect (Table 1, Qwen3 rows) | `run_HB/JB_experiments.sh` → `SAFETY ALIGNMENT STUDY` |
+| RL/GRPO Adaptive Attack (arXiv:2510.09023) | `run_rl_experiments.sh` |
 
 Each seed is submitted as a separate `sbatch` job for fine-grained control.
+
+For the **RL/GRPO Adaptive Attack**, use the dedicated `run_rl_experiments.sh`. There is no
+training phase — per-prompt GRPO runs inside `run_inference.py`, so RL is submitted just like any
+other attack (one `rup_{HB,JB}_rl_*` job per model×seed). It is the most expensive attack, so the
+jobs default to a behavior subset and a modest per-prompt budget (`--n-prompts 50 --lambda-max 16`):
+
+```bash
+bash run_rl_experiments.sh   # uncomment the model rows you want
+```
+
+To verify the whole RL pipeline end-to-end at tiny scale before committing GPU hours, run the
+self-contained smoke test (trains 2 GRPO steps on the 0.5B target, attacks 4 prompts, then
+evaluates and costs it, asserting the RL cost columns are populated):
+
+```bash
+bash run_rl_smoke.sh         # submits ONE GPU job; success prints "SMOKE TEST PASSED"
+```
+
+`run_rl_smoke.sh` submits the pipeline as a single GPU job via the `submit` helper (same as
+`run_HB_experiments.sh`), so it needs a `klogin*`/Alliance login node — the smoke test needs a
+GPU because `GRPOConfig(bf16=True)` errors on CPU. It writes everything under `$SCRATCH/rl_smoke`,
+and models/datasets cache to `$SCRATCH/huggingface`. Watch it with
+`tail -f logs/<jobid>_rup_rl_smoke.out`.
 
 For the **Attack Transfer** experiment, first ensure the Qwen2.5-0.5B GCG blocks from the Model Size section are uncommented and run (that model is the GCG surrogate). Then uncomment the seed blocks in `run_transfer_experiments.sh` and run:
 
@@ -404,7 +488,7 @@ Produces `metrics.csv` and `metrics_by_category.csv` under `$SCRATCH/rup/plots/<
 bash run_cost_evaluations.sh
 ```
 
-Derives exact token counts and TFLOPs from stored JSONL records. Augments `metrics.csv` → `cost_metrics.csv` in the same directory. Uncomment the blocks corresponding to the experiments you ran.
+Derives exact token counts and TFLOPs from stored JSONL records. Augments `metrics.csv` → `cost_metrics.csv` in the same directory. Uncomment the blocks corresponding to the experiments you ran. The RL attack needs no special handling here — its higher per-query cost (attacker weight-update term) is derived from the same JSONL records.
 
 **5. Generate plots (Phase 3) — runs on login node**
 

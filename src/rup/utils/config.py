@@ -29,6 +29,7 @@ class ModelConfig(BaseModel):
     generation: GenerationConfig = Field(default_factory=GenerationConfig)
     model_class: Literal["causal_lm", "image_text_to_text"] = "causal_lm"
     enable_thinking: bool = True            # set false for Qwen3-style thinking models
+    adapter_path: Optional[str] = None      # optional PEFT/LoRA adapter to apply on top of hf_name
     extra: Dict[str, Any] = Field(default_factory=dict)
 
 

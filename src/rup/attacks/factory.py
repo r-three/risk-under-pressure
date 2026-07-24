@@ -28,6 +28,9 @@ def load_attack(config: AttackConfig, attacker_model=None, target_model=None, se
         from .jailbroken_attack import JailBrokenAttack
         return JailBrokenAttack(config, seed=seed)
     else:
+        # NOTE: attack_id == "rl" is handled directly in scripts/run_inference.py
+        # (per-prompt GRPO via rup.pipeline.run_prompt_rl), not as an AttackPolicy.
         raise ValueError(
-            f"Unknown attack '{attack_id}'. Available: 'pair', 'gcg', 'jailbroken'"
+            f"Unknown attack '{attack_id}'. Available: 'pair', 'gcg', 'jailbroken'. "
+            f"('rl' is handled by the per-prompt GRPO path in run_inference.py.)"
         )

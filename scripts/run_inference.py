@@ -36,13 +36,69 @@ from rup.attacks.factory import load_attack
 from rup.benchmarks import get_benchmark
 from rup.judges import get_judge
 from rup.models.factory import load_model
-from rup.pipeline import run_trial
+from rup.pipeline import build_rl_attacker, run_prompt_rl, run_trial
+from rup.pipeline.rl_refinement import GRPOAttackConfig
+from rup.training.rl_env import RewardConfig
 from rup.utils.config import ExperimentConfig, load_attack_config, load_model_config
 from rup.utils.io import append_jsonl, load_completed_ids
 from rup.utils.logging import get_logger
 
 load_dotenv()
 logger = get_logger("run_inference")
+
+
+def _reward_from_extra(extra):
+    fields = RewardConfig.__dataclass_fields__
+    return RewardConfig(**{k: v for k, v in (extra or {}).items() if k in fields})
+
+
+def _run_rl_for_model(config, target_model, judge, prompts, seed, output_dir, resume, rl_cache, attack_config, configs_dir):
+    """RL attack: per-prompt GRPO (rup.pipeline.run_prompt_rl) instead of run_trial.
+
+    The trainable attacker is built once (expensive) and cached across models/seeds; each prompt
+    resets its LoRA adapter internally so prompts stay independent.
+    """
+    if rl_cache.get("attacker") is None:
+        base_name = (attack_config.extra or {}).get("base_attacker", "qwen2.5_7b")
+        attacker_hf = load_model_config(base_name, configs_dir).hf_name
+        cfg = GRPOAttackConfig.from_extra(attack_config.extra, attacker_hf=attacker_hf)
+        rl_cache["cfg"] = cfg
+        rl_cache["reward"] = _reward_from_extra(attack_config.extra)
+        rl_cache["attacker"] = build_rl_attacker(cfg)
+    attacker, cfg, reward_cfg = rl_cache["attacker"], rl_cache["cfg"], rl_cache["reward"]
+
+    out_path = output_dir / config.benchmark / target_model.model_id / str(seed) / "rl" / "results.jsonl"
+    if resume:
+        done_ids = load_completed_ids(out_path)
+    else:
+        done_ids = set()
+        if out_path.exists():
+            out_path.unlink()
+            logger.info(f"Cleared existing results: {out_path}")
+    remaining = [p for p in prompts if p.prompt_id not in done_ids]
+    desc = f"{target_model.model_id}/{seed}/rl"
+    if done_ids:
+        logger.info(f"[{desc}] Resuming: {len(done_ids)} done, {len(remaining)} remaining")
+    if not remaining:
+        logger.info(f"[{desc}] All prompts complete.")
+        return
+
+    for prompt in tqdm(remaining, desc=desc, unit="prompt"):
+        record = run_prompt_rl(
+            base_prompt=prompt.text,
+            prompt_id=prompt.prompt_id,
+            behavior=prompt.text,
+            category=prompt.category,
+            source=prompt.source,
+            target=target_model,
+            judge=judge,
+            attacker=attacker,
+            budget=config.lambda_max,
+            cfg=cfg,
+            reward_config=reward_cfg,
+        )
+        append_jsonl(record, out_path)
+    logger.info(f"[{desc}] Done. Results: {out_path}")
 
 
 def parse_args():
@@ -107,6 +163,9 @@ def main():
     judge = get_judge("llm", model=judge_model)
     logger.info(f"Judge: {config.judge_model}")
 
+    # Trainable RL attacker is built lazily once and reused across models/seeds.
+    rl_cache: dict = {}
+
     # Outer loop: seed × model × attack
     for seed in seeds:
         logger.info(f"=== Seed {seed} ===")
@@ -125,6 +184,14 @@ def main():
 
             for attack_name in config.attacks:
                 attack_config = load_attack_config(attack_name, configs_dir)
+
+                # RL attack: per-prompt GRPO path (own trainable attacker, no AttackPolicy).
+                if attack_config.attack_id.lower() == "rl":
+                    _run_rl_for_model(
+                        config, target_model, judge, prompts, seed,
+                        output_dir, args.resume, rl_cache, attack_config, configs_dir,
+                    )
+                    continue
 
                 # Resolve list of attacker models to iterate over
                 if config.attacker_models:

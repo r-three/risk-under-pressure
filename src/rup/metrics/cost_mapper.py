@@ -267,10 +267,14 @@ def step_cost(
     judge_tok = _count_tokens(judge_input, judge_hf_id) + 2
     judge_tfl = 2 * judge_params_b * judge_tok / 1000
 
-    # --- PAIR attacker (one forward pass per step, only for PAIR) ---
+    # --- Qwen2.5-7B attacker per step (PAIR and RL/GRPO) ---
+    # Both use the same 7B attacker. PAIR only runs a forward pass (2N per token). The RL/GRPO
+    # attack additionally updates the attacker's weights per prompt (a backward pass), so it is
+    # charged the training coefficient 6N per token (≈ 1 forward + 1 backward). This is why RL's
+    # per-query FLOPs are higher than PAIR's — its whole cost is per-prompt, no amortization.
     att_tok = 0.0
     att_tfl = 0.0
-    if attack_id == "pair":
+    if attack_id in ("pair", "rl"):
         att_user = _PAIR_ATTACKER_USER_TEMPLATE.format(
             goal=behavior,
             prompt=prompt,
@@ -279,10 +283,11 @@ def step_cost(
         )
         att_input  = _PAIR_ATTACKER_SYSTEM_PROMPT + "\n\n" + att_user
         att_in_tok = _count_tokens(att_input, _PAIR_ATTACKER_HF_ID)
-        # Attacker output ≈ refined prompt, approximated as current prompt length
+        # Attacker output ≈ refined/candidate prompt, approximated as current prompt length
         att_out_tok = _count_tokens(prompt, _PAIR_ATTACKER_HF_ID)
         att_tok = float(att_in_tok + att_out_tok)
-        att_tfl = 2 * _PAIR_ATTACKER_PARAMS_B * att_tok / 1000
+        att_mult = 6.0 if attack_id == "rl" else 2.0  # RL: gen + backward; PAIR: forward only
+        att_tfl = att_mult * _PAIR_ATTACKER_PARAMS_B * att_tok / 1000
 
     total_tfl = target_tfl + judge_tfl + att_tfl
     return float(target_tok), float(judge_tok), att_tok, target_tfl, judge_tfl, total_tfl
