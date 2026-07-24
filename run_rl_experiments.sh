@@ -26,19 +26,19 @@ RL_JB="python scripts/run_inference.py --experiment configs/experiments/base.yam
 # =============================================================================
 # MODEL SIZE STUDY — Qwen2.5-Instruct: 0.5B, 3B, 7B (HarmBench)
 # =============================================================================
-submit "rup_HB_rl_qwen2.5_0.5b_s1997" "$RL_HB --model qwen2.5_0.5b --seeds 1997"
-submit "rup_HB_rl_qwen2.5_3b_s1997"   "$RL_HB --model qwen2.5_3b --seeds 1997"
-submit "rup_HB_rl_qwen2.5_7b_s1997"   "$RL_HB --model qwen2.5_7b --seeds 1997"
+submit "rup_HB_rl_qwen2.5_0.5b_s42" "$RL_HB --model qwen2.5_0.5b --seeds 42"
+submit "rup_HB_rl_qwen2.5_3b_s42"   "$RL_HB --model qwen2.5_3b --seeds 42"
+submit "rup_HB_rl_qwen2.5_7b_s42"   "$RL_HB --model qwen2.5_7b --seeds 42"
 
 # =============================================================================
 # TRAINING STAGE STUDY — Tulu3 8B: Base -> SFT -> DPO -> RLVR (HarmBench)
 # =============================================================================
-submit "rup_HB_rl_tulu3_8b_base_s1997" "$RL_HB --model tulu3_8b_base --seeds 1997"
-submit "rup_HB_rl_tulu3_8b_sft_s1997"  "$RL_HB --model tulu3_8b_sft --seeds 1997"
-submit "rup_HB_rl_tulu3_8b_dpo_s1997"  "$RL_HB --model tulu3_8b_dpo --seeds 1997"
-submit "rup_HB_rl_tulu3_8b_rlvr_s1997" "$RL_HB --model tulu3_8b_rlvr --seeds 1997"
+submit "rup_HB_rl_tulu3_8b_base_s42" "$RL_HB --model tulu3_8b_base --seeds 42"
+submit "rup_HB_rl_tulu3_8b_sft_s42"  "$RL_HB --model tulu3_8b_sft --seeds 42"
+submit "rup_HB_rl_tulu3_8b_dpo_s42"  "$RL_HB --model tulu3_8b_dpo --seeds 42"
+submit "rup_HB_rl_tulu3_8b_rlvr_s42" "$RL_HB --model tulu3_8b_rlvr --seeds 42"
 
 # =============================================================================
 # JailbreakBench (same targets)
 # =============================================================================
-submit "rup_JB_rl_qwen2.5_0.5b_s1997" "$RL_JB --model qwen2.5_0.5b --seeds 1997"
+submit "rup_JB_rl_qwen2.5_0.5b_s42" "$RL_JB --model qwen2.5_0.5b --seeds 42"

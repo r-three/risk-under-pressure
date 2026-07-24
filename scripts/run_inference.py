@@ -68,6 +68,7 @@ def _run_rl_for_model(config, target_model, judge, prompts, seed, output_dir, re
     attacker, cfg, reward_cfg = rl_cache["attacker"], rl_cache["cfg"], rl_cache["reward"]
 
     out_path = output_dir / config.benchmark / target_model.model_id / str(seed) / "rl" / "results.jsonl"
+    trace_path = out_path.parent / "training_trace.jsonl"
     if resume:
         done_ids = load_completed_ids(out_path)
     else:
@@ -75,6 +76,9 @@ def _run_rl_for_model(config, target_model, judge, prompts, seed, output_dir, re
         if out_path.exists():
             out_path.unlink()
             logger.info(f"Cleared existing results: {out_path}")
+        if trace_path.exists():
+            trace_path.unlink()
+            logger.info(f"Cleared existing training trace: {trace_path}")
     remaining = [p for p in prompts if p.prompt_id not in done_ids]
     desc = f"{target_model.model_id}/{seed}/rl"
     if done_ids:
@@ -96,6 +100,7 @@ def _run_rl_for_model(config, target_model, judge, prompts, seed, output_dir, re
             budget=config.lambda_max,
             cfg=cfg,
             reward_config=reward_cfg,
+            trace_path=trace_path,
         )
         append_jsonl(record, out_path)
     logger.info(f"[{desc}] Done. Results: {out_path}")

@@ -33,75 +33,75 @@ COST_PLOT="python scripts/plot_cost_curves.py"
 # --- MODEL SIZE STUDY — Qwen2.5-Instruct: 0.5B, 3B, 7B ---
 # Paper: Figure 1 right
 
-# for axis in tokens flops; do
-#     $COST_PLOT \
-#         --cost-csv  $OUTPUT/harmbench/qwen2.5-0.5b-instruct/cost/cost_metrics.csv \
-#         --cost-category-csv $OUTPUT/harmbench/qwen2.5-0.5b-instruct/cost/cost_metrics_by_category.csv \
-#         --output-dir $OUTPUT/harmbench/qwen2.5-0.5b-instruct/$axis \
-#         --x-axis $axis --skip-missing
-# done
+for axis in tokens flops; do
+    $COST_PLOT \
+        --cost-csv  $OUTPUT/harmbench/qwen2.5-0.5b-instruct/cost/cost_metrics.csv \
+        --cost-category-csv $OUTPUT/harmbench/qwen2.5-0.5b-instruct/cost/cost_metrics_by_category.csv \
+        --output-dir $OUTPUT/harmbench/qwen2.5-0.5b-instruct/$axis \
+        --x-axis $axis --skip-missing
+done
 
-# for axis in tokens flops; do
-#     $COST_PLOT \
-#         --cost-csv  $OUTPUT/harmbench/qwen2.5-3b-instruct/cost/cost_metrics.csv \
-#         --cost-category-csv $OUTPUT/harmbench/qwen2.5-3b-instruct/cost/cost_metrics_by_category.csv \
-#         --output-dir $OUTPUT/harmbench/qwen2.5-3b-instruct/$axis \
-#         --x-axis $axis --skip-missing
-# done
+for axis in tokens flops; do
+    $COST_PLOT \
+        --cost-csv  $OUTPUT/harmbench/qwen2.5-3b-instruct/cost/cost_metrics.csv \
+        --cost-category-csv $OUTPUT/harmbench/qwen2.5-3b-instruct/cost/cost_metrics_by_category.csv \
+        --output-dir $OUTPUT/harmbench/qwen2.5-3b-instruct/$axis \
+        --x-axis $axis --skip-missing
+done
 
-# for axis in tokens flops; do
-#     $COST_PLOT \
-#         --cost-csv  $OUTPUT/harmbench/qwen2.5-7b-instruct/cost/cost_metrics.csv \
-#         --cost-category-csv $OUTPUT/harmbench/qwen2.5-7b-instruct/cost/cost_metrics_by_category.csv \
-#         --output-dir $OUTPUT/harmbench/qwen2.5-7b-instruct/$axis \
-#         --x-axis $axis --skip-missing
-# done
+for axis in tokens flops; do
+    $COST_PLOT \
+        --cost-csv  $OUTPUT/harmbench/qwen2.5-7b-instruct/cost/cost_metrics.csv \
+        --cost-category-csv $OUTPUT/harmbench/qwen2.5-7b-instruct/cost/cost_metrics_by_category.csv \
+        --output-dir $OUTPUT/harmbench/qwen2.5-7b-instruct/$axis \
+        --x-axis $axis --skip-missing
+done
 
 # --- TRAINING STAGE STUDY — Tulu3 8B: Base → SFT → DPO → RLVR ---
 # Paper: Table 1, Figure 1 left
 
-# for axis in tokens flops; do
-#     $COST_PLOT \
-#         --cost-csv  $OUTPUT/harmbench/tulu3-8b-base/cost/cost_metrics.csv \
-#         --cost-category-csv $OUTPUT/harmbench/tulu3-8b-base/cost/cost_metrics_by_category.csv \
-#         --output-dir $OUTPUT/harmbench/tulu3-8b-base/$axis \
-#         --x-axis $axis --skip-missing
-# done
+for axis in tokens flops; do
+    $COST_PLOT \
+        --cost-csv  $OUTPUT/harmbench/tulu3-8b-base/cost/cost_metrics.csv \
+        --cost-category-csv $OUTPUT/harmbench/tulu3-8b-base/cost/cost_metrics_by_category.csv \
+        --output-dir $OUTPUT/harmbench/tulu3-8b-base/$axis \
+        --x-axis $axis --skip-missing
+done
 
-# for axis in tokens flops; do
-#     $COST_PLOT \
-#         --cost-csv  $OUTPUT/harmbench/tulu3-8b-sft/cost/cost_metrics.csv \
-#         --cost-category-csv $OUTPUT/harmbench/tulu3-8b-sft/cost/cost_metrics_by_category.csv \
-#         --output-dir $OUTPUT/harmbench/tulu3-8b-sft/$axis \
-#         --x-axis $axis --skip-missing
-# done
+for axis in tokens flops; do
+    $COST_PLOT \
+        --cost-csv  $OUTPUT/harmbench/tulu3-8b-sft/cost/cost_metrics.csv \
+        --cost-category-csv $OUTPUT/harmbench/tulu3-8b-sft/cost/cost_metrics_by_category.csv \
+        --output-dir $OUTPUT/harmbench/tulu3-8b-sft/$axis \
+        --x-axis $axis --skip-missing
+done
 
-# for axis in tokens flops; do
-#     $COST_PLOT \
-#         --cost-csv  $OUTPUT/harmbench/tulu3-8b-dpo/cost/cost_metrics.csv \
-#         --cost-category-csv $OUTPUT/harmbench/tulu3-8b-dpo/cost/cost_metrics_by_category.csv \
-#         --output-dir $OUTPUT/harmbench/tulu3-8b-dpo/$axis \
-#         --x-axis $axis --skip-missing
-# done
+for axis in tokens flops; do
+    $COST_PLOT \
+        --cost-csv  $OUTPUT/harmbench/tulu3-8b-dpo/cost/cost_metrics.csv \
+        --cost-category-csv $OUTPUT/harmbench/tulu3-8b-dpo/cost/cost_metrics_by_category.csv \
+        --output-dir $OUTPUT/harmbench/tulu3-8b-dpo/$axis \
+        --x-axis $axis --skip-missing
+done
 
-# for axis in tokens flops; do
-#     $COST_PLOT \
-#         --cost-csv  $OUTPUT/harmbench/tulu3-8b-rlvr/cost/cost_metrics.csv \
-#         --cost-category-csv $OUTPUT/harmbench/tulu3-8b-rlvr/cost/cost_metrics_by_category.csv \
-#         --output-dir $OUTPUT/harmbench/tulu3-8b-rlvr/$axis \
-#         --x-axis $axis --skip-missing
-# done
+for axis in tokens flops; do
+    $COST_PLOT \
+        --cost-csv  $OUTPUT/harmbench/tulu3-8b-rlvr/cost/cost_metrics.csv \
+        --cost-category-csv $OUTPUT/harmbench/tulu3-8b-rlvr/cost/cost_metrics_by_category.csv \
+        --output-dir $OUTPUT/harmbench/tulu3-8b-rlvr/$axis \
+        --x-axis $axis --skip-missing
+done
 
 # --- SAFETY ALIGNMENT STUDY — Qwen3-4B base vs Qwen3-4B-SafeRL ---
 # Paper: Table 1 (Qwen3 rows)
 
-for axis in tokens flops; do
-    $COST_PLOT \
-        --cost-csv  $OUTPUT/harmbench/qwen3-4b/cost/cost_metrics.csv \
-        --cost-category-csv $OUTPUT/harmbench/qwen3-4b/cost/cost_metrics_by_category.csv \
-        --output-dir $OUTPUT/harmbench/qwen3-4b/$axis \
-        --x-axis $axis --skip-missing
-done
+# for axis in tokens flops; do
+#     $COST_PLOT \
+#         --cost-csv  $OUTPUT/harmbench/qwen3-4b/cost/cost_metrics.csv \
+#         --cost-category-csv $OUTPUT/harmbench/qwen3-4b/cost/cost_metrics_by_category.csv \
+#         --output-dir $OUTPUT/harmbench/qwen3-4b/$axis \
+#         --x-axis $axis --skip-missing
+# done
 
 # for axis in tokens flops; do
 #     $COST_PLOT \
@@ -179,13 +179,13 @@ done
 
 # --- SAFETY ALIGNMENT STUDY — Qwen3-4B base vs Qwen3-4B-SafeRL ---
 
-for axis in tokens flops; do
-    $COST_PLOT \
-        --cost-csv  $OUTPUT/jailbreakbench/qwen3-4b/cost/cost_metrics.csv \
-        --cost-category-csv $OUTPUT/jailbreakbench/qwen3-4b/cost/cost_metrics_by_category.csv \
-        --output-dir $OUTPUT/jailbreakbench/qwen3-4b/$axis \
-        --x-axis $axis --skip-missing
-done
+# for axis in tokens flops; do
+#     $COST_PLOT \
+#         --cost-csv  $OUTPUT/jailbreakbench/qwen3-4b/cost/cost_metrics.csv \
+#         --cost-category-csv $OUTPUT/jailbreakbench/qwen3-4b/cost/cost_metrics_by_category.csv \
+#         --output-dir $OUTPUT/jailbreakbench/qwen3-4b/$axis \
+#         --x-axis $axis --skip-missing
+# done
 
 # for axis in tokens flops; do
 #     $COST_PLOT \
@@ -460,5 +460,65 @@ done
 #         --title "JailbreakBench — GCG Transfer: Qwen2.5-0.5B → Qwen3-4B" \
 #         --mode comparison --skip-missing
 # done
+
+# =============================================================================
+# RL model comparison — how different targets fare under the RL (GRPO) attack.
+# --attacks rl restricts each comparison to the RL curve, one line per model
+# (→ cost_comparison_rl.{png} per output dir). RL only ran on HarmBench for these
+# targets (JB has a single RL model, so no JB comparison is meaningful).
+# =============================================================================
+
+# --- RL across Qwen2.5 model sizes (0.5B / 3B / 7B) ---
+for axis in tokens flops; do
+    $COST_PLOT \
+        --cost-csv \
+            $OUTPUT/harmbench/qwen2.5-0.5b-instruct/cost/cost_metrics.csv \
+            $OUTPUT/harmbench/qwen2.5-3b-instruct/cost/cost_metrics.csv \
+            $OUTPUT/harmbench/qwen2.5-7b-instruct/cost/cost_metrics.csv \
+        --cost-category-csv \
+            $OUTPUT/harmbench/qwen2.5-0.5b-instruct/cost/cost_metrics_by_category.csv \
+            $OUTPUT/harmbench/qwen2.5-3b-instruct/cost/cost_metrics_by_category.csv \
+            $OUTPUT/harmbench/qwen2.5-7b-instruct/cost/cost_metrics_by_category.csv \
+        --output-dir $OUTPUT/harmbench/ablations/rl_qwen_size/$axis \
+        --x-axis $axis --attacks rl \
+        --title "HarmBench — RL (GRPO): Qwen2.5 Model Size" \
+        --mode comparison --skip-missing
+done
+
+# --- RL across Tulu3 training stages (Base / SFT / DPO / RLVR) ---
+for axis in tokens flops; do
+    $COST_PLOT \
+        --cost-csv \
+            $OUTPUT/harmbench/tulu3-8b-base/cost/cost_metrics.csv \
+            $OUTPUT/harmbench/tulu3-8b-sft/cost/cost_metrics.csv \
+            $OUTPUT/harmbench/tulu3-8b-dpo/cost/cost_metrics.csv \
+            $OUTPUT/harmbench/tulu3-8b-rlvr/cost/cost_metrics.csv \
+        --cost-category-csv \
+            $OUTPUT/harmbench/tulu3-8b-base/cost/cost_metrics_by_category.csv \
+            $OUTPUT/harmbench/tulu3-8b-sft/cost/cost_metrics_by_category.csv \
+            $OUTPUT/harmbench/tulu3-8b-dpo/cost/cost_metrics_by_category.csv \
+            $OUTPUT/harmbench/tulu3-8b-rlvr/cost/cost_metrics_by_category.csv \
+        --output-dir $OUTPUT/harmbench/ablations/rl_tulu3_training/$axis \
+        --x-axis $axis --attacks rl \
+        --title "HarmBench — RL (GRPO): Tulu3 Training Stages" \
+        --mode comparison --skip-missing
+done
+
+# --- RL across ALL HarmBench targets (Qwen2.5 sizes + Tulu3 stages) on one canvas ---
+for axis in tokens flops; do
+    $COST_PLOT \
+        --cost-csv \
+            $OUTPUT/harmbench/qwen2.5-0.5b-instruct/cost/cost_metrics.csv \
+            $OUTPUT/harmbench/qwen2.5-3b-instruct/cost/cost_metrics.csv \
+            $OUTPUT/harmbench/qwen2.5-7b-instruct/cost/cost_metrics.csv \
+            $OUTPUT/harmbench/tulu3-8b-base/cost/cost_metrics.csv \
+            $OUTPUT/harmbench/tulu3-8b-sft/cost/cost_metrics.csv \
+            $OUTPUT/harmbench/tulu3-8b-dpo/cost/cost_metrics.csv \
+            $OUTPUT/harmbench/tulu3-8b-rlvr/cost/cost_metrics.csv \
+        --output-dir $OUTPUT/harmbench/ablations/rl_all_models/$axis \
+        --x-axis $axis --attacks rl \
+        --title "HarmBench — RL (GRPO): All Models" \
+        --mode comparison --skip-missing
+done
 
 echo "Done."

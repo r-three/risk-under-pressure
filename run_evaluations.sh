@@ -23,51 +23,51 @@ EVAL="python scripts/run_evaluation.py --experiment configs/experiments/base.yam
 # --- MODEL SIZE STUDY — Qwen2.5-Instruct: 0.5B, 3B, 7B ---
 # Paper: Figure 1 right
 
-# $EVAL \
-#     --results-dir $BASE/harmbench/qwen2.5-0.5b-instruct \
-#     --output $OUTPUT/harmbench/qwen2.5-0.5b-instruct/metrics.csv \
-#     | tee $BASE/harmbench/qwen2.5-0.5b-instruct/summary.txt
+$EVAL \
+    --results-dir $BASE/harmbench/qwen2.5-0.5b-instruct \
+    --output $OUTPUT/harmbench/qwen2.5-0.5b-instruct/metrics.csv \
+    | tee $BASE/harmbench/qwen2.5-0.5b-instruct/summary.txt
 
-# $EVAL \
-#     --results-dir $BASE/harmbench/qwen2.5-3b-instruct \
-#     --output $OUTPUT/harmbench/qwen2.5-3b-instruct/metrics.csv \
-#     | tee $BASE/harmbench/qwen2.5-3b-instruct/summary.txt
+$EVAL \
+    --results-dir $BASE/harmbench/qwen2.5-3b-instruct \
+    --output $OUTPUT/harmbench/qwen2.5-3b-instruct/metrics.csv \
+    | tee $BASE/harmbench/qwen2.5-3b-instruct/summary.txt
 
-# $EVAL \
-#     --results-dir $BASE/harmbench/qwen2.5-7b-instruct \
-#     --output $OUTPUT/harmbench/qwen2.5-7b-instruct/metrics.csv \
-#     | tee $BASE/harmbench/qwen2.5-7b-instruct/summary.txt
+$EVAL \
+    --results-dir $BASE/harmbench/qwen2.5-7b-instruct \
+    --output $OUTPUT/harmbench/qwen2.5-7b-instruct/metrics.csv \
+    | tee $BASE/harmbench/qwen2.5-7b-instruct/summary.txt
 
 # --- TRAINING STAGE STUDY — Tulu3 8B: Base → SFT → DPO → RLVR ---
 # Paper: Table 1, Figure 1 left
 
-# $EVAL \
-#     --results-dir $BASE/harmbench/tulu3-8b-base \
-#     --output $OUTPUT/harmbench/tulu3-8b-base/metrics.csv \
-#     | tee $BASE/harmbench/tulu3-8b-base/summary.txt
+$EVAL \
+    --results-dir $BASE/harmbench/tulu3-8b-base \
+    --output $OUTPUT/harmbench/tulu3-8b-base/metrics.csv \
+    | tee $BASE/harmbench/tulu3-8b-base/summary.txt
 
-# $EVAL \
-#     --results-dir $BASE/harmbench/tulu3-8b-sft \
-#     --output $OUTPUT/harmbench/tulu3-8b-sft/metrics.csv \
-#     | tee $BASE/harmbench/tulu3-8b-sft/summary.txt
+$EVAL \
+    --results-dir $BASE/harmbench/tulu3-8b-sft \
+    --output $OUTPUT/harmbench/tulu3-8b-sft/metrics.csv \
+    | tee $BASE/harmbench/tulu3-8b-sft/summary.txt
 
-# $EVAL \
-#     --results-dir $BASE/harmbench/tulu3-8b-dpo \
-#     --output $OUTPUT/harmbench/tulu3-8b-dpo/metrics.csv \
-#     | tee $BASE/harmbench/tulu3-8b-dpo/summary.txt
+$EVAL \
+    --results-dir $BASE/harmbench/tulu3-8b-dpo \
+    --output $OUTPUT/harmbench/tulu3-8b-dpo/metrics.csv \
+    | tee $BASE/harmbench/tulu3-8b-dpo/summary.txt
 
-# $EVAL \
-#     --results-dir $BASE/harmbench/tulu3-8b-rlvr \
-#     --output $OUTPUT/harmbench/tulu3-8b-rlvr/metrics.csv \
-#     | tee $BASE/harmbench/tulu3-8b-rlvr/summary.txt
+$EVAL \
+    --results-dir $BASE/harmbench/tulu3-8b-rlvr \
+    --output $OUTPUT/harmbench/tulu3-8b-rlvr/metrics.csv \
+    | tee $BASE/harmbench/tulu3-8b-rlvr/summary.txt
 
 # --- SAFETY ALIGNMENT STUDY — Qwen3-4B base vs Qwen3-4B-SafeRL ---
 # Paper: Table 1 (Qwen3 rows)
 
-$EVAL \
-    --results-dir $BASE/harmbench/qwen3-4b \
-    --output $OUTPUT/harmbench/qwen3-4b/metrics.csv \
-    | tee $BASE/harmbench/qwen3-4b/summary.txt
+# $EVAL \
+#     --results-dir $BASE/harmbench/qwen3-4b \
+#     --output $OUTPUT/harmbench/qwen3-4b/metrics.csv \
+#     | tee $BASE/harmbench/qwen3-4b/summary.txt
 
 # $EVAL \
 #     --results-dir $BASE/harmbench/qwen3-4b-saferl \
@@ -121,10 +121,10 @@ $EVAL \
 
 # --- SAFETY ALIGNMENT STUDY — Qwen3-4B base vs Qwen3-4B-SafeRL ---
 
-$EVAL \
-    --results-dir $BASE/jailbreakbench/qwen3-4b \
-    --output $OUTPUT/jailbreakbench/qwen3-4b/metrics.csv \
-    | tee $BASE/jailbreakbench/qwen3-4b/summary.txt
+# $EVAL \
+#     --results-dir $BASE/jailbreakbench/qwen3-4b \
+#     --output $OUTPUT/jailbreakbench/qwen3-4b/metrics.csv \
+#     | tee $BASE/jailbreakbench/qwen3-4b/summary.txt
 
 # $EVAL \
 #     --results-dir $BASE/jailbreakbench/qwen3-4b-saferl \
