@@ -214,16 +214,22 @@ A **per-prompt** adaptive attacker following *["The Attacker Moves Second"](http
 (Nasr et al., 2025). For **each behavior**, Qwen2.5-7B-Instruct (+ a fresh LoRA) runs a short
 GRPO optimization against the target — sample a group of candidate prompts, score them
 (judge + perplexity shaping, guarded against reward hacking), and update the attacker's weights —
-until the per-prompt query budget (`--lambda-max`) is spent. There is **no separate training
-phase and no train/test split**: it runs like any other attack, straight through
-`run_inference.py --attack rl`.
+**stopping at the first successful jailbreak** or when the per-prompt query budget
+(`--lambda-max`) is exhausted. There is **no separate training phase and no train/test split**:
+it runs like any other attack, straight through `run_inference.py --attack rl`.
+
+> **First-success early stopping** mirrors the other attacks (`run_trial` breaks at the first
+> unsafe judgment), so RL's query count / pressure / cost stay comparable across attacks. This is
+> a deliberate deviation from the paper, which runs a fixed budget with best-of scoring — it does
+> **not** change the risk-vs-λ curve or the success labels (`first_success_step` is identical),
+> only post-success queries are trimmed.
 
 ```bash
 # Phase 1 — Run the per-prompt RL attack (GPU required; 7B bf16 attacker + LoRA)
 #   COMPUTE: this is the most expensive attack — start on a subset with a modest budget.
 python scripts/run_inference.py \
     --experiment configs/experiments/paper/model_size.yaml \
-    --attack rl --n-prompts 50 --lambda-max 16 \
+    --attack rl --n-prompts 50 --lambda-max 10 \
     --output-dir outputs/model_size
 
 # Phase 2a — Compute risk metrics
@@ -232,10 +238,12 @@ python scripts/run_evaluation.py \
     --experiment configs/experiments/paper/model_size.yaml \
     --format csv --output outputs/model_size/metrics.csv
 
-# Phase 2b — Compute FLOP costs (RL's per-query cost includes the attacker weight-update term)
+# Phase 2b — Compute FLOP costs (LoRA-aware attacker cost; see note below)
+#   --rl-num-generations must match num_generations in configs/attacks/rl.yaml (default 8)
 python scripts/compute_attack_costs.py \
     --results-dir outputs/model_size \
-    --metrics-csv outputs/model_size/metrics.csv
+    --metrics-csv outputs/model_size/metrics.csv \
+    --rl-num-generations 8
 
 # Phase 3 — Plot risk-compute curves (the `RL (GRPO)` series appears automatically)
 python scripts/plot_cost_curves.py \
@@ -247,10 +255,38 @@ python scripts/plot_cost_curves.py \
 The same recipe applies to the **Training Stage** ablation — point `--experiment` at
 `training_stage.yaml` (targets `tulu3_8b_base/sft/dpo/rlvr`).
 
+**Cross-model RL comparisons.** `run_cost_plots.sh` includes dedicated RL-only comparisons
+(`plot_cost_curves.py --attacks rl --mode comparison`), which overlay one curve per model in a
+single `cost_comparison_rl.png` (tokens + flops):
+
+| Output dir | Compares |
+|---|---|
+| `harmbench/ablations/rl_qwen_size/{tokens,flops}/` | RL across Qwen2.5 0.5B / 3B / 7B |
+| `harmbench/ablations/rl_tulu3_training/{tokens,flops}/` | RL across Tulu3 base / sft / dpo / rlvr |
+| `harmbench/ablations/rl_all_models/{tokens,flops}/` | RL across all HarmBench targets |
+
 **Per-prompt GRPO knobs** live in `configs/attacks/rl.yaml` `extra`: `num_generations` (GRPO
 group size; paper uses up to 32), `session_rounds`, `beta` (KL penalty), `learning_rate`,
 `max_completion_length`, `perplexity_weight` (α on the reward-shaping term). The **per-prompt
 query budget** is `--lambda-max` (or `pressure_levels`/`lambda_max` in the experiment YAML).
+
+**LoRA-aware FLOP cost.** RL's attacker cost is billed per recorded candidate (not a flat
+multiplier): `0` for the raw-behavior step (the attacker never runs), `8N_A·L` for a candidate on
+a round that received a GRPO update (generation + KL-reference forward + policy forward + LoRA
+backward), and `2N_A·L` for a candidate on the winning round (generation only — the update is
+skipped under early stopping). The LoRA backward is ~`2N` (activation grads only; frozen base
+weights get no weight-gradient), so an updated candidate is `8N`, not full fine-tuning's `6N`.
+`compute_attack_costs.py` reconstructs which steps were updated from `first_success_step` and
+`--rl-num-generations`, so **it must match `num_generations`** in `configs/attacks/rl.yaml`.
+
+**Training trace.** Each run also writes `training_trace.jsonl` next to `results.jsonl` — one JSON
+line per GRPO round with every candidate rollout (prompt / response / reward / judgment), the
+group-relative advantages, and the loss — so you can inspect how the trajectory drives the attack
+toward a jailbreak.
+
+**Batch submission.** `run_rl_HB_experiments.sh` (HarmBench) and `run_rl_JB_experiments.sh`
+(JailbreakBench) submit one SLURM job per target across the full model set (Qwen2.5 0.5/3/7B,
+Tulu3 8B base/sft/dpo/rlvr, Qwen3-4B, Qwen3-4B-SafeRL).
 
 > **Compute:** per-prompt GRPO does a mini optimization *per behavior* (with backward passes),
 > so it is far more expensive than the other attacks. Start with `--n-prompts ~50` (the paper's
@@ -372,11 +408,11 @@ class MyAttack(AttackPolicy):
 |---|---|---|---|
 | **GCG** | White-box, gradient | `(β_bwd + 128) × 2N × L_opt + 2N × L_gen + 2N_J × L_J` TFLOPs | Requires local HuggingFace model |
 | **PAIR** | Black-box, LLM | `2N_T × L_gen + 2N_A × L_att + 2N_J × L_J` TFLOPs | Attacker: Qwen2.5-7B-Instruct |
-| **RL (GRPO)** | Black-box, adaptive | `6N_A × L_att + 2N_T × L_gen + 2N_J × L_J` TFLOPs per query | Per-prompt GRPO: attacker optimized on each behavior (weight updates → `6N` attacker term). No pre-training. |
+| **RL (GRPO)** | Black-box, adaptive | `{0,2,8}·N_A × L_att + 2N_T × L_gen + 2N_J × L_J` TFLOPs per query | Per-prompt GRPO (LoRA). Attacker term is per-step: `0` raw / `8N` updated round / `2N` winning round. First-success early stop. No pre-training. |
 | **JailBroken** | Black-box, template | `2N × L_gen + 2N_J × L_J` TFLOPs | 8 obfuscation templates; no setup |
 | **TransferAttack** | Black-box, replay | same as JailBroken | Replays GCG trajectories from a surrogate |
 
-Where N = target params (B), N_A = attacker params, N_J = judge params, L = sequence length in tokens. RL's attacker term uses `6N` (not `2N`) because each query also drives a weight update (≈ forward + backward).
+Where N = target params (B), N_A = attacker params, N_J = judge params, L = sequence length in tokens. RL's attacker term is LoRA-aware and billed per candidate: `2N` per forward pass (generation, KL-reference, policy) and `2N` for the LoRA backward (activation grads only), so a GRPO-updated candidate is `8N`, a winning-round candidate is `2N` (generation only), and the raw-behavior step is `0`.
 
 > **RL (GRPO) adaptive attack** — a **per-prompt** adaptive attacker following *["The Attacker Moves Second"](https://arxiv.org/abs/2510.09023)* (Nasr et al., 2025). For **each behavior**, Qwen2.5-7B-Instruct (+ a fresh LoRA) runs a short GRPO optimization against the target — sample a group of candidate prompts, score them (safety-judge success + perplexity shaping, guarded against reward hacking), and update the attacker's weights — until a per-prompt query budget (= λ) is spent. Each prompt starts from a reset adapter, so it is optimized on itself (worst-case adaptive, like GCG/PAIR — **no pre-training, no train/test split**). Cost is purely per-query. See [RL-Based Adaptive Attack](#rl-based-adaptive-attack-grpo) below to run it.
 
@@ -398,6 +434,7 @@ Where N = target params (B), N_A = attacker params, N_J = judge params, L = sequ
 | File | Contents |
 |---|---|
 | `outputs/<exp>/<model>_seed<N>/<attack>/results.jsonl` | Raw trial records (one JSON line per prompt) |
+| `outputs/<exp>/<model>_seed<N>/rl/training_trace.jsonl` | RL only: per-GRPO-round rollouts, rewards, advantages, loss |
 | `outputs/<exp>/metrics.csv` | Risk curve + AURC/ΔR/λ* per (model, attack, λ) |
 | `outputs/<exp>/metrics_by_category.csv` | Same, broken down by harm category |
 | `outputs/<exp>/cost_metrics.csv` | metrics.csv + token/FLOP columns |
@@ -441,17 +478,21 @@ bash run_JB_experiments.sh   # JailbreakBench
 | Model Size Effect (Fig. 1 right) | `run_HB/JB_experiments.sh` → `MODEL SIZE STUDY` |
 | Training Stage Effect (Table 1, Fig. 1 left) | `run_HB/JB_experiments.sh` → `TRAINING STAGE STUDY` |
 | Safety Alignment Effect (Table 1, Qwen3 rows) | `run_HB/JB_experiments.sh` → `SAFETY ALIGNMENT STUDY` |
-| RL/GRPO Adaptive Attack (arXiv:2510.09023) | `run_rl_experiments.sh` |
+| RL/GRPO Adaptive Attack (arXiv:2510.09023) | `run_rl_HB_experiments.sh` / `run_rl_JB_experiments.sh` |
 
 Each seed is submitted as a separate `sbatch` job for fine-grained control.
 
-For the **RL/GRPO Adaptive Attack**, use the dedicated `run_rl_experiments.sh`. There is no
-training phase — per-prompt GRPO runs inside `run_inference.py`, so RL is submitted just like any
-other attack (one `rup_{HB,JB}_rl_*` job per model×seed). It is the most expensive attack, so the
-jobs default to a behavior subset and a modest per-prompt budget (`--n-prompts 50 --lambda-max 16`):
+For the **RL/GRPO Adaptive Attack**, use the dedicated per-benchmark scripts
+`run_rl_HB_experiments.sh` (HarmBench, `--n-prompts 200`) and `run_rl_JB_experiments.sh`
+(JailbreakBench, `--n-prompts 100`), both at `--lambda-max 10`. There is no training phase —
+per-prompt GRPO runs inside `run_inference.py`, so RL is submitted just like any other attack (one
+`rup_{HB,JB}_rl_*` job per target). Each script covers the full model set (Qwen2.5 0.5/3/7B, Tulu3
+8B base/sft/dpo/rlvr, Qwen3-4B, Qwen3-4B-SafeRL); it is the most expensive attack, so comment out
+targets you don't need:
 
 ```bash
-bash run_rl_experiments.sh   # uncomment the model rows you want
+bash run_rl_HB_experiments.sh   # HarmBench    (comment out the model rows you don't want)
+bash run_rl_JB_experiments.sh   # JailbreakBench
 ```
 
 To verify the whole RL pipeline end-to-end at tiny scale before committing GPU hours, run the

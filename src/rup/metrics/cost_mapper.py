@@ -22,6 +22,17 @@ Per-attack overhead per step:
       TFLOP cost  = (gcg_backward_mult + 128) × 2N × L_opt/1000 + 2N × L_gen/1000
   - Judge model:   one forward pass per step (all attacks)
   - PAIR attacker: one additional forward pass per step (pair only)
+  - RL attacker (Qwen2.5-7B + LoRA): per recorded candidate, in forward-pass units
+      (1 forward = 2N/token) on the FULL 7.62B model — LoRA changes the backward, not
+      the forward:
+        raw-behavior step (step 1):         0  (the attacker never runs)
+        candidate on a GRPO-updated round:  8  = generation(2) + KL-reference forward(2)
+                                                 + policy-logprob forward(2) + LoRA backward(2)
+        candidate on the winning round:     2  = generation only (update is skipped)
+      The LoRA backward is ~2N/token (activation grads only; the frozen base weights get
+      no weight-gradient), so training is ~4N/token, not the 6N of full fine-tuning. See
+      _rl_attacker_mult(). num_generations sets the round size used to reconstruct which
+      steps were updated.
 """
 from __future__ import annotations
 
@@ -212,6 +223,39 @@ def _is_jailbroken(attack_id: str) -> bool:
 # Per-step cost
 # ---------------------------------------------------------------------------
 
+def _rl_attacker_mult(
+    step_idx: int,
+    success: bool,
+    first_success_step: Optional[int],
+    num_generations: int,
+) -> float:
+    """Per-step attacker FLOP multiplier for the RL/GRPO attack (LoRA-aware).
+
+    Returned in forward-pass units (1 forward = 2N/token; PAIR's constant is 2.0). For RL
+    we bill each recorded candidate for what actually ran on it:
+
+      * step 1 (raw behavior): the attacker does not run                          -> 0
+      * candidate on a round that received a GRPO update:                         -> 8
+          generation(2) + KL-ref forward(2) + policy forward(2) + LoRA backward(2)
+      * candidate on the winning round (early-stopped, update skipped): gen only  -> 2
+
+    With first-success early stopping the winning round is always the last one, so every
+    round strictly before it received an update; a prompt that never succeeds trains on
+    every round. Round r (1-indexed) covers steps [2+(r-1)G .. 1+rG]; step 1 is the raw
+    behavior. G = num_generations.
+    """
+    s = step_idx + 1                     # 1-indexed step number
+    if s == 1:
+        return 0.0                       # raw behavior — no attacker work
+    if not success or first_success_step is None:
+        return 8.0                       # never succeeded -> every candidate was trained on
+    g = max(1, num_generations)
+    ceil_div = lambda a, b: (a + b - 1) // b
+    round_here = ceil_div(s - 1, g)                    # this candidate's round
+    round_win  = ceil_div(first_success_step - 1, g)   # round holding the first success
+    return 8.0 if round_here < round_win else 2.0      # updated round vs winning round
+
+
 def step_cost(
     prompt: str,
     response: str,
@@ -222,6 +266,7 @@ def step_cost(
     judge_hf_id: str,
     judge_params_b: float,
     gcg_backward_mult: float = 3.0,
+    rl_att_mult: Optional[float] = None,
 ) -> Tuple[float, float, float, float, float, float]:
     """
     Return (target_tokens, judge_tokens, att_tokens,
@@ -268,26 +313,31 @@ def step_cost(
     judge_tfl = 2 * judge_params_b * judge_tok / 1000
 
     # --- Qwen2.5-7B attacker per step (PAIR and RL/GRPO) ---
-    # Both use the same 7B attacker. PAIR only runs a forward pass (2N per token). The RL/GRPO
-    # attack additionally updates the attacker's weights per prompt (a backward pass), so it is
-    # charged the training coefficient 6N per token (≈ 1 forward + 1 backward). This is why RL's
-    # per-query FLOPs are higher than PAIR's — its whole cost is per-prompt, no amortization.
+    # Both use the same 7B attacker. PAIR runs one forward pass per step (2N/token). RL/GRPO
+    # additionally does KL-reference + policy forwards and a LoRA backward on rounds that update,
+    # so its per-step multiplier varies (0 / 2 / 8) — computed by _rl_attacker_mult() and passed
+    # in via `rl_att_mult`. The LoRA backward is ~2N (activation grads only; frozen base weights
+    # get no weight-gradient), so an updated candidate is 8N, not the old flat 6N.
     att_tok = 0.0
     att_tfl = 0.0
     if attack_id in ("pair", "rl"):
-        att_user = _PAIR_ATTACKER_USER_TEMPLATE.format(
-            goal=behavior,
-            prompt=prompt,
-            response=response[:500],
-            judgment=judgment,
-        )
-        att_input  = _PAIR_ATTACKER_SYSTEM_PROMPT + "\n\n" + att_user
-        att_in_tok = _count_tokens(att_input, _PAIR_ATTACKER_HF_ID)
-        # Attacker output ≈ refined/candidate prompt, approximated as current prompt length
-        att_out_tok = _count_tokens(prompt, _PAIR_ATTACKER_HF_ID)
-        att_tok = float(att_in_tok + att_out_tok)
-        att_mult = 6.0 if attack_id == "rl" else 2.0  # RL: gen + backward; PAIR: forward only
-        att_tfl = att_mult * _PAIR_ATTACKER_PARAMS_B * att_tok / 1000
+        if attack_id == "rl":
+            att_mult = rl_att_mult if rl_att_mult is not None else 6.0
+        else:
+            att_mult = 2.0  # PAIR: one forward pass
+        if att_mult > 0.0:  # 0 = attacker did not run this step (RL raw-behavior step)
+            att_user = _PAIR_ATTACKER_USER_TEMPLATE.format(
+                goal=behavior,
+                prompt=prompt,
+                response=response[:500],
+                judgment=judgment,
+            )
+            att_input  = _PAIR_ATTACKER_SYSTEM_PROMPT + "\n\n" + att_user
+            att_in_tok = _count_tokens(att_input, _PAIR_ATTACKER_HF_ID)
+            # Attacker output ≈ refined/candidate prompt, approximated as current prompt length
+            att_out_tok = _count_tokens(prompt, _PAIR_ATTACKER_HF_ID)
+            att_tok = float(att_in_tok + att_out_tok)
+            att_tfl = att_mult * _PAIR_ATTACKER_PARAMS_B * att_tok / 1000
 
     total_tfl = target_tfl + judge_tfl + att_tfl
     return float(target_tok), float(judge_tok), att_tok, target_tfl, judge_tfl, total_tfl
@@ -336,6 +386,7 @@ def aggregate_costs(
     judge_model_id: str = "llama3.1-8b-instruct",
     gcg_backward_mult: float = 3.0,
     configs_dir: Optional[str | Path] = None,
+    rl_num_generations: int = 8,
 ) -> Dict[int, Dict[str, float]]:
     """
     For each pressure level, return mean costs across all trials.
@@ -369,14 +420,21 @@ def aggregate_costs(
     sums: Dict[int, List[float]] = {lam: [0.0] * 6 for lam in lams if lam > 0}
 
     for record in records:
-        # Tokenize every step once
+        # Tokenize every step once. For RL the attacker multiplier is per-step (0/2/8),
+        # reconstructed from success + first_success_step + the GRPO group size.
+        is_rl = record.attack_id == "rl"
         per_step = [
             step_cost(
                 s.prompt, s.response, s.judgment, record.behavior,
                 record.model_id, record.attack_id,
                 judge_hf, judge_pb, gcg_backward_mult,
+                rl_att_mult=(
+                    _rl_attacker_mult(
+                        i, record.success, record.first_success_step, rl_num_generations
+                    ) if is_rl else None
+                ),
             )
-            for s in record.steps
+            for i, s in enumerate(record.steps)
         ]
         if not per_step:
             continue

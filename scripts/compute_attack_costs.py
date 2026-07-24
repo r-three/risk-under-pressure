@@ -100,6 +100,10 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--judge-model", default="llama3.1-8b-instruct",
                    help="Model ID of the safety judge used during inference "
                         "(default: llama3.1-8b-instruct). Used to compute judge token/FLOP costs.")
+    p.add_argument("--rl-num-generations", type=int, default=8,
+                   help="GRPO group size for the RL attack (num_generations in "
+                        "configs/attacks/rl.yaml, default 8). Used to reconstruct which RL "
+                        "candidate steps received a weight update, for LoRA-aware attacker FLOPs.")
     p.add_argument("--configs-dir", default="configs",
                    help="Directory containing model configs (default: configs). "
                         "Used to load the model registry for FLOP/token computation.")
@@ -168,6 +172,7 @@ def main() -> None:
             judge_model_id=args.judge_model,
             gcg_backward_mult=args.gcg_backward_mult,
             configs_dir=args.configs_dir,
+            rl_num_generations=args.rl_num_generations,
         )
 
         cost_lookup[key] = costs
@@ -190,6 +195,7 @@ def main() -> None:
                 cat_records, pressure_levels,
                 judge_model_id=args.judge_model,
                 gcg_backward_mult=args.gcg_backward_mult,
+                rl_num_generations=args.rl_num_generations,
             )
             cat_cost_lookup[(model_id, attack_id, cat)] = cat_costs
 
