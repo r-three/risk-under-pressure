@@ -161,6 +161,43 @@ python scripts/plot_cost_curves.py \
 
 ---
 
+### Attacker Size Effect
+
+Who writes the jailbreak prompts? Same target (Qwen2.5-7B), same seeds, same judge — only PAIR's
+attacker changes: the incumbent Qwen2.5-7B-Instruct (7.62B, safety-tuned) against the 4B and 1B
+abliterated Gemma 3 checkpoints. Details and the cluster driver:
+[Attacker ablation](#attacker-ablation).
+
+```bash
+# Phase 1 — Run attacks (GPU required). One results dir per attacker:
+#   outputs/attacker_size/harmbench/<target>/<seed>/pair__<attacker>/
+python scripts/run_inference.py \
+    --experiment configs/experiments/paper/attacker_size.yaml \
+    --output-dir outputs/attacker_size
+
+# Phase 2a — Compute risk metrics (one attack_id row per attacker arm)
+python scripts/run_evaluation.py \
+    --results-dir outputs/attacker_size/harmbench/qwen2.5-7b-instruct \
+    --experiment configs/experiments/paper/attacker_size.yaml \
+    --format csv \
+    --output outputs/attacker_size/metrics.csv
+
+# Phase 2b — Compute costs. No --attacker-model: each pair__<attacker> dir is charged
+# at that attacker's own params_b and $/1M-token rate.
+python scripts/compute_attack_costs.py \
+    --results-dir outputs/attacker_size/harmbench/qwen2.5-7b-instruct \
+    --metrics-csv outputs/attacker_size/metrics.csv \
+    --pricing-config configs/pricing.yaml
+
+# Phase 3 — Plot; the three arms come out as three series
+python scripts/plot_cost_curves.py \
+    --cost-csv outputs/attacker_size/cost_metrics.csv \
+    --output-dir outputs/attacker_size/cost_plots \
+    --x-axis flops
+```
+
+---
+
 ### Attack Transfer
 
 GCG suffix optimised on Qwen2.5-0.5B (surrogate), then replayed against Qwen3-8B (target). Phase 1a can be skipped if the model size experiment has already been run (the source results are reused).
@@ -301,6 +338,62 @@ mkdir -p logs && bash run_rl_smoke.sh    # submits one GPU job; prints "SMOKE TE
 
 ---
 
+### Cost axes: FLOPs, tokens, wall-clock, dollars
+
+Risk can be plotted against four cost axes via `--x-axis {flops,tokens,seconds,dollars}`
+(both `plot_cost_curves.py` and `plot_results.py`). All four are cumulative up to the
+first-success step (or budget). `compute_attack_costs.py` writes the corresponding columns to
+`cost_metrics.csv` (`mean_total_tflops`, `mean_total_tokens`, `mean_total_seconds`,
+`mean_total_dollars`).
+
+- **flops / tokens** — theoretical, hardware-independent (the paper's primary axes).
+- **dollars** — hosted per-token cost, each component priced by **its own model's rate**
+  (target = `model_id`, judge = whichever judge the run used, attacker = `qwen2.5-7b-instruct`)
+  from `configs/pricing.yaml`. Reported per component *and* as a total:
+  `mean_{target,judge,attacker}_dollars` and `mean_total_dollars` (= their sum). The x-axis uses
+  the total. **Post-hoc, no re-run needed** — pass `--pricing-config configs/pricing.yaml` to
+  `compute_attack_costs.py`; without it the columns are `NaN`. Pass `--judge-model <model_id>`
+  too, or the judge is billed at the `llama3.1-8b-instruct` default regardless of which judge
+  actually ran (`run_cost_evaluations.sh` does this for you).
+- **seconds** — *measured* attack-compute wall-clock, per step, on a **fixed L40S**. This is
+  the literature norm for reporting time (measured on stated hardware, not a FLOPs→time model).
+  Timing is captured per `StepResult.seconds` and tagged with `metadata.gpu`.
+
+> **Wall-clock caveat.** `mean_total_seconds` is only populated for runs produced *after* the
+> timing instrumentation, on one GPU. Results generated earlier (or on mixed hardware) show
+> `NaN` for this axis — re-run the attacks on a single L40S (a fixed ~50-prompt timing subset is
+> enough) for comparable numbers. The first step per process carries CUDA warm-up.
+
+#### Where the dollar rates come from
+
+`configs/pricing.yaml` holds OpenRouter rates (snapshot 2026-07-26), taken as the **minimum
+across serving providers** rather than OpenRouter's default listing — the spread is wide enough
+to matter (Llama 3.1 8B ranges 0.02–0.22 in / 0.04–0.29 out across its 5 providers), and the
+floor is the right read for "what would an attacker pay". Lines marked `EXACT` use the model's
+own listing; `ESTIMATED` lines are for models no provider serves, anchored on the nearest
+listing by **region → size → release year** and scaled linearly in parameter count. Each entry
+names its anchor and shows the arithmetic.
+
+Two caveats to carry into any writeup:
+
+- **Below ~10B, price does not track size.** The cheapest model on OpenRouter is an 8B
+  (0.02/0.04), undercutting a 1B (0.027/0.201) 5× on output; a 20B undercuts a 3B. What price
+  actually tracks is provider count — models with 5–12 providers are the cheap ones regardless
+  of parameter count or release date. Rates are therefore monotone in size *within* a family
+  but not *across* families (`qwen3-4b` lands above `tulu3-8b`). That's real market structure,
+  not an artifact of the estimates; the TFLOPs axis is the size-clean one.
+- **Country of origin is not a price factor.** At matched size, `qwen2.5-7b` (0.04 in)
+  undercuts `gemma-3-4b` (0.05 in), and `qwen3-32b` and `gemma-3-27b` have identical input
+  rates. What looks like a Qwen premium is single-provider hosting plus a reasoning-mode output
+  premium — same model, same vendor, same provider: `qwen3-vl-8b-instruct` is 0.455/1M output
+  vs `qwen3-vl-8b-thinking` at 1.365.
+
+Re-pull before submission: small-model listings churn (Together has dropped Llama 3.1 8B from
+its public page; `qwen-2.5-7b-instruct` is down to 2 providers). The numbers go stale; the
+argument above does not.
+
+---
+
 ### Per-Category Analysis
 
 Per-category breakdown is produced automatically by `scripts/run_evaluation.py` (with `--format csv`) alongside the overall `metrics.csv`. Pass the category CSV to the plotting scripts with `--category-metrics-csv` as shown above to get one figure per harm category. No additional experiment runs are needed.
@@ -391,12 +484,39 @@ class MyAttack(AttackPolicy):
 | **Qwen2.5 Instruct** | `qwen2.5_0.5b` | Qwen/Qwen2.5-0.5B-Instruct | 0.5B |
 | | `qwen2.5_3b` | Qwen/Qwen2.5-3B-Instruct | 3B |
 | | `qwen2.5_7b` | Qwen/Qwen2.5-7B-Instruct | 7B |
-| **Qwen3** | `qwen3_4b_saferl` | Qwen/Qwen3-4B-SafeRL | 4B |
+| **Qwen3** | `qwen3_4b` | Qwen/Qwen3-4B | 4B |
+| | `qwen3_4b_saferl` | Qwen/Qwen3-4B-SafeRL | 4B |
 | | `qwen3_8b` | Qwen/Qwen3-8B | 8B |
 | **Tulu3** | `tulu3_8b_base` | meta-llama/Llama-3.1-8B | 8B |
 | | `tulu3_8b_sft` | allenai/Llama-3.1-Tulu-3-8B-SFT | 8B |
 | | `tulu3_8b_dpo` | allenai/Llama-3.1-Tulu-3-8B-DPO | 8B |
 | | `tulu3_8b_rlvr` | allenai/Llama-3.1-Tulu-3-8B | 8B |
+
+**Safety judges** (selectable per run via `JUDGE=` — see [Judge ablation](#judge-ablation)):
+
+| Config | HuggingFace name | `params_b` | Loader |
+|---|---|---|---|
+| `llama3.1_8b_instruct_judge` | meta-llama/Llama-3.1-8B-Instruct | 8.03 | `causal_lm` |
+| `olmo3_7b_instruct_judge` | allenai/Olmo-3-7B-Instruct | 7.30 | `causal_lm` |
+| `gemma3_4b_it_judge` | google/gemma-3-4b-it | 3.88 | `image_text_to_text` |
+
+Gemma 3 4B is a multimodal checkpoint (4.30B on disk) and needs the `image_text_to_text`
+loader, but its `params_b` is the **text-only LM** — a text-only judging call never runs the
+vision tower, and billing the SigLIP encoder into `2 × params_b × tokens` would overstate
+judge FLOPs by ~10%.
+
+**PAIR attackers** (selectable per experiment via `attacker_models` — see [Attacker ablation](#attacker-ablation)):
+
+| Config | HuggingFace name | `params_b` | Notes |
+|---|---|---|---|
+| `qwen2.5_7b` | Qwen/Qwen2.5-7B-Instruct | 7.62 | default attacker for PAIR and RL |
+| `gemma3_4b_it_abliterated` | mlabonne/gemma-3-4b-it-abliterated-v2 | 3.88 | uncensored; text-only `Gemma3ForCausalLM` |
+| `gemma3_1b_it_abliterated` | mlabonne/gemma-3-1b-it-abliterated-v2 | 1.00 | uncensored |
+
+Abliterated checkpoints have the refusal direction ablated, so they do not refuse the
+red-teaming instruction PAIR gives them. Both ship as text-only causal LMs and load with
+`quantization: 4bit` — matched on purpose, so the seconds axis compares attacker size rather
+than precision.
 
 **GPU memory guide:** 0.5–1B with `quantization: none` (~2 GB); 3B with `4bit` (~4 GB); 7–8B with `4bit` (~6–8 GB).
 
@@ -407,7 +527,7 @@ class MyAttack(AttackPolicy):
 | Attack | Type | Per-step compute | Notes |
 |---|---|---|---|
 | **GCG** | White-box, gradient | `(β_bwd + 128) × 2N × L_opt + 2N × L_gen + 2N_J × L_J` TFLOPs | Requires local HuggingFace model |
-| **PAIR** | Black-box, LLM | `2N_T × L_gen + 2N_A × L_att + 2N_J × L_J` TFLOPs | Attacker: Qwen2.5-7B-Instruct |
+| **PAIR** | Black-box, LLM | `2N_T × L_gen + 2N_A × L_att + 2N_J × L_J` TFLOPs | Attacker: Qwen2.5-7B-Instruct by default; swappable per experiment ([attacker ablation](#attacker-ablation)) |
 | **RL (GRPO)** | Black-box, adaptive | `{0,2,8}·N_A × L_att + 2N_T × L_gen + 2N_J × L_J` TFLOPs per query | Per-prompt GRPO (LoRA). Attacker term is per-step: `0` raw / `8N` updated round / `2N` winning round. First-success early stop. No pre-training. |
 | **JailBroken** | Black-box, template | `2N × L_gen + 2N_J × L_J` TFLOPs | 8 obfuscation templates; no setup |
 | **TransferAttack** | Black-box, replay | same as JailBroken | Replays GCG trajectories from a surrogate |
@@ -425,7 +545,24 @@ Where N = target params (B), N_A = attacker params, N_J = judge params, L = sequ
 | **HarmBench** | 200 | 6 (Chemical/Bio, Cybercrime, Harassment, Harmful, Illegal, Misinformation) | Mazeika et al., 2024 |
 | **JailbreakBench** | 100 | 10 | Chao et al., 2024 |
 
-**Safety judge:** Llama-3.1-8B-Instruct (default). Change via `judge_model` in experiment YAML or `--judge-model` flag.
+**Safety judge:** Llama-3.1-8B-Instruct (default). Change via `judge_model` in experiment YAML or the `--judge-model` flag on `run_inference.py`.
+
+The judge is the measurement instrument for every result here — it defines what counts as a
+successful jailbreak, so ASR, λ\*, and all four cost axes are conditioned on it. Two
+alternative judges are wired in so that conditioning can be measured rather than assumed:
+
+| Judge config | `model_id` | Size (text LM) | Lab | Released | Role |
+|---|---|---|---|---|---|
+| `llama3.1_8b_instruct_judge` | `llama3.1-8b-instruct` | 8.03B | Meta | 2024-07 | default / incumbent |
+| `olmo3_7b_instruct_judge` | `olmo3-7b-instruct` | 7.30B | AI2 | 2025-11 | fully open (weights + data + recipe) |
+| `gemma3_4b_it_judge` | `gemma3-4b-it` | 3.88B | Google | 2025-03 | smallest — judge-capacity probe |
+
+Gemma 3 4B ships as a multimodal checkpoint (4.30B on disk). Its `params_b` is set to the
+**text-only language model**, since a text-only judging call never runs the vision tower —
+billing the SigLIP encoder into `2 × params_b × tokens` would inflate the judge's FLOPs by
+~10%.
+
+See [Judge ablation](#judge-ablation) for how to run the sweep.
 
 ---
 
@@ -433,12 +570,22 @@ Where N = target params (B), N_A = attacker params, N_J = judge params, L = sequ
 
 | File | Contents |
 |---|---|
-| `outputs/<exp>/<model>_seed<N>/<attack>/results.jsonl` | Raw trial records (one JSON line per prompt) |
+| `outputs/<exp>/<model>_seed<N>/<attack>/results.jsonl` | Raw trial records (one JSON line per prompt; each step carries measured `seconds`, and `metadata.gpu`) |
 | `outputs/<exp>/<model>_seed<N>/rl/training_trace.jsonl` | RL only: per-GRPO-round rollouts, rewards, advantages, loss |
 | `outputs/<exp>/metrics.csv` | Risk curve + AURC/ΔR/λ* per (model, attack, λ) |
 | `outputs/<exp>/metrics_by_category.csv` | Same, broken down by harm category |
-| `outputs/<exp>/cost_metrics.csv` | metrics.csv + token/FLOP columns |
+| `outputs/<exp>/cost_metrics.csv` | metrics.csv + cost columns: `mean_total_{tflops,tokens,seconds,dollars}`, per-component tokens (`mean_{target,judge,attacker}_tokens`) and dollars (`mean_{target,judge,attacker}_dollars`) |
 | `outputs/<exp>/cost_summary_metrics.csv` | C@τ, AE, CAURC per (model, attack) across seeds |
+
+Under the judge ablation each judge gets its own copy of the whole tree, so runs never overwrite
+each other:
+
+```
+$SCRATCH/rup/{harmbench,jailbreakbench}/<model>/<seed>/<attack>/results.jsonl   # default judge
+$SCRATCH/rup/plots/<benchmark>/<model>/…                                        # default judge
+$SCRATCH/rup/judges/<judge_model_id>/{harmbench,jailbreakbench}/…               # other judges
+$SCRATCH/rup/judges/<judge_model_id>/plots/…
+```
 
 ---
 
@@ -539,6 +686,139 @@ bash run_cost_plots.sh   # risk-compute curves (tokens / TFLOPs axis)
 ```
 
 Each script has two parts: per-model plots at the top, and cross-model comparison/ablation plots at the bottom. Uncomment the blocks for the experiments and comparisons you want to generate.
+
+### Judge ablation
+
+Every `run_*.sh` script takes a `JUDGE` environment variable naming a judge config under
+`configs/models/` (without `.yaml`). It defaults to `llama3.1_8b_instruct_judge`, in which case
+all paths and SLURM job names are exactly what they were before judges became selectable —
+**existing results are untouched**. Any other judge gets its own tree:
+
+```
+$SCRATCH/rup/                                   # default judge (unchanged)
+$SCRATCH/rup/judges/<judge_model_id>/           # one tree per alternative judge
+$SCRATCH/rup/judges/<judge_model_id>/plots/
+```
+
+Run one judge across a single stage:
+
+```bash
+JUDGE=gemma3_4b_it_judge bash run_HB_experiments.sh
+JUDGE=gemma3_4b_it_judge bash run_evaluations.sh
+```
+
+#### Smoke-test a judge first
+
+`run_judge_smoke.sh` validates a judge in ~10 minutes instead of 23 hours: one small target,
+one cheap attack, 5 prompts, budget 2. Everything lands in a throwaway tree
+(`$SCRATCH/rup_judge_smoke`) and never touches the real results.
+
+```bash
+bash run_judge_smoke.sh          # submit (returns immediately)
+bash run_judge_smoke.sh check    # once the jobs finish: label counts + verdicts
+
+JUDGES="gemma3_4b_it_judge" bash run_judge_smoke.sh
+```
+
+`check` prints per-judge unsafe/total counts and flags the two degenerate cases:
+
+```
+judge                       unsafe   steps    rate  verdict
+llama3.1-8b-instruct             3      10     30%  ok
+olmo3-7b-instruct               10      10    100%  SUSPECT — all UNSAFE, check output parsing
+gemma3-4b-it                     0      10      0%  SUSPECT — all SAFE, check the rubric reached the judge
+```
+
+The incumbent Llama judge is in the default `JUDGES` list as a **reference**, not because it
+needs testing — "3 unsafe / 10 steps" only means something next to what a known-good judge
+scores on the identical prompts.
+
+> **All-SAFE is the failure mode that matters.** A judge that loads correctly but never receives
+> its rubric returns SAFE for everything, which is indistinguishable from a perfectly aligned
+> target in every downstream curve — silent, and it poisons the whole sweep. A
+> `Chat template rejected a system role` warning in the job log is benign (the rubric gets
+> folded into the user turn instead), but it tells you which template took that path.
+
+Or sweep both alternative judges over HarmBench, JailbreakBench, and the RL adaptive attack
+on both, via the driver:
+
+```bash
+bash run_judge_ablation.sh          # phase 1: submit inference for every judge
+bash run_judge_ablation.sh eval     # phase 2 + 2.5: metrics + cost metrics (after jobs finish)
+bash run_judge_ablation.sh plots    # cost-axis plots
+
+JUDGES="olmo3_7b_instruct_judge" bash run_judge_ablation.sh   # restrict to one judge
+```
+
+> **Compute warning:** this multiplies the whole sweep by the number of judges — 2× the
+> HB + JB + RL-HB + RL-JB cost with the default `JUDGES` list. Trim `JUDGES` or comment out
+> stages in `run_judge_ablation.sh` before launching.
+
+Cost accounting follows the judge automatically: `run_cost_evaluations.sh` passes
+`--judge-model $JUDGE_ID`, so `cost_mapper` charges the judge's own `params_b` on the FLOP axis
+and its own `$/1M-token` rate (from `configs/pricing.yaml`) on the dollar axis. The two move
+independently — Gemma 3 4B is the cheapest judge in FLOPs but not in dollars, because its hosted
+per-token rate is higher than Llama 3.1 8B's.
+
+### Attacker ablation
+
+The judge decides what counts as a jailbreak; the **attacker** decides how hard the target is
+pushed. PAIR's attacker has been Qwen2.5-7B-Instruct throughout, which is safety-tuned and
+therefore sometimes refuses its own red-teaming instructions — a refusal still burns a step of
+the pressure budget, so it lowers ASR for reasons that have nothing to do with the target.
+`configs/experiments/paper/attacker_size.yaml` varies the attacker with the target, seeds, and
+judge held fixed:
+
+| Attacker config | `model_id` | `params_b` | Role |
+|---|---|---|---|
+| `qwen2.5_7b` | `qwen2.5-7b-instruct` | 7.62B | incumbent, safety-tuned — reference |
+| `gemma3_4b_it_abliterated` | `gemma3-4b-it-abliterated` | 3.88B | uncensored, 4B |
+| `gemma3_1b_it_abliterated` | `gemma3-1b-it-abliterated` | 1.00B | uncensored, 1B |
+
+The two Gemma arms are the same family and the same abliteration recipe ([mlabonne](https://huggingface.co/mlabonne/gemma-3-4b-it-abliterated-v2), v2),
+so 4B vs 1B is a clean size contrast. The Qwen arm differs on two axes at once (bigger **and**
+safety-tuned), so read it as the baseline the existing curves were measured with, not as a third
+point on the size curve. Note that `mlabonne/gemma-3-4b-it-abliterated-v2` is a text-only
+`Gemma3ForCausalLM` — the vision tower `google/gemma-3-4b-it` carries is gone — so unlike the
+Gemma judge config its `params_b` is the whole checkpoint.
+
+```bash
+bash run_attacker_ablation.sh smoke        # 5 prompts, budget 2 — do this FIRST
+bash run_attacker_ablation.sh smoke-check  # per-arm verdicts once it finishes
+bash run_attacker_ablation.sh              # submit inference (one job per seed)
+bash run_attacker_ablation.sh eval         # metrics + cost metrics
+bash run_attacker_ablation.sh plots        # risk curves on all four cost axes
+
+SEEDS="1394 2 100" bash run_attacker_ablation.sh
+```
+
+Results live in their own tree, so nothing above is touched:
+
+```
+$SCRATCH/rup/attackers/harmbench/<target>/<seed>/pair__<attacker>/results.jsonl
+$SCRATCH/rup/attackers/plots/harmbench/<target>/{tokens,flops,seconds,dollars}/
+```
+
+> **Smoke-test first.** An attacker that loads but never returns a usable refinement (it
+> refuses, or returns an empty string) makes PAIR fall back to the previous prompt, so the arm
+> quietly becomes "ask the same thing ten times" and reads as a *weak* attacker rather than a
+> broken one. `smoke-check` counts how often each arm actually changed the prompt, which is
+> what separates the two.
+
+Cost accounting follows the attacker with no extra flags: `run_inference.py` writes one
+`pair__<attacker_config>` directory per arm, and `compute_attack_costs.py` maps that directory
+back to the attacker's `model_id`, charging its own `params_b` on the FLOP axis and its own
+`$/1M-token` rate on the dollar axis. (`--attacker-model` exists for result trees that don't name
+their attacker — plain `pair/` and `rl/` — and defaults to the incumbent.) Expect the two axes to
+disagree: the 4B Gemma attacker is ~1.3× cheaper than Qwen in FLOPs but slightly *more* expensive
+in dollars, because hosted per-token rates below ~10B track provider count more than size. The
+same caveat is documented at the top of `configs/pricing.yaml`.
+
+The RL/GRPO attack is **not** part of this sweep. It takes its attacker from
+`extra.base_attacker` in `configs/attacks/rl.yaml` rather than from the experiment's
+`attacker_models` list, and its results directory is a bare `rl/`, so two RL arms would collide.
+Swapping the RL base attacker is a one-line config change but comparing two of them in one run
+would need the RL output path to encode the attacker too.
 
 ---
 

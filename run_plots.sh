@@ -7,12 +7,18 @@
 #
 # Usage: bash run_plots.sh
 # Requires: must be run from the project root.
+#
+# JUDGE selects which judge's results to plot (a config name under configs/models/,
+# without .yaml); defaults to llama3.1_8b_instruct_judge and reads $SCRATCH/rup/plots
+# as before. Other judges read $SCRATCH/rup/judges/<judge_model_id>/plots.
+#   JUDGE=gemma3_4b_it_judge bash run_plots.sh
 
 set -e
 
 source setup/start_env.sh
+source setup/judge_env.sh
 
-OUTPUT=$SCRATCH/rup/plots
+OUTPUT=$PLOT_ROOT
 
 # =============================================================================
 # Per-model plots (seed-aggregated CI)

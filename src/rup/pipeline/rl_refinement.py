@@ -39,6 +39,27 @@ from ..utils.logging import get_logger
 logger = get_logger(__name__)
 
 
+def _cuda_sync() -> None:
+    """Flush pending CUDA work so perf_counter deltas reflect real device time."""
+    try:
+        import torch
+        if torch.cuda.is_available():
+            torch.cuda.synchronize()
+    except Exception:  # noqa: BLE001 - timing must never break a run
+        pass
+
+
+def _gpu_name() -> Optional[str]:
+    """Name of the active GPU (for tagging timing rows), or None on CPU."""
+    try:
+        import torch
+        if torch.cuda.is_available():
+            return torch.cuda.get_device_name(0)
+    except Exception:  # noqa: BLE001
+        pass
+    return None
+
+
 def _append_trace(trace_path: Optional[Path], row: Dict[str, Any]) -> None:
     """Append one JSONL row to the GRPO training trace (rollouts + scores per round).
 
@@ -232,9 +253,11 @@ def run_prompt_rl(
     q = 0  # cumulative target queries (= pressure)
 
     # Step 1: the raw behavior itself (p^0), mirroring PAIR — gives the round-1 feedback context.
+    _cuda_sync(); _t_raw = time.perf_counter()
     r0, resp0, judg0 = env.score(base_prompt, behavior)
+    _cuda_sync(); sec_raw = time.perf_counter() - _t_raw
     q += 1
-    steps.append(StepResult(step=q, prompt=base_prompt, response=resp0, judgment=judg0))
+    steps.append(StepResult(step=q, prompt=base_prompt, response=resp0, judgment=judg0, seconds=sec_raw))
     if judg0 == 1 and t_star is None:
         t_star = q
     ctx_prompt, ctx_resp, ctx_judg = base_prompt, resp0, judg0
@@ -255,19 +278,27 @@ def run_prompt_rl(
     while q < budget and t_star is None:
         round_idx += 1
         q_start = q
+        # Time the attacker's group generation (per-round; amortized across candidates below).
+        _cuda_sync(); _t_gen = time.perf_counter()
         prompt_ids = _prompt_ids(attacker, behavior, ctx_prompt, ctx_resp, ctx_judg)
         texts, comp_ids = _sample_group(attacker, prompt_ids, cfg)
+        _cuda_sync(); gen_time = time.perf_counter() - _t_gen
 
         rewards: List[float] = []
         rollouts: List[Dict[str, Any]] = []  # per-candidate log for this round
+        round_steps: List[StepResult] = []   # StepResult refs for this round (to patch seconds)
         best = None  # (reward, text, response, judgment)
         best_idx = -1
         for text, comp in zip(texts, comp_ids):
             if q >= budget:
                 break
+            _cuda_sync(); _t_sc = time.perf_counter()
             reward, response, judgment = env.score(text, behavior)
+            _cuda_sync(); sec_sc = time.perf_counter() - _t_sc
             q += 1
-            steps.append(StepResult(step=q, prompt=text, response=response, judgment=judgment))
+            sr = StepResult(step=q, prompt=text, response=response, judgment=judgment, seconds=sec_sc)
+            steps.append(sr)
+            round_steps.append(sr)
             rewards.append(reward)
             rollouts.append({
                 "query": q, "candidate": text, "reward": reward,
@@ -291,7 +322,9 @@ def run_prompt_rl(
         scored = len(rewards)
         advantages: Optional[List[float]] = None
         round_loss: Optional[float] = None
+        update_time = 0.0
         if scored >= 2 and t_star is None:
+            _cuda_sync(); _t_upd = time.perf_counter()
             adv = torch.tensor(rewards, dtype=torch.float32, device=attacker.device)
             adv = (adv - adv.mean()) / (adv.std() + 1e-6)
             advantages = [float(a) for a in adv]
@@ -308,7 +341,15 @@ def run_prompt_rl(
             )
             optimizer.step()
             round_loss = total_loss
+            _cuda_sync(); update_time = time.perf_counter() - _t_upd
             logger.debug(f"[{prompt_id}] q={q} loss={total_loss:.3f} meanR={sum(rewards)/scored:.3f}")
+
+        # Amortize the per-round attacker work (group generation + GRPO update) across the
+        # candidates scored this round, on top of each candidate's own env.score() time.
+        if scored:
+            overhead = (gen_time + update_time) / scored
+            for sr in round_steps:
+                sr.seconds = (sr.seconds or 0.0) + overhead
 
         # Persist the round's rollouts + GRPO stats so the trajectory is inspectable.
         if scored:
@@ -347,5 +388,5 @@ def run_prompt_rl(
         success=success,
         first_success_step=t_star,
         final_prompt=final_prompt,
-        metadata={"elapsed_seconds": elapsed},
+        metadata={"elapsed_seconds": elapsed, "gpu": _gpu_name()},
     )

@@ -1,0 +1,17 @@
+# Safety judge — Olmo 3 7B Instruct (AI2, released 2025-11-19).
+# Fully open (weights + data + recipe), which makes it the most reproducible of the
+# judge set. Plain causal LM, no vision tower, so params_b is the whole checkpoint:
+# safetensors total = 7,298,011,136.
+model_id: "olmo3-7b-instruct"
+backend: "huggingface"
+hf_name: "allenai/Olmo-3-7B-Instruct"
+params_b: 7.30
+model_type: "instruct"
+model_class: "causal_lm"
+quantization: "4bit"
+device: "cuda"
+generation:
+  temperature: 0.2
+  do_sample: true
+  top_p: 0.9
+  max_new_tokens: 64

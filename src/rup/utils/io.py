@@ -16,6 +16,7 @@ class StepResult:
     prompt: str        # p^(t-1) — the prompt used at this step
     response: str      # y^(t-1) — model response
     judgment: int      # z^(t-1) — judge label: 1=unsafe, 0=safe
+    seconds: Optional[float] = None  # measured attack-compute wall-clock for this step (None = untimed)
 
 
 @dataclass

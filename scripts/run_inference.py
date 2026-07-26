@@ -116,6 +116,10 @@ def parse_args():
     p.add_argument("--n-prompts", type=int, help="Override: number of prompts to use")
     p.add_argument("--seeds", type=int, nargs="+", help="Override: list of seeds (e.g. --seeds 42 123 456)")
     p.add_argument("--benchmark", help="Override: benchmark (harmbench or jailbreakbench)")
+    p.add_argument("--judge-model",
+                   help="Override: safety judge model config name (e.g. gemma3_4b_it_judge). "
+                        "Pair with a judge-specific --output-dir so runs under different "
+                        "judges do not overwrite each other.")
     p.add_argument("--output-dir", help="Override: root directory for results (e.g. $SCRATCH)")
     p.add_argument("--configs-dir", default="configs", help="Root directory for configs")
     p.add_argument("--resume", action="store_true",
@@ -146,6 +150,8 @@ def main():
         config.seeds = args.seeds
     if args.benchmark:
         config.benchmark = args.benchmark
+    if args.judge_model:
+        config.judge_model = args.judge_model
     if args.output_dir:
         config.output_dir = args.output_dir
 

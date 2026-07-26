@@ -91,6 +91,14 @@ ATTACK_DISPLAY = {
     "rl": "RL (GRPO)",
 }
 
+# Attacker-ablation arms: run_inference.py names those result dirs pair__<attacker config>,
+# so the attack_id carries the attacker (see configs/experiments/paper/attacker_size.yaml).
+ATTACKER_DISPLAY = {
+    "qwen2.5_7b":               "Qwen2.5-7B",
+    "gemma3_4b_it_abliterated": "Gemma3-4B-abl",
+    "gemma3_1b_it_abliterated": "Gemma3-1B-abl",
+}
+
 CATEGORY_DISPLAY = {
     # HarmBench categories
     "chemical_biological":            "Chem. & Bio.",
@@ -115,8 +123,10 @@ CATEGORY_DISPLAY = {
 SEED_RE = re.compile(r"_seed\d+$")
 
 COST_COLS_ALL = [
-    "mean_target_tokens", "mean_judge_tokens", "mean_total_tokens",
+    "mean_target_tokens", "mean_judge_tokens", "mean_attacker_tokens", "mean_total_tokens",
     "mean_target_tflops", "mean_judge_tflops", "mean_total_tflops",
+    "mean_total_seconds",
+    "mean_target_dollars", "mean_judge_dollars", "mean_attacker_dollars", "mean_total_dollars",
 ]
 
 X_AXIS_META: dict[str, dict] = {
@@ -128,6 +138,16 @@ X_AXIS_META: dict[str, dict] = {
     "flops": {
         "col":     "mean_total_tflops",
         "label":   "Cumulative TFLOPs",
+        "k_scale": False,
+    },
+    "seconds": {
+        "col":     "mean_total_seconds",
+        "label":   "Cumulative attack seconds (L40S)",
+        "k_scale": False,
+    },
+    "dollars": {
+        "col":     "mean_total_dollars",
+        "label":   "Cumulative cost (USD)",
         "k_scale": False,
     },
 }
@@ -169,6 +189,9 @@ def _attack_label(a: str) -> str:
     m = re.match(r"transfer_(\w+)_from_(.*)", a)
     if m:
         return f"{m.group(1).upper()} Transfer"
+    base, sep, attacker = a.partition("__")   # attacker ablation: pair__<attacker config>
+    if sep:
+        return f"{ATTACK_DISPLAY.get(base, base)} ({ATTACKER_DISPLAY.get(attacker, attacker)})"
     return a
 
 
@@ -971,7 +994,7 @@ def parse_args() -> argparse.Namespace:
         help="Directory where plots are written",
     )
     p.add_argument(
-        "--x-axis", default="tokens", choices=["tokens", "flops"],
+        "--x-axis", default="tokens", choices=["tokens", "flops", "seconds", "dollars"],
         help="X-axis: 'tokens' = mean total token count (default), "
              "'flops' = mean total TFLOPs",
     )

@@ -36,8 +36,10 @@ Per-attack overhead per step:
 """
 from __future__ import annotations
 
+import math
 import re
 import warnings
+from dataclasses import dataclass
 from itertools import accumulate
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -45,6 +47,41 @@ from typing import Any, Dict, List, Optional, Tuple
 import yaml
 
 from ..utils.io import TrialRecord
+
+
+@dataclass
+class StepCost:
+    """Per-step cost broken down by component and by input(read)/output(generated) tokens.
+
+    Token fields feed the dollar (per-token hosted pricing) axis; the *_tflops fields feed the
+    FLOP axis. Convenience properties reproduce the legacy per-component / total token & FLOP
+    quantities.
+    """
+    target_in: float = 0.0
+    target_out: float = 0.0
+    judge_in: float = 0.0
+    judge_out: float = 0.0
+    att_in: float = 0.0
+    att_out: float = 0.0
+    target_tflops: float = 0.0
+    judge_tflops: float = 0.0
+    att_tflops: float = 0.0
+
+    @property
+    def target_tokens(self) -> float:
+        return self.target_in + self.target_out
+
+    @property
+    def judge_tokens(self) -> float:
+        return self.judge_in + self.judge_out
+
+    @property
+    def att_tokens(self) -> float:
+        return self.att_in + self.att_out
+
+    @property
+    def total_tflops(self) -> float:
+        return self.target_tflops + self.judge_tflops + self.att_tflops
 
 # ---------------------------------------------------------------------------
 # Model registry — populated from configs/models/*.yaml via load_model_registry()
@@ -60,6 +97,7 @@ from ..utils.io import TrialRecord
 
 MODEL_HF_ID: Dict[str, str] = {}    # model_id → HF tokenizer name
 MODEL_PARAMS_B: Dict[str, float] = {}  # model_id → billions of parameters
+MODEL_ID_BY_CONFIG: Dict[str, str] = {}  # config filename stem → model_id
 
 
 def load_model_registry(configs_dir: str | Path = "configs") -> None:
@@ -89,6 +127,10 @@ def load_model_registry(configs_dir: str | Path = "configs") -> None:
             model_id = cfg.get("model_id")
             if not model_id:
                 continue
+            # Config stem → model_id: run_inference.py names attacker result folders after
+            # the config filename (pair__gemma3_4b_it_abliterated), while every cost lookup
+            # here is keyed by model_id. attacker_from_attack_id() bridges the two.
+            MODEL_ID_BY_CONFIG[yaml_path.stem] = model_id
             # Tokenizer: prefer explicit hf_tokenizer_id, fall back to hf_name
             hf_id = cfg.get("hf_tokenizer_id") or cfg.get("hf_name")
             if hf_id:
@@ -99,9 +141,81 @@ def load_model_registry(configs_dir: str | Path = "configs") -> None:
         except Exception as exc:
             warnings.warn(f"Failed to load model config {yaml_path}: {exc}", stacklevel=2)
 
-# PAIR attacker (configs/attacks/pair.yaml → attacker_model: qwen2.5_7b)
+# Default attacker (configs/attacks/pair.yaml → attacker_model: qwen2.5_7b, and
+# configs/attacks/rl.yaml → extra.base_attacker). The attacker ablation
+# (configs/experiments/paper/attacker_size.yaml) swaps it per run, so these are
+# fallbacks for when the registry has not been loaded — the live values come from
+# the attacker's own config via attacker_model_id in aggregate_costs().
+_ATTACKER_MODEL_ID:      str   = "qwen2.5-7b-instruct"  # tokenizer/size/pricing key
 _PAIR_ATTACKER_HF_ID:    str   = "Qwen/Qwen2.5-7B-Instruct"
 _PAIR_ATTACKER_PARAMS_B: float = 7.62
+
+# ---------------------------------------------------------------------------
+# Pricing registry — populated from configs/pricing.yaml via load_pricing().
+# Per model_id: usd_per_1m_input, usd_per_1m_output (hosted per-token rates).
+# Empty until loaded; when empty the dollar axis is emitted as NaN (feature off).
+# ---------------------------------------------------------------------------
+MODEL_PRICE_IN:  Dict[str, float] = {}   # model_id → USD per 1M input tokens
+MODEL_PRICE_OUT: Dict[str, float] = {}   # model_id → USD per 1M output tokens
+_PRICING_LOADED: bool = False
+_PRICING_WARNED: set = set()
+
+
+def load_pricing(path: str | Path) -> None:
+    """Read configs/pricing.yaml into MODEL_PRICE_IN / MODEL_PRICE_OUT.
+
+    Expected shape:
+        models:
+          qwen2.5-7b-instruct: {usd_per_1m_input: 0.20, usd_per_1m_output: 0.20}
+          ...
+    """
+    global _PRICING_LOADED
+    p = Path(path)
+    if not p.exists():
+        warnings.warn(f"Pricing config not found: {p}. Dollar axis will be NaN.", stacklevel=2)
+        return
+    with open(p) as f:
+        cfg = yaml.safe_load(f) or {}
+    models = cfg.get("models", cfg)  # allow a bare mapping too
+    for model_id, rates in (models or {}).items():
+        if not isinstance(rates, dict):
+            continue
+        if "usd_per_1m_input" in rates:
+            MODEL_PRICE_IN[model_id] = float(rates["usd_per_1m_input"])
+        if "usd_per_1m_output" in rates:
+            MODEL_PRICE_OUT[model_id] = float(rates["usd_per_1m_output"])
+    _PRICING_LOADED = True
+
+
+def _price(model_id: str, table: Dict[str, float]) -> float:
+    """USD-per-1M-token rate for a model; 0.0 (warn once) if the model is unpriced."""
+    if model_id in table:
+        return table[model_id]
+    if model_id not in _PRICING_WARNED:
+        warnings.warn(f"No hosted price for '{model_id}' in pricing config — treating as $0.",
+                      stacklevel=2)
+        _PRICING_WARNED.add(model_id)
+    return 0.0
+
+
+def _component_dollars(model_id: str, in_tok: float, out_tok: float) -> float:
+    """USD for one component's tokens, priced at that model's own in/out rate."""
+    return (in_tok * _price(model_id, MODEL_PRICE_IN)
+            + out_tok * _price(model_id, MODEL_PRICE_OUT)) / 1_000_000.0
+
+
+def _step_dollars(sc: "StepCost", target_id: str, judge_id: str, attacker_id: str):
+    """(target_$, judge_$, attacker_$) for one step — each priced by its own model's rate.
+
+    Returns (NaN, NaN, NaN) if no pricing config is loaded (dollar axis off).
+    """
+    if not _PRICING_LOADED:
+        return math.nan, math.nan, math.nan
+    return (
+        _component_dollars(target_id,   sc.target_in, sc.target_out),
+        _component_dollars(judge_id,    sc.judge_in,  sc.judge_out),
+        _component_dollars(attacker_id, sc.att_in,    sc.att_out),
+    )
 
 # GCG optimization constants (must match gcg_attack.py)
 _GCG_NUM_CANDIDATES:    int = 128          # MutationTokenGradient num_turb_sample
@@ -215,6 +329,53 @@ def _judge_params_b(judge_model_id: str) -> float:
     return float(m.group(1)) if m else 8.0
 
 
+def _attacker_hf_id(attacker_model_id: str) -> str:
+    """HF tokenizer for the PAIR/RL attacker; the default attacker's if unregistered.
+
+    Unlike the target, an unknown attacker must not be fatal: cost columns are recomputed
+    over old result trees, and those predate any attacker the registry now knows about.
+    """
+    try:
+        return _hf_id(attacker_model_id)
+    except KeyError:
+        warnings.warn(
+            f"No HF tokenizer mapping for attacker '{attacker_model_id}' — counting its "
+            f"tokens with {_PAIR_ATTACKER_HF_ID}. Add a configs/models/*.yaml for it.",
+            stacklevel=2,
+        )
+        return _PAIR_ATTACKER_HF_ID
+
+
+def _attacker_params_b(attacker_model_id: str) -> float:
+    key = attacker_model_id.split("_seed")[0]
+    if key in MODEL_PARAMS_B:
+        return MODEL_PARAMS_B[key]
+    m = re.search(r"(\d+(?:\.\d+)?)b", key.lower())
+    return float(m.group(1)) if m else _PAIR_ATTACKER_PARAMS_B
+
+
+def attacker_from_attack_id(attack_id: str, default: str = _ATTACKER_MODEL_ID) -> str:
+    """Model_id of the attacker that produced a `pair__<config>` results directory.
+
+    When an experiment sets `attacker_models`, run_inference.py encodes the attacker's
+    CONFIG NAME in the folder (pair__gemma3_4b_it_abliterated) while the records inside
+    still carry attack_id="pair". This maps that folder back to the attacker's model_id
+    so its own size and hosted rate are the ones charged. Plain `pair`/`rl` folders — and
+    any config the registry does not know — fall back to `default`.
+    """
+    _, sep, config_name = attack_id.partition("__")
+    if not sep:
+        return default
+    if config_name in MODEL_ID_BY_CONFIG:
+        return MODEL_ID_BY_CONFIG[config_name]
+    warnings.warn(
+        f"Attacker config '{config_name}' (from results dir '{attack_id}') is not in "
+        f"configs/models/ — charging attacker cost at {default}.",
+        stacklevel=2,
+    )
+    return default
+
+
 def _is_jailbroken(attack_id: str) -> bool:
     return attack_id == "jailbroken" or attack_id.startswith("jailbroken")
 
@@ -267,40 +428,40 @@ def step_cost(
     judge_params_b: float,
     gcg_backward_mult: float = 3.0,
     rl_att_mult: Optional[float] = None,
-) -> Tuple[float, float, float, float, float, float]:
-    """
-    Return (target_tokens, judge_tokens, att_tokens,
-            target_tflops, judge_tflops, total_tflops) for one step.
+    attacker_hf_id: str = _PAIR_ATTACKER_HF_ID,
+    attacker_params_b: float = _PAIR_ATTACKER_PARAMS_B,
+) -> "StepCost":
+    """Return a StepCost for one step: per-component input/output token counts and TFLOPs.
 
-    target_tokens:  tokens consumed by the target model (prompt + response)
-    judge_tokens:   tokens consumed by the judge (system + truncated inputs + output)
-    att_tokens:     tokens consumed by the PAIR attacker (0 for gcg/jailbroken)
-    target_tflops:  TFLOPs spent on the target model
-    judge_tflops:   TFLOPs spent on the judge model
-    total_tflops:   target_tflops + judge_tflops + attacker_tflops
+    Input tokens = tokens the model reads (prompt/context; for GCG, the opt-sequence forward
+    passes); output tokens = tokens it generates (response / candidate). The token split feeds
+    the dollar (hosted per-token) axis; the *_tflops feed the FLOP axis (attacker FLOPs scaled
+    by att_mult). Token counts are one generation (input+output) even when the FLOP model bills
+    multiple internal passes.
     """
     target_hf = _hf_id(model_id)
     n_b       = _params_b(model_id)
 
     # --- Target model ---
     if attack_id == "gcg":
-        # Optimization sequence: the sequence GCG computes gradients and candidates on.
-        # Each of the 128 candidate passes and the gradient step operate on this sequence.
-        opt_tok = _count_tokens(prompt + " " + _GCG_REFERENCE_PREFIX, target_hf)
-        gen_tok = _count_tokens(prompt, target_hf) + _count_tokens(response, target_hf)
-        opt_fwd = 2 * n_b * opt_tok / 1000
-        target_tok = (_GCG_NUM_CANDIDATES + 1) * opt_tok + gen_tok
+        # Optimization sequence: GCG computes the gradient step + 128 candidate forwards on it
+        # (all reads → input tokens); generation reads the prompt and writes the response.
+        opt_tok    = _count_tokens(prompt + " " + _GCG_REFERENCE_PREFIX, target_hf)
+        prompt_tok = _count_tokens(prompt, target_hf)
+        resp_tok   = _count_tokens(response, target_hf)
+        gen_tok    = prompt_tok + resp_tok
+        opt_fwd    = 2 * n_b * opt_tok / 1000
+        target_in  = float((_GCG_NUM_CANDIDATES + 1) * opt_tok + prompt_tok)
+        target_out = float(resp_tok)
         target_tfl = (
             opt_fwd * gcg_backward_mult        # 1 gradient step (forward + backward)
             + _GCG_NUM_CANDIDATES * opt_fwd    # 128 candidate forward passes
             + 2 * n_b * gen_tok / 1000         # 1 generation forward pass
         )
     else:
-        target_tok = (
-            _count_tokens(prompt, target_hf)
-            + _count_tokens(response, target_hf)
-        )
-        target_tfl = 2 * n_b * target_tok / 1000
+        target_in  = float(_count_tokens(prompt, target_hf))
+        target_out = float(_count_tokens(response, target_hf))
+        target_tfl = 2 * n_b * (target_in + target_out) / 1000
 
     # --- Judge model (one forward pass per step for all attacks) ---
     judge_user = _JUDGE_USER_TEMPLATE.format(
@@ -308,23 +469,20 @@ def step_cost(
         response=response[:1500],
     )
     judge_input = _JUDGE_SYSTEM_PROMPT + "\n\n" + judge_user
-    # Judge output is always "UNSAFE" or "SAFE" (~1-2 tokens)
-    judge_tok = _count_tokens(judge_input, judge_hf_id) + 2
-    judge_tfl = 2 * judge_params_b * judge_tok / 1000
+    judge_in  = float(_count_tokens(judge_input, judge_hf_id))
+    judge_out = 2.0  # judge output is always "UNSAFE"/"SAFE" (~1-2 tokens)
+    judge_tfl = 2 * judge_params_b * (judge_in + judge_out) / 1000
 
-    # --- Qwen2.5-7B attacker per step (PAIR and RL/GRPO) ---
-    # Both use the same 7B attacker. PAIR runs one forward pass per step (2N/token). RL/GRPO
-    # additionally does KL-reference + policy forwards and a LoRA backward on rounds that update,
-    # so its per-step multiplier varies (0 / 2 / 8) — computed by _rl_attacker_mult() and passed
-    # in via `rl_att_mult`. The LoRA backward is ~2N (activation grads only; frozen base weights
-    # get no weight-gradient), so an updated candidate is 8N, not the old flat 6N.
-    att_tok = 0.0
-    att_tfl = 0.0
+    # --- Attacker LLM per step (PAIR and RL/GRPO) ---
+    # Qwen2.5-7B by default; the attacker ablation swaps in a different model, and both its
+    # tokenizer and its params_b arrive here as arguments so a 1B attacker is billed as 1B.
+    # PAIR runs one forward pass per step (2N/token). RL/GRPO additionally does KL-reference +
+    # policy forwards and a LoRA backward on rounds that update, so its FLOP multiplier varies
+    # (0 / 2 / 8) via _rl_attacker_mult() (`rl_att_mult`). Token counts, however, are one
+    # generation (input+output) regardless of internal passes — that's what a hosted API bills.
+    att_in = att_out = att_tfl = 0.0
     if attack_id in ("pair", "rl"):
-        if attack_id == "rl":
-            att_mult = rl_att_mult if rl_att_mult is not None else 6.0
-        else:
-            att_mult = 2.0  # PAIR: one forward pass
+        att_mult = (rl_att_mult if rl_att_mult is not None else 6.0) if attack_id == "rl" else 2.0
         if att_mult > 0.0:  # 0 = attacker did not run this step (RL raw-behavior step)
             att_user = _PAIR_ATTACKER_USER_TEMPLATE.format(
                 goal=behavior,
@@ -332,15 +490,18 @@ def step_cost(
                 response=response[:500],
                 judgment=judgment,
             )
-            att_input  = _PAIR_ATTACKER_SYSTEM_PROMPT + "\n\n" + att_user
-            att_in_tok = _count_tokens(att_input, _PAIR_ATTACKER_HF_ID)
+            att_input = _PAIR_ATTACKER_SYSTEM_PROMPT + "\n\n" + att_user
+            att_in  = float(_count_tokens(att_input, attacker_hf_id))
             # Attacker output ≈ refined/candidate prompt, approximated as current prompt length
-            att_out_tok = _count_tokens(prompt, _PAIR_ATTACKER_HF_ID)
-            att_tok = float(att_in_tok + att_out_tok)
-            att_tfl = att_mult * _PAIR_ATTACKER_PARAMS_B * att_tok / 1000
+            att_out = float(_count_tokens(prompt, attacker_hf_id))
+            att_tfl = att_mult * attacker_params_b * (att_in + att_out) / 1000
 
-    total_tfl = target_tfl + judge_tfl + att_tfl
-    return float(target_tok), float(judge_tok), att_tok, target_tfl, judge_tfl, total_tfl
+    return StepCost(
+        target_in=target_in, target_out=target_out,
+        judge_in=judge_in, judge_out=judge_out,
+        att_in=att_in, att_out=att_out,
+        target_tflops=target_tfl, judge_tflops=judge_tfl, att_tflops=att_tfl,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -353,6 +514,8 @@ def cumulative_costs(
     judge_hf_id: str,
     judge_params_b_val: float,
     gcg_backward_mult: float = 3.0,
+    attacker_hf_id: str = _PAIR_ATTACKER_HF_ID,
+    attacker_params_b_val: float = _PAIR_ATTACKER_PARAMS_B,
 ) -> Tuple[float, float, float, float, float, float]:
     """
     Cumulative (target_tokens, judge_tokens, att_tokens,
@@ -361,18 +524,20 @@ def cumulative_costs(
     """
     tgt_tok = jdg_tok = att_tok = tgt_tfl = jdg_tfl = tot_tfl = 0.0
     for s in record.steps[:lambda_val]:
-        t, j, a, tf, jf, totf = step_cost(
+        sc = step_cost(
             s.prompt, s.response, s.judgment, record.behavior,
             record.model_id, record.attack_id,
             judge_hf_id, judge_params_b_val,
             gcg_backward_mult,
+            attacker_hf_id=attacker_hf_id,
+            attacker_params_b=attacker_params_b_val,
         )
-        tgt_tok += t
-        jdg_tok += j
-        att_tok += a
-        tgt_tfl += tf
-        jdg_tfl += jf
-        tot_tfl += totf
+        tgt_tok += sc.target_tokens
+        jdg_tok += sc.judge_tokens
+        att_tok += sc.att_tokens
+        tgt_tfl += sc.target_tflops
+        jdg_tfl += sc.judge_tflops
+        tot_tfl += sc.total_tflops
     return tgt_tok, jdg_tok, att_tok, tgt_tfl, jdg_tfl, tot_tfl
 
 
@@ -387,6 +552,8 @@ def aggregate_costs(
     gcg_backward_mult: float = 3.0,
     configs_dir: Optional[str | Path] = None,
     rl_num_generations: int = 8,
+    pricing_path: Optional[str | Path] = None,
+    attacker_model_id: str = _ATTACKER_MODEL_ID,
 ) -> Dict[int, Dict[str, float]]:
     """
     For each pressure level, return mean costs across all trials.
@@ -394,55 +561,82 @@ def aggregate_costs(
     Each step is tokenized exactly once per record; cumulative sums across
     lambda levels are built from that single pass (no re-tokenization).
 
+    `attacker_model_id` sizes and prices the PAIR/RL attacker, the same way
+    `judge_model_id` does for the judge. Pass the attacker the run actually used —
+    attacker_from_attack_id() recovers it from a `pair__<config>` results directory.
+
     Keys in inner dict:
-      mean_target_tokens, mean_judge_tokens, mean_total_tokens,
-      mean_target_tflops, mean_judge_tflops, mean_total_tflops
+      mean_target_tokens, mean_judge_tokens, mean_attacker_tokens, mean_total_tokens,
+      mean_target_tflops, mean_judge_tflops, mean_total_tflops,
+      mean_total_seconds (measured attack wall-clock; NaN if any step is untimed),
+      mean_{target,judge,attacker}_dollars + mean_total_dollars (each component priced by its
+        own model's hosted rate; NaN unless pricing_path is given)
     """
     if configs_dir is not None:
         load_model_registry(configs_dir)
     elif not MODEL_HF_ID:
         load_model_registry("configs")
+    if pricing_path is not None:
+        load_pricing(pricing_path)
 
     judge_hf = _hf_id(judge_model_id)
     judge_pb = _judge_params_b(judge_model_id)
+    att_hf   = _attacker_hf_id(attacker_model_id)
+    att_pb   = _attacker_params_b(attacker_model_id)
 
     lams = sorted(pressure_levels)
     n    = len(records)
     zero = dict(
-        mean_target_tokens=0.0, mean_judge_tokens=0.0, mean_total_tokens=0.0,
+        mean_target_tokens=0.0, mean_judge_tokens=0.0, mean_attacker_tokens=0.0,
+        mean_total_tokens=0.0,
         mean_target_tflops=0.0, mean_judge_tflops=0.0, mean_total_tflops=0.0,
+        mean_total_seconds=0.0,
+        mean_target_dollars=0.0, mean_judge_dollars=0.0, mean_attacker_dollars=0.0,
+        mean_total_dollars=0.0,
     )
     result: Dict[int, Dict[str, float]] = {lam: dict(zero) for lam in lams if lam == 0 or n == 0}
     if n == 0:
         return result
 
-    # Accumulators: lam → [tgt_tok, jdg_tok, att_tok, tgt_tfl, jdg_tfl, tot_tfl]
-    sums: Dict[int, List[float]] = {lam: [0.0] * 6 for lam in lams if lam > 0}
+    # Accumulators: lam → [tgt_tok, jdg_tok, att_tok, tgt_tfl, jdg_tfl, tot_tfl,
+    #                       seconds, tgt_$, jdg_$, att_$]
+    sums: Dict[int, List[float]] = {lam: [0.0] * 10 for lam in lams if lam > 0}
 
     for record in records:
-        # Tokenize every step once. For RL the attacker multiplier is per-step (0/2/8),
-        # reconstructed from success + first_success_step + the GRPO group size.
+        # Cost each step once. For RL the attacker FLOP multiplier is per-step (0/2/8),
+        # reconstructed from success + first_success_step + the GRPO group size. `seconds` is the
+        # measured per-step wall-clock (NaN if untimed → poisons the seconds axis for this trial);
+        # `dollars` is per-token hosted pricing (NaN unless a pricing config was loaded).
         is_rl = record.attack_id == "rl"
-        per_step = [
-            step_cost(
+        per_step = []
+        for i, s in enumerate(record.steps):
+            sc = step_cost(
                 s.prompt, s.response, s.judgment, record.behavior,
                 record.model_id, record.attack_id,
                 judge_hf, judge_pb, gcg_backward_mult,
+                attacker_hf_id=att_hf,
+                attacker_params_b=att_pb,
                 rl_att_mult=(
                     _rl_attacker_mult(
                         i, record.success, record.first_success_step, rl_num_generations
                     ) if is_rl else None
                 ),
             )
-            for i, s in enumerate(record.steps)
-        ]
+            seconds = s.seconds if s.seconds is not None else math.nan
+            tgt_d, jdg_d, att_d = _step_dollars(
+                sc, record.model_id, judge_model_id, attacker_model_id
+            )
+            per_step.append((
+                sc.target_tokens, sc.judge_tokens, sc.att_tokens,
+                sc.target_tflops, sc.judge_tflops, sc.total_tflops,
+                seconds, tgt_d, jdg_d, att_d,
+            ))
         if not per_step:
             continue
 
-        # Build cumulative sums: cumul[i] = cost up through step i (0-indexed)
-        _zero6 = (0.0,) * 6
-        cumul = list(accumulate(per_step, lambda a, b: tuple(x + y for x, y in zip(a, b)), initial=_zero6))
-        # cumul[k] = sum of first k steps; cumul[0] = zero
+        # Build cumulative sums: cumul[k] = cost through step k (0-indexed); cumul[0] = zero
+        _zero10 = (0.0,) * 10
+        cumul = list(accumulate(per_step, lambda a, b: tuple(x + y for x, y in zip(a, b)), initial=_zero10))
 
         n_steps = len(per_step)
         for lam in lams:
@@ -451,23 +645,25 @@ def aggregate_costs(
             k = min(lam, n_steps)  # actual steps consumed (early-stop)
             c = cumul[k]
             acc = sums[lam]
-            acc[0] += c[0]  # target_tok
-            acc[1] += c[1]  # judge_tok
-            acc[2] += c[2]  # att_tok
-            acc[3] += c[3]  # target_tfl
-            acc[4] += c[4]  # judge_tfl
-            acc[5] += c[5]  # total_tfl
+            for j in range(10):
+                acc[j] += c[j]
 
     for lam in lams:
         if lam == 0:
             continue
         s = sums[lam]
         result[lam] = {
-            "mean_target_tokens": s[0] / n,
-            "mean_judge_tokens":  s[1] / n,
-            "mean_total_tokens":  (s[0] + s[1] + s[2]) / n,
-            "mean_target_tflops": s[3] / n,
-            "mean_judge_tflops":  s[4] / n,
-            "mean_total_tflops":  s[5] / n,
+            "mean_target_tokens":   s[0] / n,
+            "mean_judge_tokens":    s[1] / n,
+            "mean_attacker_tokens": s[2] / n,
+            "mean_total_tokens":    (s[0] + s[1] + s[2]) / n,
+            "mean_target_tflops":   s[3] / n,
+            "mean_judge_tflops":    s[4] / n,
+            "mean_total_tflops":    s[5] / n,
+            "mean_total_seconds":   s[6] / n,
+            "mean_target_dollars":   s[7] / n,
+            "mean_judge_dollars":    s[8] / n,
+            "mean_attacker_dollars": s[9] / n,
+            "mean_total_dollars":    (s[7] + s[8] + s[9]) / n,
         }
     return result

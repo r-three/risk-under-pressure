@@ -6,13 +6,22 @@
 # Usage: bash run_evaluations.sh
 # Requires: must be run from the project root.
 # Note: runs directly on the login node (no GPU needed — pure post-processing).
+#
+# JUDGE selects the safety judge (a config name under configs/models/, without .yaml).
+# It defaults to llama3.1_8b_instruct_judge, which keeps every path and job name
+# exactly as it was before judges became selectable. Any other judge writes to its
+# own tree under $SCRATCH/rup/judges/<judge_model_id>/ so runs never overwrite:
+#   JUDGE=olmo3_7b_instruct_judge     bash run_evaluations.sh
+#   JUDGE=gemma3_4b_it_judge          bash run_evaluations.sh
+# See run_judge_ablation.sh to sweep all judges in one go.
 
 set -e
 
 source setup/start_env.sh
+source setup/judge_env.sh
 
-BASE=$SCRATCH/rup
-OUTPUT=$SCRATCH/rup/plots
+BASE=$RUN_ROOT
+OUTPUT=$PLOT_ROOT
 
 EVAL="python scripts/run_evaluation.py --experiment configs/experiments/base.yaml --format csv --print-table"
 
@@ -64,15 +73,15 @@ $EVAL \
 # --- SAFETY ALIGNMENT STUDY — Qwen3-4B base vs Qwen3-4B-SafeRL ---
 # Paper: Table 1 (Qwen3 rows)
 
-# $EVAL \
-#     --results-dir $BASE/harmbench/qwen3-4b \
-#     --output $OUTPUT/harmbench/qwen3-4b/metrics.csv \
-#     | tee $BASE/harmbench/qwen3-4b/summary.txt
+$EVAL \
+    --results-dir $BASE/harmbench/qwen3-4b \
+    --output $OUTPUT/harmbench/qwen3-4b/metrics.csv \
+    | tee $BASE/harmbench/qwen3-4b/summary.txt
 
-# $EVAL \
-#     --results-dir $BASE/harmbench/qwen3-4b-saferl \
-#     --output $OUTPUT/harmbench/qwen3-4b-saferl/metrics.csv \
-#     | tee $BASE/harmbench/qwen3-4b-saferl/summary.txt
+$EVAL \
+    --results-dir $BASE/harmbench/qwen3-4b-saferl \
+    --output $OUTPUT/harmbench/qwen3-4b-saferl/metrics.csv \
+    | tee $BASE/harmbench/qwen3-4b-saferl/summary.txt
 
 # =============================================================================
 # JailbreakBench
@@ -81,52 +90,52 @@ $EVAL \
 # --- MODEL SIZE STUDY — Qwen2.5-Instruct: 0.5B, 3B, 7B ---
 # Paper: Figure 1 right
 
-# $EVAL \
-#     --results-dir $BASE/jailbreakbench/qwen2.5-0.5b-instruct \
-#     --output $OUTPUT/jailbreakbench/qwen2.5-0.5b-instruct/metrics.csv \
-#     | tee $BASE/jailbreakbench/qwen2.5-0.5b-instruct/summary.txt
+$EVAL \
+    --results-dir $BASE/jailbreakbench/qwen2.5-0.5b-instruct \
+    --output $OUTPUT/jailbreakbench/qwen2.5-0.5b-instruct/metrics.csv \
+    | tee $BASE/jailbreakbench/qwen2.5-0.5b-instruct/summary.txt
 
-# $EVAL \
-#     --results-dir $BASE/jailbreakbench/qwen2.5-3b-instruct \
-#     --output $OUTPUT/jailbreakbench/qwen2.5-3b-instruct/metrics.csv \
-#     | tee $BASE/jailbreakbench/qwen2.5-3b-instruct/summary.txt
+$EVAL \
+    --results-dir $BASE/jailbreakbench/qwen2.5-3b-instruct \
+    --output $OUTPUT/jailbreakbench/qwen2.5-3b-instruct/metrics.csv \
+    | tee $BASE/jailbreakbench/qwen2.5-3b-instruct/summary.txt
 
-# $EVAL \
-#     --results-dir $BASE/jailbreakbench/qwen2.5-7b-instruct \
-#     --output $OUTPUT/jailbreakbench/qwen2.5-7b-instruct/metrics.csv \
-#     | tee $BASE/jailbreakbench/qwen2.5-7b-instruct/summary.txt
+$EVAL \
+    --results-dir $BASE/jailbreakbench/qwen2.5-7b-instruct \
+    --output $OUTPUT/jailbreakbench/qwen2.5-7b-instruct/metrics.csv \
+    | tee $BASE/jailbreakbench/qwen2.5-7b-instruct/summary.txt
 
 # --- TRAINING STAGE STUDY — Tulu3 8B: Base → SFT → DPO → RLVR ---
 # Paper: Table 1, Figure 1 left
 
-# $EVAL \
-#     --results-dir $BASE/jailbreakbench/tulu3-8b-base \
-#     --output $OUTPUT/jailbreakbench/tulu3-8b-base/metrics.csv \
-#     | tee $BASE/jailbreakbench/tulu3-8b-base/summary.txt
+$EVAL \
+    --results-dir $BASE/jailbreakbench/tulu3-8b-base \
+    --output $OUTPUT/jailbreakbench/tulu3-8b-base/metrics.csv \
+    | tee $BASE/jailbreakbench/tulu3-8b-base/summary.txt
 
-# $EVAL \
-#     --results-dir $BASE/jailbreakbench/tulu3-8b-sft \
-#     --output $OUTPUT/jailbreakbench/tulu3-8b-sft/metrics.csv \
-#     | tee $BASE/jailbreakbench/tulu3-8b-sft/summary.txt
+$EVAL \
+    --results-dir $BASE/jailbreakbench/tulu3-8b-sft \
+    --output $OUTPUT/jailbreakbench/tulu3-8b-sft/metrics.csv \
+    | tee $BASE/jailbreakbench/tulu3-8b-sft/summary.txt
 
-# $EVAL \
-#     --results-dir $BASE/jailbreakbench/tulu3-8b-dpo \
-#     --output $OUTPUT/jailbreakbench/tulu3-8b-dpo/metrics.csv \
-#     | tee $BASE/jailbreakbench/tulu3-8b-dpo/summary.txt
+$EVAL \
+    --results-dir $BASE/jailbreakbench/tulu3-8b-dpo \
+    --output $OUTPUT/jailbreakbench/tulu3-8b-dpo/metrics.csv \
+    | tee $BASE/jailbreakbench/tulu3-8b-dpo/summary.txt
 
-# $EVAL \
-#     --results-dir $BASE/jailbreakbench/tulu3-8b-rlvr \
-#     --output $OUTPUT/jailbreakbench/tulu3-8b-rlvr/metrics.csv \
-#     | tee $BASE/jailbreakbench/tulu3-8b-rlvr/summary.txt
+$EVAL \
+    --results-dir $BASE/jailbreakbench/tulu3-8b-rlvr \
+    --output $OUTPUT/jailbreakbench/tulu3-8b-rlvr/metrics.csv \
+    | tee $BASE/jailbreakbench/tulu3-8b-rlvr/summary.txt
 
 # --- SAFETY ALIGNMENT STUDY — Qwen3-4B base vs Qwen3-4B-SafeRL ---
 
-# $EVAL \
-#     --results-dir $BASE/jailbreakbench/qwen3-4b \
-#     --output $OUTPUT/jailbreakbench/qwen3-4b/metrics.csv \
-#     | tee $BASE/jailbreakbench/qwen3-4b/summary.txt
+$EVAL \
+    --results-dir $BASE/jailbreakbench/qwen3-4b \
+    --output $OUTPUT/jailbreakbench/qwen3-4b/metrics.csv \
+    | tee $BASE/jailbreakbench/qwen3-4b/summary.txt
 
-# $EVAL \
-#     --results-dir $BASE/jailbreakbench/qwen3-4b-saferl \
-#     --output $OUTPUT/jailbreakbench/qwen3-4b-saferl/metrics.csv \
-#     | tee $BASE/jailbreakbench/qwen3-4b-saferl/summary.txt
+$EVAL \
+    --results-dir $BASE/jailbreakbench/qwen3-4b-saferl \
+    --output $OUTPUT/jailbreakbench/qwen3-4b-saferl/metrics.csv \
+    | tee $BASE/jailbreakbench/qwen3-4b-saferl/summary.txt

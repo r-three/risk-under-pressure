@@ -131,16 +131,47 @@ class HFModel(BaseModel):
 
         return _BASE_TEMPLATE.format(prompt=prompt)
 
-    def _prepare_inputs_image_text(self, prompt: str) -> dict:
-        """Return tokenised inputs dict for image_text_to_text models (text-only)."""
-        messages = [{"role": "user", "content": [{"type": "text", "text": prompt}]}]
-        inputs = self._processor.apply_chat_template(
-            messages,
-            add_generation_prompt=True,
-            tokenize=True,
-            return_dict=True,
-            return_tensors="pt",
-        )
+    def _prepare_inputs_image_text(self, prompt: str, system_prompt: str | None = None) -> dict:
+        """Return tokenised inputs dict for image_text_to_text models (text-only).
+
+        The safety judge passes its rubric as a system prompt, so this path has to carry
+        it too — a multimodal judge (Gemma 3) that silently dropped it would
+        score every response with no rubric at all. Templates that reject a system role
+        get the rubric folded into the user turn instead.
+        """
+        def _build(as_system: bool) -> list[dict]:
+            messages = []
+            user_text = prompt
+            if system_prompt:
+                if as_system:
+                    messages.append(
+                        {"role": "system", "content": [{"type": "text", "text": system_prompt}]}
+                    )
+                else:
+                    user_text = f"{system_prompt}\n\n{prompt}"
+            messages.append({"role": "user", "content": [{"type": "text", "text": user_text}]})
+            return messages
+
+        def _apply(messages: list[dict]):
+            return self._processor.apply_chat_template(
+                messages,
+                add_generation_prompt=True,
+                tokenize=True,
+                return_dict=True,
+                return_tensors="pt",
+            )
+
+        try:
+            inputs = _apply(_build(as_system=True))
+        except Exception as exc:
+            if not system_prompt:
+                raise
+            logger.warning(
+                f"Chat template rejected a system role ({exc}); "
+                "folding the system prompt into the user turn."
+            )
+            inputs = _apply(_build(as_system=False))
+
         return {k: v.to(self._config.device) for k, v in inputs.items()}
 
     def _format_prompt_with_system(self, system_prompt: str, user_prompt: str) -> str:
@@ -186,7 +217,7 @@ class HFModel(BaseModel):
             generate_kwargs["top_k"] = None
 
         if self._config.model_class == "image_text_to_text":
-            inputs = self._prepare_inputs_image_text(prompt)
+            inputs = self._prepare_inputs_image_text(prompt, system_prompt=system_prompt)
             with torch.no_grad():
                 output_ids = self._model.generate(**inputs, **generate_kwargs)
             new_tokens = output_ids[0][inputs["input_ids"].shape[1]:]

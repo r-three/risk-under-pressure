@@ -54,9 +54,22 @@ ATTACK_LINESTYLES = {"gcg": "-", "pair": "--", "jailbroken": ":"}
 
 ATTACK_DISPLAY = {"gcg": "GCG", "pair": "PAIR", "jailbroken": "Jailbroken"}
 
+# Attacker-ablation arms arrive as pair__<attacker config> (run_inference.py names the
+# results dir after the attacker; see configs/experiments/paper/attacker_size.yaml).
+ATTACKER_DISPLAY = {
+    "qwen2.5_7b":               "Qwen2.5-7B",
+    "gemma3_4b_it_abliterated": "Gemma3-4B-abl",
+    "gemma3_1b_it_abliterated": "Gemma3-1B-abl",
+}
+
 
 def _attack_label(attack_id: str) -> str:
-    return ATTACK_DISPLAY.get(attack_id, attack_id)
+    if attack_id in ATTACK_DISPLAY:
+        return ATTACK_DISPLAY[attack_id]
+    base, sep, attacker = attack_id.partition("__")
+    if sep:
+        return f"{ATTACK_DISPLAY.get(base, base)} ({ATTACKER_DISPLAY.get(attacker, attacker)})"
+    return attack_id
 
 
 def _model_color(model_ids: list[str]) -> dict[str, str]:
@@ -123,6 +136,8 @@ _X_AXIS_META = {
     "lambda":  {"col": "lambda",             "label": r"Pressure level $\lambda$",        "integer_ticks": True,  "k_scale": False},
     "tokens":  {"col": "mean_total_tokens",  "label": "Attack token budget (total tokens)", "integer_ticks": False, "k_scale": True},
     "flops":   {"col": "mean_total_tflops",  "label": "Attack compute budget (TFLOPs)",     "integer_ticks": False, "k_scale": False},
+    "seconds": {"col": "mean_total_seconds", "label": "Attack wall-clock budget (s, L40S)", "integer_ticks": False, "k_scale": False},
+    "dollars": {"col": "mean_total_dollars", "label": "Attack cost budget (USD)",           "integer_ticks": False, "k_scale": False},
 }
 
 
@@ -597,8 +612,10 @@ def plot_efficiency_summary(df: pd.DataFrame, output_dir: Path, fmt: str) -> Non
 _SEED_RE = re.compile(r"_seed\d+$")
 
 COST_COLS = [
-    "mean_target_tokens", "mean_total_tokens",
+    "mean_target_tokens", "mean_attacker_tokens", "mean_total_tokens",
     "mean_target_tflops", "mean_total_tflops",
+    "mean_total_seconds",
+    "mean_target_dollars", "mean_judge_dollars", "mean_attacker_dollars", "mean_total_dollars",
 ]
 
 
@@ -684,7 +701,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--format", default="png", choices=["png", "pdf", "svg"],
                    help="Output image format (default: png)")
     p.add_argument(
-        "--x-axis", default="lambda", choices=["lambda", "tokens", "flops"],
+        "--x-axis", default="lambda", choices=["lambda", "tokens", "flops", "seconds", "dollars"],
         help=(
             "X-axis for risk curves. "
             "'lambda' = pressure steps (default); "

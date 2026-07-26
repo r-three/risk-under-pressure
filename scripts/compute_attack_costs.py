@@ -29,6 +29,11 @@ Usage:
         --results-dir path/to/results \\
         --metrics-csv path/to/metrics.csv \\
         --gcg-backward-mult 3.0
+
+Attacker sizing: `pair__<config>` directories (written when an experiment sets
+attacker_models — see configs/experiments/paper/attacker_size.yaml) are charged at their
+own attacker's params_b and hosted rate, resolved from that config. Plain `pair`/`rl`
+directories use --attacker-model, which defaults to the incumbent qwen2.5-7b-instruct.
 """
 from __future__ import annotations
 
@@ -42,7 +47,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from rup.metrics.cost_mapper import aggregate_costs
+from rup.metrics.cost_mapper import aggregate_costs, attacker_from_attack_id, load_model_registry
 from rup.metrics.cost_summary import (
     compute_cost_summary_metrics,
     compute_cost_summary_by_category,
@@ -55,10 +60,16 @@ logger = get_logger("compute_attack_costs")
 COST_COLS = [
     "mean_target_tokens",
     "mean_judge_tokens",
+    "mean_attacker_tokens",
     "mean_total_tokens",
     "mean_target_tflops",
     "mean_judge_tflops",
     "mean_total_tflops",
+    "mean_total_seconds",     # measured attack wall-clock (NaN if any step untimed)
+    "mean_target_dollars",    # per-component hosted cost, each priced by its own model
+    "mean_judge_dollars",
+    "mean_attacker_dollars",
+    "mean_total_dollars",     # = target + judge + attacker (NaN unless --pricing-config given)
 ]
 
 
@@ -100,10 +111,20 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--judge-model", default="llama3.1-8b-instruct",
                    help="Model ID of the safety judge used during inference "
                         "(default: llama3.1-8b-instruct). Used to compute judge token/FLOP costs.")
+    p.add_argument("--attacker-model", default="qwen2.5-7b-instruct",
+                   help="Model ID of the PAIR/RL attacker (default: qwen2.5-7b-instruct). "
+                        "Sets the attacker's params_b on the FLOP axis and its $/1M-token "
+                        "rate on the dollar axis. Only used for result directories that do "
+                        "NOT name their attacker: a `pair__<config>` directory (written when "
+                        "an experiment sets attacker_models) takes the attacker from its own "
+                        "config, so an attacker sweep needs no flag at all.")
     p.add_argument("--rl-num-generations", type=int, default=8,
                    help="GRPO group size for the RL attack (num_generations in "
                         "configs/attacks/rl.yaml, default 8). Used to reconstruct which RL "
                         "candidate steps received a weight update, for LoRA-aware attacker FLOPs.")
+    p.add_argument("--pricing-config", default=None,
+                   help="Path to configs/pricing.yaml (per-model hosted $/1M-token rates). "
+                        "Required to populate the mean_total_dollars column; omit to leave it NaN.")
     p.add_argument("--configs-dir", default="configs",
                    help="Directory containing model configs (default: configs). "
                         "Used to load the model registry for FLOP/token computation.")
@@ -152,6 +173,11 @@ def main() -> None:
 
     logger.info(f"Found {len(result_files)} (model, attack) result sets")
 
+    # Load the registry up front: attacker_from_attack_id() resolves a `pair__<config>`
+    # directory through it, and that happens before the first aggregate_costs() call
+    # would have loaded it.
+    load_model_registry(args.configs_dir)
+
     cost_lookup: dict[tuple[str, str], dict[int, dict]] = {}
     cat_cost_lookup: dict[tuple[str, str, str], dict[int, dict]] = {}
 
@@ -166,6 +192,10 @@ def main() -> None:
             logger.warning(f"  Empty file: {path}")
             continue
 
+        # `pair__<config>` directories carry the attacker in their name (experiments with
+        # attacker_models); everything else is the single attacker named by --attacker-model.
+        attacker_id = attacker_from_attack_id(attack_id, default=args.attacker_model)
+
         pressure_levels = sorted(metrics_by_key[key].keys())
         costs = aggregate_costs(
             records, pressure_levels,
@@ -173,13 +203,16 @@ def main() -> None:
             gcg_backward_mult=args.gcg_backward_mult,
             configs_dir=args.configs_dir,
             rl_num_generations=args.rl_num_generations,
+            pricing_path=args.pricing_config,
+            attacker_model_id=attacker_id,
         )
 
         cost_lookup[key] = costs
         max_lam = max(pressure_levels)
         top = costs.get(max_lam, {})
         logger.info(
-            f"  {model_id}/{attack_id}: "
+            f"  {model_id}/{attack_id}"
+            f"{'' if attacker_id == args.attacker_model else f' [attacker={attacker_id}]'}: "
             f"target={top.get('mean_target_tokens', 0):.0f}tok  "
             f"judge={top.get('mean_judge_tokens', 0):.0f}tok  "
             f"total={top.get('mean_total_tokens', 0):.0f}tok  "
@@ -196,6 +229,8 @@ def main() -> None:
                 judge_model_id=args.judge_model,
                 gcg_backward_mult=args.gcg_backward_mult,
                 rl_num_generations=args.rl_num_generations,
+                pricing_path=args.pricing_config,
+                attacker_model_id=attacker_id,
             )
             cat_cost_lookup[(model_id, attack_id, cat)] = cat_costs
 
