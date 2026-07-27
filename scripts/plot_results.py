@@ -52,7 +52,7 @@ PALETTE = ["#f6511d", "#ffb400", "#00a6ed", "#7fb800", "#8338ec", "#ff4365", "#0
 ATTACK_MARKERS = {"gcg": "o", "pair": "s", "jailbroken": "^"}
 ATTACK_LINESTYLES = {"gcg": "-", "pair": "--", "jailbroken": ":"}
 
-ATTACK_DISPLAY = {"gcg": "GCG", "pair": "PAIR", "jailbroken": "Jailbroken"}
+ATTACK_DISPLAY = {"gcg": "GCG", "pair": "PAIR", "jailbroken": "Jailbroken", "rl": "RL (GRPO)"}
 
 # Attacker-ablation arms arrive as pair__<attacker config> (run_inference.py names the
 # results dir after the attacker; see configs/experiments/paper/attacker_size.yaml).
@@ -68,7 +68,7 @@ def _attack_label(attack_id: str) -> str:
         return ATTACK_DISPLAY[attack_id]
     base, sep, attacker = attack_id.partition("__")
     if sep:
-        return f"{ATTACK_DISPLAY.get(base, base)} ({ATTACKER_DISPLAY.get(attacker, attacker)})"
+        return f"{ATTACK_DISPLAY.get(base, base)} — {ATTACKER_DISPLAY.get(attacker, attacker)}"
     return attack_id
 
 

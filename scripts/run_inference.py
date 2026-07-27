@@ -22,6 +22,7 @@ Usage:
 """
 
 import argparse
+import gc
 import sys
 from pathlib import Path
 
@@ -52,22 +53,42 @@ def _reward_from_extra(extra):
     return RewardConfig(**{k: v for k, v in (extra or {}).items() if k in fields})
 
 
-def _run_rl_for_model(config, target_model, judge, prompts, seed, output_dir, resume, rl_cache, attack_config, configs_dir):
+def _release_rl_attacker(rl_cache):
+    """Drop the cached trainable attacker and give its GPU memory back."""
+    if not rl_cache.pop("attacker", None):
+        return
+    rl_cache.pop("cfg", None)
+    rl_cache.pop("reward", None)
+    gc.collect()
+    try:
+        import torch
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    except ImportError:
+        pass
+
+
+def _run_rl_for_model(config, target_model, judge, prompts, seed, output_dir, resume, rl_cache,
+                      attack_config, configs_dir, attacker_name, folder_id):
     """RL attack: per-prompt GRPO (rup.pipeline.run_prompt_rl) instead of run_trial.
 
-    The trainable attacker is built once (expensive) and cached across models/seeds; each prompt
-    resets its LoRA adapter internally so prompts stay independent.
+    The trainable attacker is expensive to build, so it is cached across models/seeds — but
+    keyed on `attacker_name`, and only ONE is held at a time: RL attackers load in bf16 + LoRA
+    (unquantized), so keeping two arms of an attacker ablation resident would double a ~15 GB
+    footprint to save a reload the arm loop only benefits from once per seed anyway.
+    Each prompt resets its LoRA adapter internally so prompts stay independent.
     """
-    if rl_cache.get("attacker") is None:
-        base_name = (attack_config.extra or {}).get("base_attacker", "qwen2.5_7b")
-        attacker_hf = load_model_config(base_name, configs_dir).hf_name
+    if rl_cache.get("attacker_name") != attacker_name:
+        _release_rl_attacker(rl_cache)
+        attacker_hf = load_model_config(attacker_name, configs_dir).hf_name
         cfg = GRPOAttackConfig.from_extra(attack_config.extra, attacker_hf=attacker_hf)
+        rl_cache["attacker_name"] = attacker_name
         rl_cache["cfg"] = cfg
         rl_cache["reward"] = _reward_from_extra(attack_config.extra)
         rl_cache["attacker"] = build_rl_attacker(cfg)
     attacker, cfg, reward_cfg = rl_cache["attacker"], rl_cache["cfg"], rl_cache["reward"]
 
-    out_path = output_dir / config.benchmark / target_model.model_id / str(seed) / "rl" / "results.jsonl"
+    out_path = output_dir / config.benchmark / target_model.model_id / str(seed) / folder_id / "results.jsonl"
     trace_path = out_path.parent / "training_trace.jsonl"
     if resume:
         done_ids = load_completed_ids(out_path)
@@ -80,7 +101,7 @@ def _run_rl_for_model(config, target_model, judge, prompts, seed, output_dir, re
             trace_path.unlink()
             logger.info(f"Cleared existing training trace: {trace_path}")
     remaining = [p for p in prompts if p.prompt_id not in done_ids]
-    desc = f"{target_model.model_id}/{seed}/rl"
+    desc = f"{target_model.model_id}/{seed}/{folder_id}"
     if done_ids:
         logger.info(f"[{desc}] Resuming: {len(done_ids)} done, {len(remaining)} remaining")
     if not remaining:
@@ -197,11 +218,28 @@ def main():
                 attack_config = load_attack_config(attack_name, configs_dir)
 
                 # RL attack: per-prompt GRPO path (own trainable attacker, no AttackPolicy).
+                # It honours `attacker_models` like PAIR does, but takes its default from the
+                # attack config's extra.base_attacker rather than attack_config.attacker_model.
                 if attack_config.attack_id.lower() == "rl":
-                    _run_rl_for_model(
-                        config, target_model, judge, prompts, seed,
-                        output_dir, args.resume, rl_cache, attack_config, configs_dir,
-                    )
+                    if config.attacker_models:
+                        rl_attackers = config.attacker_models
+                    else:
+                        rl_attackers = [
+                            config.attacker_model
+                            or (attack_config.extra or {}).get("base_attacker", "qwen2.5_7b")
+                        ]
+                    for rl_attacker_name in rl_attackers:
+                        # Folder carries the attacker only when arms are being compared, so
+                        # single-attacker runs keep writing to the plain `rl/` tree they always had.
+                        rl_folder = (
+                            f"{attack_config.attack_id}__{rl_attacker_name}"
+                            if config.attacker_models else attack_config.attack_id
+                        )
+                        _run_rl_for_model(
+                            config, target_model, judge, prompts, seed,
+                            output_dir, args.resume, rl_cache, attack_config, configs_dir,
+                            attacker_name=rl_attacker_name, folder_id=rl_folder,
+                        )
                     continue
 
                 # Resolve list of attacker models to iterate over

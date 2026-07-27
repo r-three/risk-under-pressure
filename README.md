@@ -163,37 +163,43 @@ python scripts/plot_cost_curves.py \
 
 ### Attacker Size Effect
 
-Who writes the jailbreak prompts? Same target (Qwen2.5-7B), same seeds, same judge — only PAIR's
-attacker changes: the incumbent Qwen2.5-7B-Instruct (7.62B, safety-tuned) against the 4B and 1B
-abliterated Gemma 3 checkpoints. Details and the cluster driver:
-[Attacker ablation](#attacker-ablation).
+Who writes the jailbreak prompts? The 4B and 1B abliterated Gemma 3 checkpoints attack the same
+target grid as the model-size and training-stage studies (Qwen2.5 0.5B/3B/7B and the four Tulu3
+stages), through both attacks that use an attacker — PAIR prompts it, GRPO trains it — with the
+Llama judge fixed. Details and the cluster driver: [Attacker ablation](#attacker-ablation).
 
 ```bash
-# Phase 1 — Run attacks (GPU required). One results dir per attacker:
-#   outputs/attacker_size/harmbench/<target>/<seed>/pair__<attacker>/
-python scripts/run_inference.py \
-    --experiment configs/experiments/paper/attacker_size.yaml \
-    --output-dir outputs/attacker_size
+# Phase 1 — Run attacks (GPU required). One results dir per (target, attack, attacker):
+#   outputs/attacker_size/harmbench/<target>/<seed>/{pair,rl}__<attacker>/
+# One process per target keeps the job size sane; drop --attacks to include RL.
+for target in qwen2.5_0.5b qwen2.5_3b qwen2.5_7b \
+              tulu3_8b_base tulu3_8b_sft tulu3_8b_dpo tulu3_8b_rlvr; do
+    python scripts/run_inference.py \
+        --experiment configs/experiments/paper/attacker_size.yaml \
+        --model $target --attacks pair \
+        --output-dir outputs/attacker_size
+done
 
-# Phase 2a — Compute risk metrics (one attack_id row per attacker arm)
-python scripts/run_evaluation.py \
-    --results-dir outputs/attacker_size/harmbench/qwen2.5-7b-instruct \
-    --experiment configs/experiments/paper/attacker_size.yaml \
-    --format csv \
-    --output outputs/attacker_size/metrics.csv
+# Phase 2a/2b — Metrics + costs, per target. No --attacker-model: each pair__/rl__ dir is
+# charged at that attacker's own params_b and $/1M-token rate.
+for tid in qwen2.5-0.5b-instruct qwen2.5-3b-instruct qwen2.5-7b-instruct \
+           tulu3-8b-base tulu3-8b-sft tulu3-8b-dpo tulu3-8b-rlvr; do
+    python scripts/run_evaluation.py \
+        --results-dir outputs/attacker_size/harmbench/$tid \
+        --experiment configs/experiments/paper/attacker_size.yaml \
+        --format csv --output outputs/attacker_size/$tid/metrics.csv
 
-# Phase 2b — Compute costs. No --attacker-model: each pair__<attacker> dir is charged
-# at that attacker's own params_b and $/1M-token rate.
-python scripts/compute_attack_costs.py \
-    --results-dir outputs/attacker_size/harmbench/qwen2.5-7b-instruct \
-    --metrics-csv outputs/attacker_size/metrics.csv \
-    --pricing-config configs/pricing.yaml
+    python scripts/compute_attack_costs.py \
+        --results-dir outputs/attacker_size/harmbench/$tid \
+        --metrics-csv outputs/attacker_size/$tid/metrics.csv \
+        --pricing-config configs/pricing.yaml
+done
 
-# Phase 3 — Plot; the three arms come out as three series
+# Phase 3 — Per target, each arm is a series; across targets, --mode comparison
 python scripts/plot_cost_curves.py \
-    --cost-csv outputs/attacker_size/cost_metrics.csv \
-    --output-dir outputs/attacker_size/cost_plots \
-    --x-axis flops
+    --cost-csv outputs/attacker_size/qwen2.5-{0.5b,3b,7b}-instruct/cost_metrics.csv \
+    --output-dir outputs/attacker_size/ablations/qwen_size \
+    --x-axis flops --mode comparison --skip-missing
 ```
 
 ---
@@ -514,9 +520,10 @@ judge FLOPs by ~10%.
 | `gemma3_1b_it_abliterated` | mlabonne/gemma-3-1b-it-abliterated-v2 | 1.00 | uncensored |
 
 Abliterated checkpoints have the refusal direction ablated, so they do not refuse the
-red-teaming instruction PAIR gives them. Both ship as text-only causal LMs and load with
+red-teaming instruction the attack gives them. Both ship as text-only causal LMs and load with
 `quantization: 4bit` — matched on purpose, so the seconds axis compares attacker size rather
-than precision.
+than precision. (That applies to the PAIR path; the RL path loads its attacker in bf16 + LoRA
+because GRPO trains it.)
 
 **GPU memory guide:** 0.5–1B with `quantization: none` (~2 GB); 3B with `4bit` (~4 GB); 7–8B with `4bit` (~6–8 GB).
 
@@ -528,7 +535,7 @@ than precision.
 |---|---|---|---|
 | **GCG** | White-box, gradient | `(β_bwd + 128) × 2N × L_opt + 2N × L_gen + 2N_J × L_J` TFLOPs | Requires local HuggingFace model |
 | **PAIR** | Black-box, LLM | `2N_T × L_gen + 2N_A × L_att + 2N_J × L_J` TFLOPs | Attacker: Qwen2.5-7B-Instruct by default; swappable per experiment ([attacker ablation](#attacker-ablation)) |
-| **RL (GRPO)** | Black-box, adaptive | `{0,2,8}·N_A × L_att + 2N_T × L_gen + 2N_J × L_J` TFLOPs per query | Per-prompt GRPO (LoRA). Attacker term is per-step: `0` raw / `8N` updated round / `2N` winning round. First-success early stop. No pre-training. |
+| **RL (GRPO)** | Black-box, adaptive | `{0,2,8}·N_A × L_att + 2N_T × L_gen + 2N_J × L_J` TFLOPs per query | Per-prompt GRPO (LoRA). Attacker: Qwen2.5-7B-Instruct by default, swappable per experiment ([attacker ablation](#attacker-ablation)). Attacker term is per-step: `0` raw / `8N` updated round / `2N` winning round. First-success early stop. No pre-training. |
 | **JailBroken** | Black-box, template | `2N × L_gen + 2N_J × L_J` TFLOPs | 8 obfuscation templates; no setup |
 | **TransferAttack** | Black-box, replay | same as JailBroken | Replays GCG trajectories from a surrogate |
 
@@ -763,41 +770,67 @@ per-token rate is higher than Llama 3.1 8B's.
 ### Attacker ablation
 
 The judge decides what counts as a jailbreak; the **attacker** decides how hard the target is
-pushed. PAIR's attacker has been Qwen2.5-7B-Instruct throughout, which is safety-tuned and
-therefore sometimes refuses its own red-teaming instructions — a refusal still burns a step of
-the pressure budget, so it lowers ASR for reasons that have nothing to do with the target.
-`configs/experiments/paper/attacker_size.yaml` varies the attacker with the target, seeds, and
-judge held fixed:
+pushed. The attacker has been Qwen2.5-7B-Instruct throughout — safety-tuned, so it sometimes
+refuses its own red-teaming instructions, and a refusal still burns a step of the pressure
+budget, lowering ASR for reasons that have nothing to do with the target.
+`configs/experiments/paper/attacker_size.yaml` crosses two abliterated Gemma attackers with the
+full target grid, across **both** attacks that use an attacker (PAIR and RL/GRPO), judge fixed:
+
+| | |
+|---|---|
+| **Attackers** | `gemma3_4b_it_abliterated` (3.88B), `gemma3_1b_it_abliterated` (1.00B) |
+| **Targets** | Qwen2.5 0.5B / 3B / 7B · Tulu3-8B base / SFT / DPO / RLVR |
+| **Attacks** | `pair` (prompts the attacker), `rl` (GRPO trains it) |
+| **Judge** | `llama3.1_8b_instruct_judge` throughout |
+| **Benchmark** | HarmBench, 200 prompts, λ_max 10 (`BENCHMARK=jailbreakbench` for the other) |
+
+That is 7 × 2 × 2 = **28 attack runs per seed**, submitted as 7 jobs (one per target, each
+looping its own arms). Per target the figures answer "does attacker size matter?"; read down
+the target grid they answer the sharper question — whether a small attacker only keeps up
+against weak targets and falls off as the target hardens.
 
 | Attacker config | `model_id` | `params_b` | Role |
 |---|---|---|---|
-| `qwen2.5_7b` | `qwen2.5-7b-instruct` | 7.62B | incumbent, safety-tuned — reference |
 | `gemma3_4b_it_abliterated` | `gemma3-4b-it-abliterated` | 3.88B | uncensored, 4B |
 | `gemma3_1b_it_abliterated` | `gemma3-1b-it-abliterated` | 1.00B | uncensored, 1B |
+| `qwen2.5_7b` | `qwen2.5-7b-instruct` | 7.62B | incumbent — commented out; already measured |
 
-The two Gemma arms are the same family and the same abliteration recipe ([mlabonne](https://huggingface.co/mlabonne/gemma-3-4b-it-abliterated-v2), v2),
-so 4B vs 1B is a clean size contrast. The Qwen arm differs on two axes at once (bigger **and**
-safety-tuned), so read it as the baseline the existing curves were measured with, not as a third
-point on the size curve. Note that `mlabonne/gemma-3-4b-it-abliterated-v2` is a text-only
-`Gemma3ForCausalLM` — the vision tower `google/gemma-3-4b-it` carries is gone — so unlike the
-Gemma judge config its `params_b` is the whole checkpoint.
+Both arms are the same family and the same abliteration recipe ([mlabonne](https://huggingface.co/mlabonne/gemma-3-4b-it-abliterated-v2), v2),
+so 4B vs 1B is a clean size contrast. Uncomment `qwen2.5_7b` to regenerate the incumbent
+baseline under these seeds; it differs on two axes at once (bigger **and** safety-tuned), so it
+is a reference rather than a third point on the size curve. Note that
+`mlabonne/gemma-3-4b-it-abliterated-v2` is a text-only `Gemma3ForCausalLM` — the vision tower
+`google/gemma-3-4b-it` carries is gone — so unlike the Gemma judge config its `params_b` is the
+whole checkpoint.
 
 ```bash
 bash run_attacker_ablation.sh smoke        # 5 prompts, budget 2 — do this FIRST
 bash run_attacker_ablation.sh smoke-check  # per-arm verdicts once it finishes
-bash run_attacker_ablation.sh              # submit inference (one job per seed)
-bash run_attacker_ablation.sh eval         # metrics + cost metrics
-bash run_attacker_ablation.sh plots        # risk curves on all four cost axes
+bash run_attacker_ablation.sh              # submit inference (one job per target × seed)
+bash run_attacker_ablation.sh eval         # metrics + cost metrics, per target
+bash run_attacker_ablation.sh plots        # per-target + cross-target curves, all four axes
 
+ATTACKS=pair bash run_attacker_ablation.sh              # PAIR arms only — RL costs far more
+TARGETS="qwen2.5_0.5b qwen2.5_7b" bash run_attacker_ablation.sh
 SEEDS="1394 2 100" bash run_attacker_ablation.sh
+BENCHMARK=jailbreakbench bash run_attacker_ablation.sh  # separate tree and job names
 ```
 
 Results live in their own tree, so nothing above is touched:
 
 ```
 $SCRATCH/rup/attackers/harmbench/<target>/<seed>/pair__<attacker>/results.jsonl
+$SCRATCH/rup/attackers/harmbench/<target>/<seed>/rl__<attacker>/results.jsonl
 $SCRATCH/rup/attackers/plots/harmbench/<target>/{tokens,flops,seconds,dollars}/
+$SCRATCH/rup/attackers/plots/harmbench/ablations/{qwen_size,tulu3_training}/<axis>/
 ```
+
+The `ablations/` figures are the cross-target view: `--mode comparison` overlays the targets
+for each arm, mirroring the ablation sets in `run_cost_plots.sh`. A trimmed `TARGETS` list just
+drops the missing series (`--skip-missing`).
+
+> **Compute warning:** this is the largest sweep in the repo — 28 attack runs per seed, and the
+> RL half is per-prompt GRPO. Run `ATTACKS=pair` across the grid first, then add RL.
 
 > **Smoke-test first.** An attacker that loads but never returns a usable refinement (it
 > refuses, or returns an empty string) makes PAIR fall back to the previous prompt, so the arm
@@ -814,11 +847,17 @@ disagree: the 4B Gemma attacker is ~1.3× cheaper than Qwen in FLOPs but slightl
 in dollars, because hosted per-token rates below ~10B track provider count more than size. The
 same caveat is documented at the top of `configs/pricing.yaml`.
 
-The RL/GRPO attack is **not** part of this sweep. It takes its attacker from
-`extra.base_attacker` in `configs/attacks/rl.yaml` rather than from the experiment's
-`attacker_models` list, and its results directory is a bare `rl/`, so two RL arms would collide.
-Swapping the RL base attacker is a one-line config change but comparing two of them in one run
-would need the RL output path to encode the attacker too.
+**PAIR and RL both run.** The RL/GRPO path honours `attacker_models` the same way PAIR does,
+writing `rl__<attacker>/` per arm; `extra.base_attacker` in `configs/attacks/rl.yaml` is now only
+the default for runs that don't set the list, and those still write to a plain `rl/` directory —
+existing RL results are untouched. The two attacks answer different questions with the same
+models: PAIR only *prompts* the attacker, while GRPO *trains* it, so attacker capacity plausibly
+matters much more in the RL arm than the PAIR one. RL attackers load unquantized (bf16 + LoRA),
+so `run_inference.py` holds exactly one at a time, freeing each arm's before building the next.
+
+> **LoRA on a non-Qwen attacker.** `build_rl_attacker` applies LoRA to a fixed list of projection
+> names (`q_proj`…`down_proj`). Gemma 3 uses those same names, but this is the first non-Qwen
+> attacker to go through that path, which is the other reason to run `smoke` before the sweep.
 
 ---
 

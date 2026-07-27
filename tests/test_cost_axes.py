@@ -172,20 +172,23 @@ def test_attacker_registry_has_size_and_price(attacker_id, expected_params_b, mo
     assert attacker_id in cm.MODEL_PRICE_OUT
 
 
-def test_attacker_choice_changes_attacker_flops(monkeypatch):
+@pytest.mark.parametrize("attack_id", ["pair", "rl"])
+def test_attacker_choice_changes_attacker_flops(attack_id, monkeypatch):
     """Attacker FLOPs scale with the attacker's params_b — the whole point of the
-    ablation is that a 1B attacker is not billed as if it were the 7.62B default."""
+    ablation is that a 1B attacker is not billed as if it were the 7.62B default.
+    Holds for both attacks that use an attacker: PAIR and RL/GRPO."""
     monkeypatch.undo()
     monkeypatch.setattr(cm, "_count_tokens", lambda text, hf_id: max(1, len((text or "").split())))
     cm.load_model_registry("configs")
 
-    # PAIR, one failed step: the attacker runs and is charged.
-    steps = [StepResult(step=1, prompt="a a a", response="b b", judgment=0)]
-    rec = _record("pair", steps, False, None, model_id="qwen2.5-7b-instruct")
+    # One failed step (for RL: a candidate on a round that trained) — the attacker is charged.
+    steps = [StepResult(step=1, prompt="a a a", response="b b", judgment=0),
+             StepResult(step=2, prompt="c c c", response="d d", judgment=0)]
+    rec = _record(attack_id, steps, False, None, model_id="qwen2.5-7b-instruct")
 
     def att_tflops(attacker_id):
-        costs = cm.aggregate_costs([rec], [1], configs_dir="configs",
-                                   attacker_model_id=attacker_id)[1]
+        costs = cm.aggregate_costs([rec], [2], configs_dir="configs",
+                                   attacker_model_id=attacker_id)[2]
         # attacker TFLOPs are not a column of their own; back them out of the total
         return costs["mean_total_tflops"] - costs["mean_target_tflops"] - costs["mean_judge_tflops"]
 
@@ -205,7 +208,9 @@ def test_attacker_resolved_from_results_dir_name(monkeypatch):
     # carries the CONFIG name, and this maps it back to the model_id costs are keyed by.
     assert cm.attacker_from_attack_id("pair__gemma3_1b_it_abliterated") == "gemma3-1b-it-abliterated"
     assert cm.attacker_from_attack_id("pair__gemma3_4b_it_abliterated") == "gemma3-4b-it-abliterated"
-    # Single-attacker runs (and rl) keep the default.
+    # RL arms are named the same way (rl__<attacker config>).
+    assert cm.attacker_from_attack_id("rl__gemma3_4b_it_abliterated") == "gemma3-4b-it-abliterated"
+    # Single-attacker runs keep the default and their historic directory names.
     assert cm.attacker_from_attack_id("pair") == "qwen2.5-7b-instruct"
     assert cm.attacker_from_attack_id("rl") == "qwen2.5-7b-instruct"
     assert cm.attacker_from_attack_id("pair", default="other") == "other"

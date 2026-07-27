@@ -1,42 +1,65 @@
 # Attacker Size Study — does a smaller attacker buy the same risk curve?
 #
 # Everything in this repo so far varies the TARGET (size, training stage, alignment) or
-# the JUDGE. This one varies the ATTACKER and holds both of those fixed: same target,
-# same seeds, same llama3.1-8b judge, same PAIR loop. The only thing that moves is who
-# writes the refined prompts.
+# the JUDGE while holding the attacker fixed at Qwen2.5-7B. This one crosses the two
+# abliterated Gemma attackers with the full target grid, judge fixed at llama3.1-8b:
+#
+#   Qwen2.5 size study    0.5B / 3B / 7B          (paper Figure 1 right)
+#   Tulu3 training stage  Base / SFT / DPO / RLVR (paper Figure 1 left, Table 1)
+#
+# 7 targets x 2 attackers x 2 attacks. The per-target curves answer "does attacker size
+# matter?"; read down the target grid and they answer the sharper question — whether the
+# attacker-size penalty is constant, or whether a small attacker only keeps up against
+# weak targets and falls off as the target hardens.
 #
 # Arms (attacker_models below):
-#   qwen2.5_7b                  7.62B  Qwen2.5-7B-Instruct        incumbent, safety-tuned
 #   gemma3_4b_it_abliterated    3.88B  gemma-3-4b-it-abliterated  uncensored, 4B
 #   gemma3_1b_it_abliterated    1.00B  gemma-3-1b-it-abliterated  uncensored, 1B
 #
-# The two Gemma arms share a family and an abliteration recipe (mlabonne, v2), so 4B vs 1B
-# is a clean size contrast. The Qwen arm is the reference the existing curves were measured
-# with — it is bigger AND safety-tuned, so it differs on two axes at once and should be read
-# as a baseline, not as a third point on the size curve.
+# Both arms share a family and an abliteration recipe (mlabonne, v2), so 4B vs 1B is a clean
+# size contrast. The incumbent qwen2.5_7b is commented out — those runs already exist, and it
+# differs on two axes at once (bigger AND safety-tuned), so it is a baseline rather than a
+# third point on the size curve. Uncomment it to regenerate that baseline under these seeds.
 #
-# Why abliterated attackers at all: PAIR's attacker is instructed to write jailbreak prompts,
+# Why abliterated attackers at all: the attacker is instructed to write jailbreak prompts,
 # and a safety-tuned attacker sometimes refuses that instruction. A refusal still consumes a
 # step of the pressure budget, so it depresses ASR for reasons that have nothing to do with
 # the target's robustness. Abliterated models do not refuse, which removes that confound.
 #
-# run_inference.py writes one tree per attacker: .../<target>/<seed>/pair__<attacker_name>/
-# so the arms never overwrite each other or the plain `pair/` results from base.yaml.
+# Both attacks here use an attacker LLM and both honour attacker_models, so each arm is run
+# twice — once inside PAIR's in-context refinement loop, once as the policy GRPO actually
+# trains. That contrast is the interesting part: attacker size may matter far more when the
+# attacker is being optimized than when it is only being prompted.
 #
-# Run with: bash run_attacker_ablation.sh   (submit -> eval -> plots)
+# run_inference.py writes one tree per (target, attack, attacker):
+#   .../<target>/<seed>/pair__<attacker_name>/    and    .../<seed>/rl__<attacker_name>/
+# so the arms never overwrite each other or the plain `pair/` and `rl/` results from base.yaml.
+#
+# Run with: bash run_attacker_ablation.sh   (submit -> eval -> plots). That script submits one
+# job per (target, seed) and does NOT run this file's `models` list in a single process.
+#
+# COMPUTE: 7 targets x 2 attackers x 2 attacks x 200 prompts x lambda=10 per seed. Run
+# ATTACKS=pair first — the RL half is per-prompt GRPO and dominates the bill.
 name: "paper_attacker_size"
 benchmark: "harmbench"
 n_prompts: 200
 pressure_levels: [0, 1, 2, 4, 6, 8, 10]
 lambda_max: 10
 models:
-  - "qwen2.5_7b"     # fixed target — the attacker is the independent variable here
-attacks:
-  - "pair"           # the only attack that uses an attacker LLM; jailbroken/gcg would be
-                     # identical across arms, and rl takes its attacker from
-                     # configs/attacks/rl.yaml (extra.base_attacker), not from this list
-attacker_models:
+  # Model size study — Qwen2.5-Instruct
+  - "qwen2.5_0.5b"
+  - "qwen2.5_3b"
   - "qwen2.5_7b"
+  # Training stage study — Tulu3 8B
+  - "tulu3_8b_base"
+  - "tulu3_8b_sft"
+  - "tulu3_8b_dpo"
+  - "tulu3_8b_rlvr"
+attacks:
+  - "pair"           # jailbroken/gcg are deliberately absent: they use no attacker LLM, so
+  - "rl"             # every arm would produce identical results
+attacker_models:
+  # - "qwen2.5_7b"
   - "gemma3_4b_it_abliterated"
   - "gemma3_1b_it_abliterated"
 judge_model: "llama3.1_8b_instruct_judge"

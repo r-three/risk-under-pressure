@@ -189,9 +189,11 @@ def _attack_label(a: str) -> str:
     m = re.match(r"transfer_(\w+)_from_(.*)", a)
     if m:
         return f"{m.group(1).upper()} Transfer"
-    base, sep, attacker = a.partition("__")   # attacker ablation: pair__<attacker config>
+    # Attacker ablation: pair__<attacker config> / rl__<attacker config>. Separator is an
+    # em dash, not parentheses, so "RL (GRPO)" does not come out double-parenthesised.
+    base, sep, attacker = a.partition("__")
     if sep:
-        return f"{ATTACK_DISPLAY.get(base, base)} ({ATTACKER_DISPLAY.get(attacker, attacker)})"
+        return f"{ATTACK_DISPLAY.get(base, base)} — {ATTACKER_DISPLAY.get(attacker, attacker)}"
     return a
 
 
