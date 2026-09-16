@@ -49,6 +49,27 @@ OUTPUT=$PLOT_ROOT
 #     --output-dir $OUTPUT/harmbench/qwen2.5-7b-instruct/plots/seeds \
 #     --ci-method seeds
 
+# --- MODEL SIZE STUDY (2nd family) — Gemma 3 Instruction-Tuned: 270M, 1B, 4B ---
+# Companion to the Qwen2.5 ladder above
+
+# python scripts/plot_results.py \
+#     --metrics-csv $OUTPUT/harmbench/gemma3-270m-it/metrics_summary.csv \
+#     --category-metrics-csv $OUTPUT/harmbench/gemma3-270m-it/metrics_by_category_summary.csv \
+#     --output-dir $OUTPUT/harmbench/gemma3-270m-it/plots/seeds \
+#     --ci-method seeds
+
+# python scripts/plot_results.py \
+#     --metrics-csv $OUTPUT/harmbench/gemma3-1b-it/metrics_summary.csv \
+#     --category-metrics-csv $OUTPUT/harmbench/gemma3-1b-it/metrics_by_category_summary.csv \
+#     --output-dir $OUTPUT/harmbench/gemma3-1b-it/plots/seeds \
+#     --ci-method seeds
+
+# python scripts/plot_results.py \
+#     --metrics-csv $OUTPUT/harmbench/gemma3-4b-it/metrics_summary.csv \
+#     --category-metrics-csv $OUTPUT/harmbench/gemma3-4b-it/metrics_by_category_summary.csv \
+#     --output-dir $OUTPUT/harmbench/gemma3-4b-it/plots/seeds \
+#     --ci-method seeds
+
 # --- TRAINING STAGE STUDY — Tulu3 8B: Base → SFT → DPO → RLVR ---
 # Paper: Table 1, Figure 1 left
 
@@ -74,6 +95,39 @@ OUTPUT=$PLOT_ROOT
 #     --metrics-csv $OUTPUT/harmbench/tulu3-8b-rlvr/metrics_summary.csv \
 #     --category-metrics-csv $OUTPUT/harmbench/tulu3-8b-rlvr/metrics_by_category_summary.csv \
 #     --output-dir $OUTPUT/harmbench/tulu3-8b-rlvr/plots/seeds \
+#     --ci-method seeds
+
+# --- TRAINING STAGE STUDY (2nd ladder) — OLMo 2 1B: Base → SFT → DPO → RLVR1 → Instruct ---
+# Companion to the Tulu3 8B ladder above
+
+# python scripts/plot_results.py \
+#     --metrics-csv $OUTPUT/harmbench/olmo2-1b-base/metrics_summary.csv \
+#     --category-metrics-csv $OUTPUT/harmbench/olmo2-1b-base/metrics_by_category_summary.csv \
+#     --output-dir $OUTPUT/harmbench/olmo2-1b-base/plots/seeds \
+#     --ci-method seeds
+
+# python scripts/plot_results.py \
+#     --metrics-csv $OUTPUT/harmbench/olmo2-1b-sft/metrics_summary.csv \
+#     --category-metrics-csv $OUTPUT/harmbench/olmo2-1b-sft/metrics_by_category_summary.csv \
+#     --output-dir $OUTPUT/harmbench/olmo2-1b-sft/plots/seeds \
+#     --ci-method seeds
+
+# python scripts/plot_results.py \
+#     --metrics-csv $OUTPUT/harmbench/olmo2-1b-dpo/metrics_summary.csv \
+#     --category-metrics-csv $OUTPUT/harmbench/olmo2-1b-dpo/metrics_by_category_summary.csv \
+#     --output-dir $OUTPUT/harmbench/olmo2-1b-dpo/plots/seeds \
+#     --ci-method seeds
+
+# python scripts/plot_results.py \
+#     --metrics-csv $OUTPUT/harmbench/olmo2-1b-rlvr1/metrics_summary.csv \
+#     --category-metrics-csv $OUTPUT/harmbench/olmo2-1b-rlvr1/metrics_by_category_summary.csv \
+#     --output-dir $OUTPUT/harmbench/olmo2-1b-rlvr1/plots/seeds \
+#     --ci-method seeds
+
+# python scripts/plot_results.py \
+#     --metrics-csv $OUTPUT/harmbench/olmo2-1b-instruct/metrics_summary.csv \
+#     --category-metrics-csv $OUTPUT/harmbench/olmo2-1b-instruct/metrics_by_category_summary.csv \
+#     --output-dir $OUTPUT/harmbench/olmo2-1b-instruct/plots/seeds \
 #     --ci-method seeds
 
 # --- SAFETY ALIGNMENT STUDY — Qwen3-4B base vs Qwen3-4B-SafeRL ---
@@ -116,6 +170,27 @@ python scripts/plot_results.py \
 #     --output-dir $OUTPUT/jailbreakbench/qwen2.5-7b-instruct/plots/seeds \
 #     --ci-method seeds
 
+# --- MODEL SIZE STUDY (2nd family) — Gemma 3 Instruction-Tuned: 270M, 1B, 4B ---
+# Companion to the Qwen2.5 ladder above
+
+# python scripts/plot_results.py \
+#     --metrics-csv $OUTPUT/jailbreakbench/gemma3-270m-it/metrics_summary.csv \
+#     --category-metrics-csv $OUTPUT/jailbreakbench/gemma3-270m-it/metrics_by_category_summary.csv \
+#     --output-dir $OUTPUT/jailbreakbench/gemma3-270m-it/plots/seeds \
+#     --ci-method seeds
+
+# python scripts/plot_results.py \
+#     --metrics-csv $OUTPUT/jailbreakbench/gemma3-1b-it/metrics_summary.csv \
+#     --category-metrics-csv $OUTPUT/jailbreakbench/gemma3-1b-it/metrics_by_category_summary.csv \
+#     --output-dir $OUTPUT/jailbreakbench/gemma3-1b-it/plots/seeds \
+#     --ci-method seeds
+
+# python scripts/plot_results.py \
+#     --metrics-csv $OUTPUT/jailbreakbench/gemma3-4b-it/metrics_summary.csv \
+#     --category-metrics-csv $OUTPUT/jailbreakbench/gemma3-4b-it/metrics_by_category_summary.csv \
+#     --output-dir $OUTPUT/jailbreakbench/gemma3-4b-it/plots/seeds \
+#     --ci-method seeds
+
 # --- TRAINING STAGE STUDY — Tulu3 8B: Base → SFT → DPO → RLVR ---
 # Paper: Table 1, Figure 1 left
 
@@ -141,6 +216,39 @@ python scripts/plot_results.py \
 #     --metrics-csv $OUTPUT/jailbreakbench/tulu3-8b-rlvr/metrics_summary.csv \
 #     --category-metrics-csv $OUTPUT/jailbreakbench/tulu3-8b-rlvr/metrics_by_category_summary.csv \
 #     --output-dir $OUTPUT/jailbreakbench/tulu3-8b-rlvr/plots/seeds \
+#     --ci-method seeds
+
+# --- TRAINING STAGE STUDY (2nd ladder) — OLMo 2 1B: Base → SFT → DPO → RLVR1 → Instruct ---
+# Companion to the Tulu3 8B ladder above
+
+# python scripts/plot_results.py \
+#     --metrics-csv $OUTPUT/jailbreakbench/olmo2-1b-base/metrics_summary.csv \
+#     --category-metrics-csv $OUTPUT/jailbreakbench/olmo2-1b-base/metrics_by_category_summary.csv \
+#     --output-dir $OUTPUT/jailbreakbench/olmo2-1b-base/plots/seeds \
+#     --ci-method seeds
+
+# python scripts/plot_results.py \
+#     --metrics-csv $OUTPUT/jailbreakbench/olmo2-1b-sft/metrics_summary.csv \
+#     --category-metrics-csv $OUTPUT/jailbreakbench/olmo2-1b-sft/metrics_by_category_summary.csv \
+#     --output-dir $OUTPUT/jailbreakbench/olmo2-1b-sft/plots/seeds \
+#     --ci-method seeds
+
+# python scripts/plot_results.py \
+#     --metrics-csv $OUTPUT/jailbreakbench/olmo2-1b-dpo/metrics_summary.csv \
+#     --category-metrics-csv $OUTPUT/jailbreakbench/olmo2-1b-dpo/metrics_by_category_summary.csv \
+#     --output-dir $OUTPUT/jailbreakbench/olmo2-1b-dpo/plots/seeds \
+#     --ci-method seeds
+
+# python scripts/plot_results.py \
+#     --metrics-csv $OUTPUT/jailbreakbench/olmo2-1b-rlvr1/metrics_summary.csv \
+#     --category-metrics-csv $OUTPUT/jailbreakbench/olmo2-1b-rlvr1/metrics_by_category_summary.csv \
+#     --output-dir $OUTPUT/jailbreakbench/olmo2-1b-rlvr1/plots/seeds \
+#     --ci-method seeds
+
+# python scripts/plot_results.py \
+#     --metrics-csv $OUTPUT/jailbreakbench/olmo2-1b-instruct/metrics_summary.csv \
+#     --category-metrics-csv $OUTPUT/jailbreakbench/olmo2-1b-instruct/metrics_by_category_summary.csv \
+#     --output-dir $OUTPUT/jailbreakbench/olmo2-1b-instruct/plots/seeds \
 #     --ci-method seeds
 
 # --- SAFETY ALIGNMENT STUDY — Qwen3-4B base vs Qwen3-4B-SafeRL ---
@@ -242,6 +350,32 @@ python scripts/plot_results.py \
 #     --output-dir $OUTPUT/jailbreakbench/ablations/qwen_size \
 #     --title "JailbreakBench — Qwen2.5 Model Size Ablation"
 
+# --- Ablation 1b: Gemma 3 model size (2nd family) ---
+
+# python scripts/plot_results.py \
+#     --metrics-csv \
+#         $OUTPUT/harmbench/gemma3-270m-it/metrics_summary.csv \
+#         $OUTPUT/harmbench/gemma3-1b-it/metrics_summary.csv \
+#         $OUTPUT/harmbench/gemma3-4b-it/metrics_summary.csv \
+#     --category-metrics-csv \
+#         $OUTPUT/harmbench/gemma3-270m-it/metrics_by_category_summary.csv \
+#         $OUTPUT/harmbench/gemma3-1b-it/metrics_by_category_summary.csv \
+#         $OUTPUT/harmbench/gemma3-4b-it/metrics_by_category_summary.csv \
+#     --output-dir $OUTPUT/harmbench/ablations/gemma_size \
+#     --title "HarmBench — Gemma 3 Model Size Ablation"
+
+# python scripts/plot_results.py \
+#     --metrics-csv \
+#         $OUTPUT/jailbreakbench/gemma3-270m-it/metrics_summary.csv \
+#         $OUTPUT/jailbreakbench/gemma3-1b-it/metrics_summary.csv \
+#         $OUTPUT/jailbreakbench/gemma3-4b-it/metrics_summary.csv \
+#     --category-metrics-csv \
+#         $OUTPUT/jailbreakbench/gemma3-270m-it/metrics_by_category_summary.csv \
+#         $OUTPUT/jailbreakbench/gemma3-1b-it/metrics_by_category_summary.csv \
+#         $OUTPUT/jailbreakbench/gemma3-4b-it/metrics_by_category_summary.csv \
+#     --output-dir $OUTPUT/jailbreakbench/ablations/gemma_size \
+#     --title "JailbreakBench — Gemma 3 Model Size Ablation"
+
 # --- Ablation 2: Tulu3 training stages ---
 # Paper: Table 1, Figure 1 left
 
@@ -272,6 +406,40 @@ python scripts/plot_results.py \
 #         $OUTPUT/jailbreakbench/tulu3-8b-rlvr/metrics_by_category_summary.csv \
 #     --output-dir $OUTPUT/jailbreakbench/ablations/tulu3_training \
 #     --title "JailbreakBench — Tulu3 Training Phase Ablation"
+
+# --- Ablation 2b: OLMo 2 1B training stages (2nd ladder, 5 rungs) ---
+
+# python scripts/plot_results.py \
+#     --metrics-csv \
+#         $OUTPUT/harmbench/olmo2-1b-base/metrics_summary.csv \
+#         $OUTPUT/harmbench/olmo2-1b-sft/metrics_summary.csv \
+#         $OUTPUT/harmbench/olmo2-1b-dpo/metrics_summary.csv \
+#         $OUTPUT/harmbench/olmo2-1b-rlvr1/metrics_summary.csv \
+#         $OUTPUT/harmbench/olmo2-1b-instruct/metrics_summary.csv \
+#     --category-metrics-csv \
+#         $OUTPUT/harmbench/olmo2-1b-base/metrics_by_category_summary.csv \
+#         $OUTPUT/harmbench/olmo2-1b-sft/metrics_by_category_summary.csv \
+#         $OUTPUT/harmbench/olmo2-1b-dpo/metrics_by_category_summary.csv \
+#         $OUTPUT/harmbench/olmo2-1b-rlvr1/metrics_by_category_summary.csv \
+#         $OUTPUT/harmbench/olmo2-1b-instruct/metrics_by_category_summary.csv \
+#     --output-dir $OUTPUT/harmbench/ablations/olmo2_training \
+#     --title "HarmBench — OLMo 2 1B Training Stage Ablation"
+
+# python scripts/plot_results.py \
+#     --metrics-csv \
+#         $OUTPUT/jailbreakbench/olmo2-1b-base/metrics_summary.csv \
+#         $OUTPUT/jailbreakbench/olmo2-1b-sft/metrics_summary.csv \
+#         $OUTPUT/jailbreakbench/olmo2-1b-dpo/metrics_summary.csv \
+#         $OUTPUT/jailbreakbench/olmo2-1b-rlvr1/metrics_summary.csv \
+#         $OUTPUT/jailbreakbench/olmo2-1b-instruct/metrics_summary.csv \
+#     --category-metrics-csv \
+#         $OUTPUT/jailbreakbench/olmo2-1b-base/metrics_by_category_summary.csv \
+#         $OUTPUT/jailbreakbench/olmo2-1b-sft/metrics_by_category_summary.csv \
+#         $OUTPUT/jailbreakbench/olmo2-1b-dpo/metrics_by_category_summary.csv \
+#         $OUTPUT/jailbreakbench/olmo2-1b-rlvr1/metrics_by_category_summary.csv \
+#         $OUTPUT/jailbreakbench/olmo2-1b-instruct/metrics_by_category_summary.csv \
+#     --output-dir $OUTPUT/jailbreakbench/ablations/olmo2_training \
+#     --title "JailbreakBench — OLMo 2 1B Training Stage Ablation"
 
 # --- Ablation 3: Safety alignment — Qwen3-4B base vs Qwen3-4B-SafeRL ---
 # Paper: Table 1 (Qwen3 rows)

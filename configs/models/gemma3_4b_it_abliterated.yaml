@@ -18,6 +18,10 @@ params_b: 3.88
 model_type: "instruct"
 model_class: "causal_lm"
 quantization: "4bit"      # matches the 1B arm on purpose — see that config for why
+# Gemma 3 activations exceed the float16 range: in float16 this checkpoint emits
+# multilingual token soup instead of text, silently (generation raises nothing).
+# bfloat16 is the dtype Google ships it for and is required for coherent output.
+torch_dtype: "bfloat16"
 device: "cuda"
 generation:
   max_new_tokens: 512

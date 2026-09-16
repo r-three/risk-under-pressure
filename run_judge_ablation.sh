@@ -40,7 +40,7 @@ set -e
 
 # Judges to sweep. The incumbent llama3.1_8b_instruct_judge is deliberately NOT here —
 # those runs already exist under $SCRATCH/rup. Add it back to regenerate them.
-JUDGES="${JUDGES:-olmo3_7b_instruct_judge gemma3_4b_it_judge}"
+JUDGES="${JUDGES:- flow_judge_v01}"
 
 STAGE="${1:-submit}"
 
@@ -56,8 +56,8 @@ for judge in $JUDGES; do
             # then the per-prompt GRPO adaptive attack on both benchmarks.
             JUDGE="$judge" bash run_HB_experiments.sh
             JUDGE="$judge" bash run_JB_experiments.sh
-            JUDGE="$judge" bash run_rl_HB_experiments.sh
-            JUDGE="$judge" bash run_rl_JB_experiments.sh
+            # JUDGE="$judge" bash run_rl_HB_experiments.sh
+            # JUDGE="$judge" bash run_rl_JB_experiments.sh
             ;;
         eval)
             # Phase 2 — ASR / lambda* metrics, then phase 2.5 — token, FLOP, second and

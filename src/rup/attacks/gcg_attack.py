@@ -18,6 +18,22 @@ logger = get_logger(__name__)
 _GCG_SUFFIX_INIT = "! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! !"
 
 
+def _vocab_size(model, tokenizer) -> int:
+    """Vocabulary size of a causal LM, tolerating nested configs.
+
+    Text-only checkpoints put `vocab_size` on the top-level config. Multimodal ones do not:
+    google/gemma-3-4b-it loads as Gemma3ForConditionalGeneration, whose Gemma3Config keeps
+    vocab_size under `text_config` and raises AttributeError for a direct lookup. GCG needs
+    this for the one-hot gradient over the suffix tokens, so it has to resolve either shape.
+    """
+    cfg = model.config
+    for obj in (cfg, getattr(cfg, "text_config", None)):
+        size = getattr(obj, "vocab_size", None)
+        if size:
+            return int(size)
+    return len(tokenizer)
+
+
 class _EJModelAdapter:
     """Wraps HFModel as an EasyJailbreak WhiteBoxModelBase."""
 
@@ -46,7 +62,7 @@ class _EJModelAdapter:
 
     @property
     def vocab_size(self):
-        return self.model.config.vocab_size
+        return _vocab_size(self.model, self.tokenizer)
 
     @property
     def bos_token_id(self):
@@ -115,7 +131,7 @@ def _make_adapter_class():
 
             @property
             def vocab_size(self):
-                return self.model.config.vocab_size
+                return _vocab_size(self.model, self.tokenizer)
 
             @property
             def bos_token_id(self):

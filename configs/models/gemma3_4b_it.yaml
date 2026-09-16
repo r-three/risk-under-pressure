@@ -1,0 +1,55 @@
+# Target — Gemma 3 4B Instruction-Tuned (Google, released 2025-03).
+#
+# Top rung of the Gemma 3 size ladder (270M -> 1B -> 4B) in the model-size study.
+#
+# ---------------------------------------------------------------------------------------
+# WHY model_class IS causal_lm HERE BUT image_text_to_text IN gemma3_4b_it_judge.yaml
+# ---------------------------------------------------------------------------------------
+# Same checkpoint, two loader paths, because a target has to do things a judge never does.
+#
+# The checkpoint is Gemma3ForConditionalGeneration (multimodal), and the judge config loads
+# it through AutoProcessor so the rubric can be carried as a system message on a template
+# that wants structured content blocks (see _prepare_inputs_image_text in hf_model.py).
+#
+# A target needs the opposite: a real tokenizer. GCG reaches into `hf_model._tokenizer` for
+# bos/eos/pad ids and the embedding layer, and the RL attack's shaping reward calls
+# `sequence_nll`, which is causal_lm-only. An AutoProcessor satisfies neither. So this
+# config takes the causal_lm path, where:
+#   AutoTokenizer.from_pretrained("google/gemma-3-4b-it")     -> GemmaTokenizerFast (verified)
+#   AutoModelForCausalLM.from_pretrained(...)                 -> Gemma3ForConditionalGeneration
+#     (transformers maps model_type `gemma3` into MODEL_FOR_CAUSAL_LM_MAPPING, so this
+#      resolves; text-only forward and generate work with no pixel_values.)
+# Targets are never given a system prompt, so nothing is lost by skipping the processor.
+#
+# The two configs share model_id `gemma3-4b-it`, which is deliberate — pricing, FLOP and
+# plotting keys should all name the same checkpoint. load_model() caches on the full config
+# rather than on model_id precisely so that running this target under
+# `JUDGE=gemma3_4b_it_judge` loads two separate instances instead of silently handing the
+# target the judge's 64-token multimodal one.
+#
+# ---------------------------------------------------------------------------------------
+# params_b is the TEXT language model only (3.88B), not the 4.30B full checkpoint
+# (4,300,079,472 params on the hub). Every call in this project is text-only, so the SigLIP
+# vision tower (~0.42B) never runs and must not be billed into the FLOP axis
+# (FLOPs = 2 x params_b x tokens). Same accounting as the judge config:
+#   text LM: 34 layers x (attn 15.7M + mlp 78.6M) + 262144 x 2560 tied embed = 3.88B
+#
+# quantization: 4bit per the repo's size policy (>=3B in 4-bit) and matching qwen2.5_3b /
+# qwen2.5_7b at the equivalent rungs.
+model_id: "gemma3-4b-it"
+backend: "huggingface"
+hf_name: "google/gemma-3-4b-it"
+params_b: 3.88
+model_type: "instruct"
+model_class: "causal_lm"
+quantization: "4bit"
+# Gemma 3 activations exceed the float16 range: in float16 this checkpoint emits
+# multilingual token soup instead of text, silently (generation raises nothing).
+# bfloat16 is the dtype Google ships it for and is required for coherent output.
+torch_dtype: "bfloat16"
+device: "cuda"
+generation:
+  max_new_tokens: 512
+  temperature: 0.7
+  do_sample: true
+  top_p: 0.9

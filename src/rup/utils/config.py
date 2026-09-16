@@ -25,10 +25,21 @@ class ModelConfig(BaseModel):
     params_b: Optional[float] = None        # parameter count in billions (for FLOP calculation)
     model_type: Literal["base", "instruct"] = "instruct"
     quantization: Literal["4bit", "8bit", "none"] = "none"
+    # Compute dtype for weights and, when quantized, for the 4-bit compute path.
+    # float16 is the incumbent default and is what every Qwen/Llama/Tulu/OLMo run used.
+    # Gemma 3 MUST be bfloat16: its activations exceed the float16 range and the model
+    # emits multilingual token soup instead of text (silently — generation does not error).
+    torch_dtype: Literal["float16", "bfloat16", "float32"] = "float16"
     device: str = "cuda"
     generation: GenerationConfig = Field(default_factory=GenerationConfig)
     model_class: Literal["causal_lm", "image_text_to_text"] = "causal_lm"
     enable_thinking: bool = True            # set false for Qwen3-style thinking models
+    # True keeps the historical behaviour for every checkpoint here. Set false when a repo ships
+    # custom modeling code that has fallen behind the installed transformers: Flow-Judge vendors
+    # Phi-3's old modeling_phi3.py, which calls DynamicCache.seen_tokens — removed in transformers
+    # 4.5x — so generate() raises on every call. transformers has native Phi3 support, and
+    # declining the remote code uses it instead.
+    trust_remote_code: bool = True
     adapter_path: Optional[str] = None      # optional PEFT/LoRA adapter to apply on top of hf_name
     extra: Dict[str, Any] = Field(default_factory=dict)
 

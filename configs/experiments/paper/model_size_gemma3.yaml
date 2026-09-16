@@ -1,0 +1,31 @@
+# Paper §4 — Model Size Study, second family (companion to model_size.yaml)
+# Gemma 3 Instruction-Tuned at 270M, 1B, 4B on HarmBench.
+#
+# model_size.yaml runs the same study on Qwen2.5 (0.5B -> 3B -> 7B). Running a second
+# family is what separates "risk falls with model size" from "risk falls with model size
+# in Qwen": the Gemma ladder is a different vendor, a different tokenizer, a different
+# safety-tuning recipe, and it reaches an order of magnitude smaller at the bottom.
+#
+# Quantization follows the same size policy as the Qwen ladder (<=1B unquantized, >=3B in
+# 4-bit), so the two ladders are built the same way and their rungs are comparable. The
+# usual caveat applies to the *seconds* axis only: precision changes between the 1B and 4B
+# rungs, exactly as it does between Qwen's 0.5B and 3B. The tokens/FLOPs/dollars axes read
+# params_b and are unaffected.
+name: "paper_model_size_gemma3"
+benchmark: "harmbench"
+n_prompts: 200
+pressure_levels: [0, 1, 2, 4, 6, 8, 10]
+lambda_max: 10
+models:
+  - "gemma3_270m_it"
+  - "gemma3_1b_it"
+  - "gemma3_4b_it"
+attacks:
+  - "pair"
+  - "jailbroken"
+  - "gcg"
+  - "rl"          # per-prompt GRPO adaptive attack (expensive; see configs/attacks/rl.yaml + run_rl_HB_experiments.sh)
+judge_model: "llama3.1_8b_instruct_judge"
+seeds: [1997, 2, 100, 42, 5431, 2002, 256, 512, 123, 5]
+tau: 0.5
+n_bootstrap: 1000

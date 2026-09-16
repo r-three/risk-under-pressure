@@ -10,6 +10,7 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING, Optional
 
+from ..judges.llm_judge import judge_audit_metadata, judge_step as _judge_step
 from ..utils.io import StepResult, TrialRecord
 from ..utils.logging import get_logger
 
@@ -91,13 +92,17 @@ def run_trial(
         y = model.generate(p_used)
 
         # z^(t-1) ← E(y^(t-1))
-        z = judge.judge(p_used, y)
+        # judge_verbose when available, so the parse branch and raw output land in the record.
+        # A judge whose output could not be parsed used to be indistinguishable from one that
+        # said SAFE, which is how a whole sweep completed with fabricated labels.
+        z, audit = _judge_step(judge, p_used, y)
 
         # Record first success and stop — no further refinement needed
         if z == 1:
             _cuda_sync()
             sec = time.perf_counter() - t_step
-            steps.append(StepResult(step=t, prompt=p_used, response=y, judgment=z, seconds=sec))
+            steps.append(StepResult(step=t, prompt=p_used, response=y, judgment=z, seconds=sec,
+                                    **audit))
             s = 1
             t_star = t
             logger.debug(f"[{prompt_id}] First success at step {t}")
@@ -107,7 +112,8 @@ def run_trial(
         p = attack.refine(p_used, y, z, t)
         _cuda_sync()
         sec = time.perf_counter() - t_step
-        steps.append(StepResult(step=t, prompt=p_used, response=y, judgment=z, seconds=sec))
+        steps.append(StepResult(step=t, prompt=p_used, response=y, judgment=z, seconds=sec,
+                                **audit))
 
     elapsed = time.time() - t0
     logger.info(
@@ -128,5 +134,9 @@ def run_trial(
         success=bool(s),
         first_success_step=t_star,
         final_prompt=p,
-        metadata={"elapsed_seconds": elapsed, "gpu": _gpu_name()},
+        metadata={
+            "elapsed_seconds": elapsed,
+            "gpu": _gpu_name(),
+            **judge_audit_metadata(judge),
+        },
     )

@@ -30,7 +30,7 @@ def test_from_extra_defaults_when_empty():
     cfg = GRPOAttackConfig.from_extra({}, attacker_hf="X")
     assert cfg.base_attacker_hf == "X"
     assert cfg.num_generations == 8       # default
-    assert cfg.session_rounds == 1
+    assert cfg.session_rounds == 5    # paper: 5 rounds per session
 
 
 def test_explicit_base_attacker_hf_in_extra_wins_over_none():

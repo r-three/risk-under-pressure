@@ -18,12 +18,12 @@ MODEL_ID="qwen2.5-0.5b-instruct"      # model_id from configs/models/qwen2.5_0.5
 echo "SCRATCH=$SCRATCH | HF_HOME=$HF_HOME | OUT=$OUT"
 
 echo "=============================================================="
-echo "[1/3] Run the per-prompt RL attack (2 prompts, budget 8, group 4)"
+echo "[1/3] Run the per-prompt RL attack (2 prompts, budget 9, 4 sessions x 2 rounds)"
 echo "=============================================================="
 python scripts/run_inference.py \
     --experiment configs/experiments/base.yaml \
-    --model "$TARGET_CFG" --attack rl \
-    --n-prompts 2 --seeds 1997 --lambda-max 8 \
+    --model "$TARGET_CFG" --attack rl_smoke \
+    --n-prompts 2 --seeds 1997 --lambda-max 9 \
     --output-dir "$OUT"
 test -f "$OUT/harmbench/$MODEL_ID/1997/rl/results.jsonl" \
     && echo "OK: results.jsonl written" \

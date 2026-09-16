@@ -1,0 +1,41 @@
+# Target — OLMo 2 1B, SFT stage.
+# Supervised finetune of olmo2_1b_base on tulu-3-sft-olmo-2-mixture-0225.
+#
+# NOTE: this rung and the DPO one ship `pytorch_model.bin` rather than safetensors, so
+# they load through torch.load and are slower to read than the rest of the ladder. The
+# param count is not exposed in the hub API for them either; it is 1.48B by lineage —
+# full finetunes of a 1,484,916,736-param base, with base, RLVR1 and Instruct all
+# measured at exactly that.
+#
+# OLMo 2 1B post-training ladder (allenai, 0425). Five rungs, one lineage — each is a full
+# finetune of the one above it, so params never change (1,484,916,736 for every rung):
+#   OLMo-2-0425-1B            base       pre-trained only, no chat template
+#     -> -SFT                 SFT        tulu-3-sft-olmo-2-mixture-0225
+#     -> -DPO                 DPO        olmo-2-0425-1b-preference-mix
+#     -> -RLVR1               RLVR #1    RLVR-GSM-MATH-IF-Mixed-Constraints
+#     -> -Instruct            RLVR #2    RLVR-MATH  <- the final released model
+#
+# Note the fifth rung: `-Instruct` is NOT a synonym for `-RLVR1`, it is a SECOND RLVR round
+# stacked on top of it (the model card lists RLVR1 as its base_model). That makes this
+# ladder strictly more informative than the 4-rung Tulu3 one — it is the only place in this
+# repo where you can ask whether a second round of RLVR keeps moving the risk curve or
+# whether the effect saturates after the first.
+#
+# quantization is `none` on ALL five rungs. Uniformity is the requirement, not the value:
+# a stage study compares rungs against each other, so if precision changed between them a
+# quantization artifact would be indistinguishable from a training-stage effect. At 1.48B
+# in bf16 (~3 GB) every rung fits unquantized alongside the judge, so `none` is the choice
+# that costs nothing. (The Tulu3 ladder is uniformly 4-bit for the same reason at 8B.)
+model_id: "olmo2-1b-sft"
+backend: "huggingface"
+hf_name: "allenai/OLMo-2-0425-1B-SFT"
+model_type: "instruct"
+model_class: "causal_lm"
+params_b: 1.48
+quantization: "none"
+device: "cuda"
+generation:
+  max_new_tokens: 512
+  temperature: 0.7
+  do_sample: true
+  top_p: 0.9

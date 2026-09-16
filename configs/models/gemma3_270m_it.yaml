@@ -1,0 +1,29 @@
+# Target — Gemma 3 270M Instruction-Tuned (Google, released 2025-08).
+#
+# Smallest rung of the Gemma 3 size ladder (270M -> 1B -> 4B), the second family in the
+# model-size study alongside Qwen2.5 (0.5B -> 3B -> 7B). Two families are what separate
+# "risk falls with size" from "risk falls with size *in Qwen*".
+#
+# Text-only Gemma3ForCausalLM (268,098,176 params), so it takes the standard causal_lm
+# loader — no vision tower, unlike the 4B rung.
+#
+# quantization: none follows the repo's size policy (<=1B unquantized, >=3B 4-bit; see the
+# GPU memory guide in the README) and mirrors qwen2.5_0.5b at the equivalent rung, which is
+# what keeps the two ladders comparable to each other.
+model_id: "gemma3-270m-it"
+backend: "huggingface"
+hf_name: "google/gemma-3-270m-it"
+params_b: 0.268
+model_type: "instruct"
+model_class: "causal_lm"
+quantization: "none"
+# Gemma 3 activations exceed the float16 range: in float16 this checkpoint emits
+# multilingual token soup instead of text, silently (generation raises nothing).
+# bfloat16 is the dtype Google ships it for and is required for coherent output.
+torch_dtype: "bfloat16"
+device: "cuda"
+generation:
+  max_new_tokens: 512
+  temperature: 0.7
+  do_sample: true
+  top_p: 0.9

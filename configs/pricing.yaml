@@ -64,6 +64,26 @@ models:
   tulu3-8b-dpo:  {usd_per_1m_input: 0.02, usd_per_1m_output: 0.04}  # ESTIMATED from llama-3.1-8b-instruct, DeepInfra
   tulu3-8b-rlvr: {usd_per_1m_input: 0.02, usd_per_1m_output: 0.04}  # ESTIMATED from llama-3.1-8b-instruct, DeepInfra
 
+  # --- OLMo 2 1B training-stage targets (second stage ladder, see training_stage_olmo2.yaml) ---
+  # No OLMo checkpoint is served at any size (the sole Olmo listing, olmo-3-32b-think, has
+  # zero active endpoints), so this is an estimate. Applying the documented key order
+  # REGION -> SIZE -> YEAR: US narrows to llama-3.2-1b (2024-09), llama-3.2-3b (2024-09) and
+  # gemma-3-4b (2025-03); SIZE then picks llama-3.2-1b-instruct at 1.24B as the nearest to
+  # 1.48B, and YEAR never gets consulted. Scale by params off that anchor:
+  #   0.027 * 1.48/1.24 = 0.032,  0.201 * 1.48/1.24 = 0.240
+  # That 0.240 output rate is high for the size, and deliberately so — it is the same
+  # single-provider 1B anomaly this file flags up top (an 8B undercuts a 1B 5x on output).
+  # Swap all five lines to 0.019 / 0.037 to anchor on gemma-3-4b-it instead (nearest by YEAR,
+  # scaled 0.05 * 1.48/3.88), which is ~6x cheaper on output; that is what choosing year over
+  # size costs here, and it is the mirror of the call made for gemma3-1b-it-abliterated below.
+  # All five rungs take one rate: they are full finetunes of each other, identical in size and
+  # architecture — same convention as the four Tulu3 stages sharing llama-3.1-8b's rate.
+  olmo2-1b-base:     {usd_per_1m_input: 0.032, usd_per_1m_output: 0.240}  # ESTIMATED from meta-llama/llama-3.2-1b-instruct
+  olmo2-1b-sft:      {usd_per_1m_input: 0.032, usd_per_1m_output: 0.240}  # ESTIMATED from meta-llama/llama-3.2-1b-instruct
+  olmo2-1b-dpo:      {usd_per_1m_input: 0.032, usd_per_1m_output: 0.240}  # ESTIMATED from meta-llama/llama-3.2-1b-instruct
+  olmo2-1b-rlvr1:    {usd_per_1m_input: 0.032, usd_per_1m_output: 0.240}  # ESTIMATED from meta-llama/llama-3.2-1b-instruct
+  olmo2-1b-instruct: {usd_per_1m_input: 0.032, usd_per_1m_output: 0.240}  # ESTIMATED from meta-llama/llama-3.2-1b-instruct
+
   # --- Qwen3 targets ---
   # Qwen3-4B is unserved. Anchor is qwen3-8b: same region, same family, same
   # release month (2025-04), same hybrid-reasoning behaviour — only size differs.
@@ -72,6 +92,20 @@ models:
   qwen3-4b:        {usd_per_1m_input: 0.059, usd_per_1m_output: 0.228}  # ESTIMATED from qwen3-8b
   qwen3-4b-saferl: {usd_per_1m_input: 0.059, usd_per_1m_output: 0.228}  # ESTIMATED from qwen3-8b
   qwen3-8b:        {usd_per_1m_input: 0.117, usd_per_1m_output: 0.455}  # EXACT: qwen/qwen3-8b, Alibaba (sole provider)
+
+  # --- Gemma 3 targets (second family in the model-size study: 270M -> 1B -> 4B) ---
+  # The 4B rung is served and priced below with the judges — it is the SAME model_id
+  # (gemma3-4b-it), since the target config and the judge config name one checkpoint.
+  # That EXACT listing is the family anchor: US, 2025-03, and quoted for the 3.88B text
+  # LM this project actually runs (the SigLIP tower never executes on a text-only call).
+  # Nothing below 4B in this family is served anywhere, so both smaller rungs scale
+  # linearly in params off it — the same convention the abliterated attackers use:
+  #   1B    -> 0.05 * 1.00/3.88  = 0.013,  0.10 * 1.00/3.88  = 0.026
+  #   270M  -> 0.05 * 0.268/3.88 = 0.0035, 0.10 * 0.268/3.88 = 0.0069
+  # The 1B rate therefore matches gemma3-1b-it-abliterated exactly, which is correct:
+  # abliteration changes weights, not size, so both are the same rung of the same ladder.
+  gemma3-270m-it: {usd_per_1m_input: 0.003, usd_per_1m_output: 0.007}  # ESTIMATED from google/gemma-3-4b-it
+  gemma3-1b-it:   {usd_per_1m_input: 0.013, usd_per_1m_output: 0.026}  # ESTIMATED from google/gemma-3-4b-it
 
   # --- Safety judges (judge ablation: one run tree per judge) ---
   # Note these are per-TOKEN rates, so they are independent of the judge's parameter
