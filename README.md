@@ -10,13 +10,13 @@
 [![Paper](https://img.shields.io/badge/paper-preprint-blue)](https://arxiv.org/pdf/2606.11409)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Most jailbreak benchmarks report attack success rate (ASR) at a fixed query budget — which
+Most jailbreak benchmarks report attack success rate (ASR) at a fixed query budget, which
 implicitly treats a cheap template jailbreak and an expensive gradient-based GCG attack as
 equivalent. They're not: compute costs across attack strategies vary by orders of magnitude, so a
 high ASR can mean "trivially broken" or "extremely expensive to break," and you can't tell which
 from ASR alone.
 
-**Risk Under Pressure** replaces the query-count axis with cumulative FLOPs — a hardware-agnostic
+**Risk Under Pressure** replaces the query-count axis with cumulative FLOPs, a hardware-agnostic
 measure of actual attacker effort. Instead of "did the attack succeed within N queries?", you get
 *risk-compute curves* showing how jailbreak success scales with compute budget, summarized by
 two metrics: compute to reach a target risk level (`C@τ`) and risk gained per FLOP (`AE`).
@@ -35,12 +35,6 @@ two metrics: compute to reach a target risk level (`C@τ`) and risk gained per F
 | [Reference](#reference) | Models, attacks, benchmarks, judges |
 | [Extending](#extending-the-framework) | Add a model / attack / benchmark |
 | [Known gotchas](#known-gotchas) | Read before launching a sweep |
-| [`docs/design_notes.md`](docs/design_notes.md) | *Why* these models, judges, attackers and prices |
-| [`docs/ablations.md`](docs/ablations.md) | Judge, attacker and severity ablations in depth |
-| [`docs/rl_attack.md`](docs/rl_attack.md) | The GRPO adaptive attacker: budget, reward, LoRA cost |
-| [`docs/cost_axes_computation.md`](docs/cost_axes_computation.md) | How seconds and dollars are computed |
-| [`docs/cost_axes_runbook.md`](docs/cost_axes_runbook.md) | How to populate those axes |
-| [`docs/python_api.md`](docs/python_api.md) | Using the components directly from Python |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | Code conventions, cost-model requirements |
 
 ---
@@ -48,15 +42,14 @@ two metrics: compute to reach a target risk level (`C@τ`) and risk gained per F
 ## Install
 
 ```bash
-git clone https://github.com/Malikeh97/risk-under-pressure && cd risk-under-pressure
+git clone https://github.com/r-three/risk-under-pressure.git && cd risk-under-pressure
 uv venv && source .venv/bin/activate
 uv pip install -e .
 
 cp .env.example .env     # then set HF_TOKEN (gated models: Llama, Tulu3)
 ```
 
-Python 3.11, CUDA 12.6, one GPU. `HF_TOKEN` is the only required key; `~/hf_token.txt` works as a
-fallback. Everything caches to `$SCRATCH/huggingface`.
+Python 3.11, CUDA 12.6, one GPU. `HF_TOKEN` is the only required key.
 
 **On a SLURM cluster**, build the environment as a job instead, then let the run scripts activate
 it for you:
@@ -117,42 +110,7 @@ Every result in the paper is produced by the same pipeline. Only Phase 1 needs a
 
 Phases 2 and 2.5 also emit per-harm-category variants of every file automatically.
 
-### Paper artifact → command
-
-The `run_*.sh` drivers are the **canonical path** — they are what produced the numbers in the
-paper. Each is a list of `submit …` lines grouped by study, with most lines **commented out** so
-you only pay for what you need. Reproducing an artifact means: uncomment its block, run the
-driver, wait, then run Phases 2/2.5/3.
-
-| Paper artifact | Phase 1 | Then |
-|---|---|---|
-| **Table 1** — HarmBench, 9 models × 3 attacks | `run_HB_experiments.sh` → *MODEL SIZE* + *TRAINING STAGE* + *SAFETY ALIGNMENT* blocks | eval → cost; read `cost_summary_metrics.csv` |
-| **Fig. training stage** (HB) | `run_HB_experiments.sh` → *TRAINING STAGE STUDY* (Tulu3 ×4) | `run_cost_plots.sh` → `ablations/tulu3_training` |
-| **Fig. model size** (HB) | `run_HB_experiments.sh` → *MODEL SIZE STUDY* (Qwen2.5 ×3) | `run_cost_plots.sh` → `ablations/qwen_size` |
-| **Fig. safety alignment** (HB) | `run_HB_experiments.sh` → *SAFETY ALIGNMENT* (Qwen3-4B ±SafeRL) | `run_cost_plots.sh` → `ablations/safety_alignment` |
-| **Fig. attack transfer** | Qwen2.5-0.5B GCG first, then `run_transfer_experiments.sh` | eval → cost → plots |
-| **Fig. per-category** | same runs as Table 1 | `--category-metrics-csv` is passed automatically by `run_cost_plots.sh` |
-| **App. JailbreakBench** (all of the above) | `run_JB_experiments.sh` (same blocks; `--n-prompts 100`) | identical Phase 2/3 |
-| **App. RL adaptive attack** | `run_rl_HB_experiments.sh`, `run_rl_JB_experiments.sh` | eval → cost; RL columns appear automatically |
-| **App. Gemma 3** (model size, 2nd family) | `run_{HB,JB}_experiments.sh` → *MODEL SIZE (2nd family)* block | `ablations/gemma_size` |
-| **App. OLMo 2** (training stage, 2nd family) | `run_{HB,JB}_experiments.sh` → *TRAINING STAGE (2nd family)* block | `ablations/olmo2_training` |
-| **App. judge robustness** (Flow-Judge) | `bash run_rejudge.sh` — re-scores recorded responses, no re-run | `scripts/judge_agreement.py` (κ), `scripts/compare_judges.py` |
-| **App. judge-excluded cost** | *no new runs* | `AXES=flops_nojudge bash run_cost_plots.sh`; `cost_summary_metrics_nojudge.csv` |
-| **App. wall-clock / dollar axes** | *no new runs for dollars*; seconds needs a fresh L40S run | `AXES="seconds dollars" bash run_cost_plots.sh` — see [runbook](docs/cost_axes_runbook.md) |
-| **App. severity (0–5)** | `bash run_severity_scoring.sh` — re-reads existing `results.jsonl` | `bash run_severity_scoring.sh report` |
-| **App. cross-benchmark consistency** | *no new runs* | Spearman ρ over the two benchmarks' `cost_summary_metrics.csv` (computed ad hoc — no dedicated script) |
-| **App. attacker ablation** | `bash run_attacker_ablation.sh` | `… eval`, `… plots` |
-
-### Seeds
-
-The paper reports **10 seeds**. In `run_{HB,JB}_experiments.sh` each model block lists all ten
-(`1394 2 100 42 5431 2002 256 512 123 5`) with **only `1394` uncommented** — uncomment the rest to
-reproduce the published confidence intervals. The RL drivers instead take a `SEEDS` variable
-(default: all ten of `1394 42 123 256 512 1024 1997 2002 5431 7919`); narrow it with
-`SEEDS="1394 42" bash run_rl_HB_experiments.sh`.
-
-Each (model, attack, seed) is a separate job, so ten seeds means ten jobs, not one ten-times-longer
-job. Every command passes `--resume`, so a job that hits the 23 h limit is simply resubmitted.
+Every command passes `--resume`, so a job that hits the 23 h limit is simply resubmitted.
 
 ### Step by step on SLURM
 
@@ -174,8 +132,7 @@ bash run_cost_plots.sh                     # risk vs compute
 AXES="flops tokens dollars" bash run_cost_plots.sh
 ```
 
-Select a different safety judge anywhere with `JUDGE=<config-name>` (see
-[Reference](#reference)); each judge writes to its own tree, so nothing is overwritten.
+Select a different safety judge anywhere with `JUDGE=<config-name>`
 
 ### Without SLURM
 
@@ -192,15 +149,14 @@ python scripts/run_inference.py \
 `configs/experiments/paper/*.yaml` bundle the model lists per study
 (`model_size.yaml`, `training_stage.yaml`, `safety_alignment.yaml`, `attack_transfer.yaml`,
 `attacker_size.yaml`, plus the `_gemma3` / `_olmo2` second families) if you prefer one command per
-study over one per cell. Note their `seeds:` lists do **not** include 1394 — pass `--seeds`
-explicitly to match the published runs.
+study over one per cell.  Pass `--seeds` explicitly to match the published runs.
 
 ### Before you burn GPU-hours
 
 ```bash
 pytest tests/                              # 163 CPU-only unit tests, no downloads, ~seconds
 bash run_judge_smoke.sh                    # validate each judge against a 22-case control set
-bash run_judge_smoke.sh check              # → hard pass/fail gate
+bash run_judge_smoke.sh check              # hard pass/fail gate
 bash run_rl_smoke.sh                       # full RL path end-to-end; prints SMOKE TEST PASSED
 bash run_severity_scoring.sh dry-run       # exact judge-call count, no GPU
 bash run_attacker_ablation.sh smoke        # verifies each attacker actually rewrites prompts
@@ -255,9 +211,6 @@ Variant attack directories: `pair__<attacker>` / `rl__<attacker>` (attacker abla
 | **OLMo 2 1B** | `olmo2_1b_{base,sft,dpo,rlvr1,instruct}` | training-stage study, 2nd family (5 rungs) |
 | **Qwen3** | `qwen3_4b`, `qwen3_4b_saferl`, `qwen3_8b` | safety alignment; 8B is the transfer target |
 
-Adding a model is a YAML file — see [Extending](#extending-the-framework). Quantization policy,
-the OLMo 2 fifth rung, and the Gemma 3 dual loader path are explained in
-[`docs/design_notes.md`](docs/design_notes.md).
 
 ### Attacks
 
@@ -271,8 +224,7 @@ the OLMo 2 fifth rung, and the Gemma 3 dual loader path are explained in
 
 N = target params, N_A = attacker, N_J = judge, L = tokens. RL's attacker term is LoRA-aware and
 billed per candidate: `0` for the raw probe, `8N` on a GRPO-updated round, `2N` on the winning
-round — see [`docs/rl_attack.md`](docs/rl_attack.md) for the budget arithmetic, reward and early
-stopping. Formulas live in `src/rup/metrics/cost_mapper.py`.
+round. Formulas live in `src/rup/metrics/cost_mapper.py`.
 
 ### Benchmarks and judges
 
@@ -282,8 +234,6 @@ as a jailbreak, so every number is conditioned on it — which is why three are 
 | `JUDGE=` | Model | `params_b` |
 |---|---|---|
 | `llama3.1_8b_instruct_judge` | Llama-3.1-8B-Instruct | 8.03 (default) |
-| `olmo3_7b_instruct_judge` | Olmo-3-7B-Instruct | 7.30 |
-| `gemma3_4b_it_judge` | Gemma-3-4B-IT | 3.88 |
 | `flow_judge_v01` | Flow-Judge-v0.1 (Phi-3.5 lineage) | 3.82 |
 
 ### Cost axes
@@ -295,17 +245,13 @@ as a jailbreak, so every number is conditioned on it — which is why three are 
 | `flops` / `tokens` / `dollars` | target + judge + attacker | cost to **reproduce this measurement** |
 | `*_nojudge` | target + attacker | what the **attack costs an adversary** |
 
-The split is not cosmetic: the judge is 10% of GCG's FLOPs but ~59% of JailBroken's, so it changes
-which attack is cheapest. **Use `_nojudge` for anything comparing across judges.** Details:
-[`docs/cost_axes_computation.md`](docs/cost_axes_computation.md).
 
 ### Severity (0–5)
 
-`run_severity_scoring.sh` re-reads responses already in `results.jsonl` with a graded rubric — no
+`run_severity_scoring.sh` re-reads responses already in `results.jsonl` with a graded rubric; no
 experiment is re-run, and only executed steps are scored. Two rubrics ship: `detail` (default;
-how much harmful detail is on the page) and `uplift` (the original; real-world efficacy). The
-paper uses `detail`, because `uplift` put 89% of steps at 0 and scored 53% of *successful*
-jailbreaks as 0. Full metric definitions: [`docs/ablations.md`](docs/ablations.md).
+how much harmful detail is on the page) and `uplift` (real-world efficacy). The
+paper uses `detail`.
 
 ---
 
@@ -333,27 +279,6 @@ formula.
 **A new benchmark**: implement `Benchmark` in `src/rup/benchmarks/` and register it. See
 [CONTRIBUTING.md](CONTRIBUTING.md).
 
----
-
-## Known gotchas
-
-- **The run scripts ship mostly commented out.** Uncommenting is the interface. `run_HB/JB_experiments.sh`
-  currently enable Qwen2.5 / Tulu3 / Qwen3 at seed 1394 only — and their header comments claim the
-  opposite (that Gemma 3 and OLMo 2 are the enabled ladders). Trust the code, not the header.
-- **`run_transfer_experiments.sh` is entirely inert** — every `submit` line is commented, so running
-  it today is a no-op. Uncomment the seed lines you want.
-- **Seed 1394 is in no experiment YAML** but is what every enabled static-attack line passes.
-- **`run_cost_plots.sh` pins `AXES=flops`** (line 55); the multi-axis default is commented out just
-  above. Override with `AXES="..."`.
-- **`run_rejudge.sh` and `run_judge_cost_main.sh` must run on a login node** — on compute nodes
-  `$SCRATCH` resolves elsewhere and the `rup` tree isn't there. Both deliberately skip-and-warn
-  instead of `set -e` aborting on a missing model.
-- **`scripts/bootstrap_rl_cost_ci.py` hardcodes an absolute repo root and output path** and is not
-  portable as written.
-- **`--rl-num-generations` must match `num_generations`** in `configs/attacks/rl.yaml` (default 8),
-  or the RL cost reconstruction is wrong.
-- **`mean_total_seconds` is NaN for older runs** — wall-clock is measured, not modeled, so it only
-  exists for runs made after the timing instrumentation, on one GPU.
 
 ---
 
