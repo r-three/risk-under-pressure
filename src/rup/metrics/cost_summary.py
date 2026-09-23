@@ -183,12 +183,23 @@ def aggregate_seed_metrics(
 # Top-level aggregation
 # --------------------------------------------------------------------------- #
 
-_METRIC_ORDER = [
-    "C@0.2", "C@0.5", "C@0.8",
-    "AE", "EE", "ER",
-    "CAURC", "log_CAURC",
-    "R@10", "R@100", "R@1000",
-]
+def _c_label(c: float):
+    """R@ suffix formatting, matching compute_all_cost_metrics (int when integral)."""
+    return int(c) if c == int(c) else c
+
+
+def _metric_order(tau_thresholds: List[float], c_targets: List[float]) -> List[str]:
+    """Ordered metric columns for a given axis — R@ labels derive from that axis's
+    c_targets (so seconds/dollars axes with their own targets get correct R@ keys)."""
+    return (
+        [f"C@{t}" for t in tau_thresholds]
+        + ["AE", "EE", "ER", "CAURC", "log_CAURC"]
+        + [f"R@{_c_label(c)}" for c in c_targets]
+    )
+
+
+# Default order for the FLOP axis (c_targets = 10/100/1000 TFLOPs).
+_METRIC_ORDER = _metric_order(DEFAULT_TAU_THRESHOLDS, DEFAULT_C_TARGETS)
 
 
 def compute_cost_summary_metrics(
@@ -215,9 +226,10 @@ def compute_cost_summary_metrics(
         df = df[~df["attack_id"].isin(exclude_attacks)]
     df["base_model"] = df["model_id"].str.replace(_SEED_RE, "", regex=True)
 
+    metric_order = _metric_order(tau_thresholds, c_targets)
     rows = []
     for (base_model, attack_id), group in df.groupby(["base_model", "attack_id"], sort=False):
-        seed_values: Dict[str, List[float]] = {m: [] for m in _METRIC_ORDER}
+        seed_values: Dict[str, List[float]] = {m: [] for m in metric_order}
 
         for seed_model_id, seed_group in group.groupby("model_id", sort=False):
             compute, risk = extract_curve(seed_group, compute_col=compute_col, risk_col=risk_col)
@@ -227,7 +239,7 @@ def compute_cost_summary_metrics(
                 c_targets=c_targets,
                 early_k=early_k,
             )
-            for m in _METRIC_ORDER:
+            for m in metric_order:
                 if m in metrics:
                     seed_values[m].append(metrics[m])
 
@@ -269,11 +281,12 @@ def compute_cost_summary_by_category(
         df = df[~df["attack_id"].isin(exclude_attacks)]
     df["base_model"] = df["model_id"].str.replace(_SEED_RE, "", regex=True)
 
+    metric_order = _metric_order(tau_thresholds, c_targets)
     rows = []
     for (base_model, attack_id, category), group in df.groupby(
         ["base_model", "attack_id", "category"], sort=False
     ):
-        seed_values: Dict[str, List[float]] = {m: [] for m in _METRIC_ORDER}
+        seed_values: Dict[str, List[float]] = {m: [] for m in metric_order}
 
         for _seed_model_id, seed_group in group.groupby("model_id", sort=False):
             compute, risk = extract_curve(seed_group, compute_col=compute_col, risk_col=risk_col)
@@ -283,7 +296,7 @@ def compute_cost_summary_by_category(
                 c_targets=c_targets,
                 early_k=early_k,
             )
-            for m in _METRIC_ORDER:
+            for m in metric_order:
                 if m in metrics:
                     seed_values[m].append(metrics[m])
 

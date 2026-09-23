@@ -14,6 +14,7 @@ attacks:
   - "pair"
   - "jailbroken"
   - "gcg"
+  - "rl"          # per-prompt GRPO adaptive attack (expensive; see configs/attacks/rl.yaml + run_rl_experiments.sh)
 judge_model: "llama3.1_8b_instruct_judge"
 seeds: [1997, 2, 100, 42, 5431, 2002, 256, 512, 123, 5]
 tau: 0.5

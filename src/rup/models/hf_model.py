@@ -42,13 +42,22 @@ class HFModel(BaseModel):
         import torch
         from transformers import BitsAndBytesConfig
 
-        logger.info(f"Loading {self._config.hf_name} (quant={self._config.quantization})")
+        dtype = {
+            "float16": torch.float16,
+            "bfloat16": torch.bfloat16,
+            "float32": torch.float32,
+        }[self._config.torch_dtype]
+
+        logger.info(
+            f"Loading {self._config.hf_name} "
+            f"(quant={self._config.quantization}, dtype={self._config.torch_dtype})"
+        )
 
         quant_config = None
         if self._config.quantization == "4bit":
             quant_config = BitsAndBytesConfig(
                 load_in_4bit=True,
-                bnb_4bit_compute_dtype=torch.float16,
+                bnb_4bit_compute_dtype=dtype,
                 bnb_4bit_quant_type="nf4",
                 bnb_4bit_use_double_quant=True,
             )
@@ -60,21 +69,21 @@ class HFModel(BaseModel):
 
             self._processor = AutoProcessor.from_pretrained(
                 self._config.hf_name,
-                trust_remote_code=True,
+                trust_remote_code=self._config.trust_remote_code,
             )
             self._model = AutoModelForImageTextToText.from_pretrained(
                 self._config.hf_name,
                 quantization_config=quant_config,
                 device_map=self._config.device if quant_config else None,
-                torch_dtype=torch.float16,
-                trust_remote_code=True,
+                torch_dtype=dtype,
+                trust_remote_code=self._config.trust_remote_code,
             )
         else:
             from transformers import AutoModelForCausalLM, AutoTokenizer
 
             self._processor = AutoTokenizer.from_pretrained(
                 self._config.hf_name,
-                trust_remote_code=True,
+                trust_remote_code=self._config.trust_remote_code,
             )
             if self._processor.pad_token is None:
                 self._processor.pad_token = self._processor.eos_token
@@ -83,12 +92,29 @@ class HFModel(BaseModel):
                 self._config.hf_name,
                 quantization_config=quant_config,
                 device_map=self._config.device if quant_config else None,
-                torch_dtype=torch.float16,
-                trust_remote_code=True,
+                torch_dtype=dtype,
+                trust_remote_code=self._config.trust_remote_code,
             )
 
         if quant_config is None:
             self._model = self._model.to(self._config.device)
+
+        # Optionally apply a PEFT/LoRA adapter (e.g. a GRPO-trained RL attacker).
+        # The adapter rides on top of the (possibly quantized) base model for cheap inference.
+        adapter_path = self._config.adapter_path
+        if adapter_path:
+            from pathlib import Path
+
+            if Path(adapter_path).exists():
+                from peft import PeftModel
+
+                logger.info(f"Applying PEFT adapter: {adapter_path}")
+                self._model = PeftModel.from_pretrained(self._model, adapter_path)
+            else:
+                logger.warning(
+                    f"adapter_path {adapter_path!r} does not exist; using base model without adapter."
+                )
+
         self._model.eval()
         logger.info(f"Loaded {self._config.hf_name}")
 
@@ -114,16 +140,47 @@ class HFModel(BaseModel):
 
         return _BASE_TEMPLATE.format(prompt=prompt)
 
-    def _prepare_inputs_image_text(self, prompt: str) -> dict:
-        """Return tokenised inputs dict for image_text_to_text models (text-only)."""
-        messages = [{"role": "user", "content": [{"type": "text", "text": prompt}]}]
-        inputs = self._processor.apply_chat_template(
-            messages,
-            add_generation_prompt=True,
-            tokenize=True,
-            return_dict=True,
-            return_tensors="pt",
-        )
+    def _prepare_inputs_image_text(self, prompt: str, system_prompt: str | None = None) -> dict:
+        """Return tokenised inputs dict for image_text_to_text models (text-only).
+
+        The safety judge passes its rubric as a system prompt, so this path has to carry
+        it too — a multimodal judge (Gemma 3) that silently dropped it would
+        score every response with no rubric at all. Templates that reject a system role
+        get the rubric folded into the user turn instead.
+        """
+        def _build(as_system: bool) -> list[dict]:
+            messages = []
+            user_text = prompt
+            if system_prompt:
+                if as_system:
+                    messages.append(
+                        {"role": "system", "content": [{"type": "text", "text": system_prompt}]}
+                    )
+                else:
+                    user_text = f"{system_prompt}\n\n{prompt}"
+            messages.append({"role": "user", "content": [{"type": "text", "text": user_text}]})
+            return messages
+
+        def _apply(messages: list[dict]):
+            return self._processor.apply_chat_template(
+                messages,
+                add_generation_prompt=True,
+                tokenize=True,
+                return_dict=True,
+                return_tensors="pt",
+            )
+
+        try:
+            inputs = _apply(_build(as_system=True))
+        except Exception as exc:
+            if not system_prompt:
+                raise
+            logger.warning(
+                f"Chat template rejected a system role ({exc}); "
+                "folding the system prompt into the user turn."
+            )
+            inputs = _apply(_build(as_system=False))
+
         return {k: v.to(self._config.device) for k, v in inputs.items()}
 
     def _format_prompt_with_system(self, system_prompt: str, user_prompt: str) -> str:
@@ -169,7 +226,7 @@ class HFModel(BaseModel):
             generate_kwargs["top_k"] = None
 
         if self._config.model_class == "image_text_to_text":
-            inputs = self._prepare_inputs_image_text(prompt)
+            inputs = self._prepare_inputs_image_text(prompt, system_prompt=system_prompt)
             with torch.no_grad():
                 output_ids = self._model.generate(**inputs, **generate_kwargs)
             new_tokens = output_ids[0][inputs["input_ids"].shape[1]:]
@@ -186,3 +243,65 @@ class HFModel(BaseModel):
                 output_ids = self._model.generate(**inputs, **generate_kwargs)
             new_tokens = output_ids[0][inputs["input_ids"].shape[1]:]
             return self._processor.decode(new_tokens, skip_special_tokens=True).strip()
+
+    def sequence_nll(
+        self,
+        context: str,
+        continuation: str,
+        max_length: int = 2048,
+        system_prompt: str | None = None,
+        reduction: str = "mean",
+    ) -> float:
+        """Negative log-likelihood (nats) of `continuation` given `context`.
+
+        Used as a dense reward-shaping signal for the RL attacker: a lower NLL of an
+        affirmative/harmful continuation means the adversarial `context` is more likely to
+        elicit it. Teacher-forced single forward pass; context tokens are masked out of the
+        loss. perplexity = exp(sequence_nll(...)).
+
+        Args:
+            system_prompt: when given, `context` is formatted with this system prompt (the same
+                chat framing `generate` would use), so a judge can score its own verdict tokens
+                under exactly the prompt it would have generated from.
+            reduction: 'mean' (per-token, the shaping default — comparable across continuations
+                of different length) or 'sum' (total sequence log-likelihood, which is what a
+                likelihood *comparison* between two candidate continuations needs: mean would
+                silently favour the longer one).
+        """
+        if reduction not in ("mean", "sum"):
+            raise ValueError(f"unknown reduction {reduction!r}; expected 'mean' or 'sum'")
+        import torch
+
+        if self._config.model_class != "causal_lm":
+            raise NotImplementedError("sequence_nll is only supported for causal_lm models.")
+
+        tok = self._processor
+        formatted_ctx = (
+            self._format_prompt_with_system(system_prompt, context)
+            if system_prompt is not None
+            else self._format_prompt(context)
+        )
+        ctx_ids = tok(formatted_ctx, return_tensors="pt", add_special_tokens=False).input_ids
+        cont_ids = tok(continuation, return_tensors="pt", add_special_tokens=False).input_ids
+
+        if cont_ids.shape[1] == 0:
+            return float("inf")
+
+        input_ids = torch.cat([ctx_ids, cont_ids], dim=1)
+        ctx_len = ctx_ids.shape[1]
+        # If too long, truncate the context from the left (keep the whole continuation).
+        if input_ids.shape[1] > max_length:
+            overflow = input_ids.shape[1] - max_length
+            keep_ctx = max(0, ctx_len - overflow)
+            input_ids = torch.cat([ctx_ids[:, ctx_len - keep_ctx:], cont_ids], dim=1)
+            ctx_len = keep_ctx
+
+        input_ids = input_ids.to(self._config.device)
+        labels = input_ids.clone()
+        labels[:, :ctx_len] = -100  # ignore context tokens in the loss
+
+        with torch.no_grad():
+            out = self._model(input_ids=input_ids, labels=labels)
+        # HF averages over the unmasked (= continuation) positions, so the sum is recovered by
+        # multiplying back by their count rather than by re-running the forward pass.
+        return float(out.loss) * (cont_ids.shape[1] if reduction == "sum" else 1.0)

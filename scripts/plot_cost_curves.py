@@ -64,6 +64,14 @@ MODEL_COLORS: dict[str, str] = {
     "tulu2-7b-base":            "#81c784",
     "tulu2-7b-sft":             "#388e3c",
     "tulu2-7b-dpo":             "#1b5e20",
+    # OLMo 2 1B training-stage ladder — pinks/magentas (light → dark, base → 2nd RLVR).
+    # Five rungs, so the ramp is one step longer than Tulu3's; RLVR1 and Instruct sit
+    # adjacent on purpose, since the pair is what isolates the second RLVR round.
+    "olmo2-1b-base":            "#f8bbd0",
+    "olmo2-1b-sft":             "#f06292",
+    "olmo2-1b-dpo":             "#c2185b",
+    "olmo2-1b-rlvr1":           "#880e4f",
+    "olmo2-1b-instruct":        "#4a0027",
     # Qwen2.5 Instruct family — warm oranges/reds (small → large)
     "qwen2.5-0.5b-instruct":    "#ffca3a",
     "qwen2.5-3b-instruct":      "#ff7043",
@@ -71,6 +79,12 @@ MODEL_COLORS: dict[str, str] = {
     # Qwen3 family — purples
     "qwen3-4b-saferl":          "#ce93d8",
     "qwen3-8b":                 "#7b1fa2",
+    # Gemma 3 Instruct family — teals (small → large). Second family in the model-size
+    # study; a distinct hue from Qwen2.5's warm ramp so the two ladders stay separable
+    # when both are drawn on one canvas (ablations/rl_all_models).
+    "gemma3-270m-it":           "#80cbc4",
+    "gemma3-1b-it":             "#00897b",
+    "gemma3-4b-it":             "#004d40",
 }
 
 _CATEGORY_PALETTE = [
@@ -80,14 +94,23 @@ _CATEGORY_PALETTE = [
 ]
 
 ATTACK_MARKERS = {
-    "gcg": "o", "pair": "s", "jailbroken": "^", "jailbroken-v1": "D",
+    "gcg": "o", "pair": "s", "jailbroken": "^", "jailbroken-v1": "D", "rl": "P",
 }
 ATTACK_LINESTYLES = {
-    "gcg": "-", "pair": "--", "jailbroken": ":", "jailbroken-v1": "-.",
+    "gcg": "-", "pair": "--", "jailbroken": ":", "jailbroken-v1": "-.", "rl": (0, (3, 1, 1, 1)),
 }
 ATTACK_DISPLAY = {
     "gcg": "GCG", "pair": "PAIR",
     "jailbroken": "JailBroken", "jailbroken-v1": "JailBroken-v1",
+    "rl": "RL (GRPO)",
+}
+
+# Attacker-ablation arms: run_inference.py names those result dirs pair__<attacker config>,
+# so the attack_id carries the attacker (see configs/experiments/paper/attacker_size.yaml).
+ATTACKER_DISPLAY = {
+    "qwen2.5_7b":               "Qwen2.5-7B",
+    "gemma3_4b_it_abliterated": "Gemma3-4B-abl",
+    "gemma3_1b_it_abliterated": "Gemma3-1B-abl",
 }
 
 CATEGORY_DISPLAY = {
@@ -114,10 +137,28 @@ CATEGORY_DISPLAY = {
 SEED_RE = re.compile(r"_seed\d+$")
 
 COST_COLS_ALL = [
-    "mean_target_tokens", "mean_judge_tokens", "mean_total_tokens",
-    "mean_target_tflops", "mean_judge_tflops", "mean_total_tflops",
+    "mean_target_tokens", "mean_judge_tokens", "mean_attacker_tokens", "mean_total_tokens",
+    "mean_target_tflops", "mean_judge_tflops", "mean_attacker_tflops", "mean_total_tflops",
+    "mean_total_seconds",
+    "mean_target_dollars", "mean_judge_dollars", "mean_attacker_dollars", "mean_total_dollars",
+    "mean_nojudge_tokens", "mean_nojudge_tflops", "mean_nojudge_dollars",
 ]
 
+# Two cost framings, selectable per plot via --x-axis:
+#
+#   tokens / flops / dollars              target + judge + attacker
+#     -> what it costs to REPRODUCE this measurement.
+#   tokens_nojudge / flops_nojudge / dollars_nojudge     target + attacker only
+#     -> what the ATTACK costs an adversary. The judge is the evaluator's instrument; nobody
+#        attacking a deployed model pays to run an LLM judge over every reply.
+#
+# Prefer the *_nojudge axes when comparing runs measured under DIFFERENT judges (see
+# run_judge_ablation.sh): they are invariant to the judge, whereas part of any gap on the
+# judge-inclusive axes is just the judge's own size and rate moving.
+#
+# There is no `seconds_nojudge`: that axis is measured wall-clock and budgeted_refinement.py
+# times generate + judge + refine as a single region per step, so the judge's share cannot be
+# subtracted after the fact.
 X_AXIS_META: dict[str, dict] = {
     "tokens": {
         "col":     "mean_total_tokens",
@@ -127,6 +168,31 @@ X_AXIS_META: dict[str, dict] = {
     "flops": {
         "col":     "mean_total_tflops",
         "label":   "Cumulative TFLOPs",
+        "k_scale": False,
+    },
+    "seconds": {
+        "col":     "mean_total_seconds",
+        "label":   "Cumulative attack seconds (L40S)",
+        "k_scale": False,
+    },
+    "dollars": {
+        "col":     "mean_total_dollars",
+        "label":   "Cumulative cost (USD)",
+        "k_scale": False,
+    },
+    "tokens_nojudge": {
+        "col":     "mean_nojudge_tokens",
+        "label":   "Cumulative tokens (attacker only, no judge)",
+        "k_scale": True,
+    },
+    "flops_nojudge": {
+        "col":     "mean_nojudge_tflops",
+        "label":   "Cumulative TFLOPs (attacker only, no judge)",
+        "k_scale": False,
+    },
+    "dollars_nojudge": {
+        "col":     "mean_nojudge_dollars",
+        "label":   "Cumulative cost (USD, attacker only, no judge)",
         "k_scale": False,
     },
 }
@@ -144,6 +210,14 @@ MODEL_DISPLAY = {
     "qwen2.5-7b-instruct":   "Qwen2.5-7B",
     "qwen3-4b-saferl":       "Qwen3-4B-SafeRL",
     "qwen3-8b":              "Qwen3-8B",
+    "gemma3-270m-it":        "Gemma3-270M",
+    "gemma3-1b-it":          "Gemma3-1B",
+    "gemma3-4b-it":          "Gemma3-4B",
+    "olmo2-1b-base":         "OLMo2-1B-Base",
+    "olmo2-1b-sft":          "OLMo2-1B-SFT",
+    "olmo2-1b-dpo":          "OLMo2-1B-DPO",
+    "olmo2-1b-rlvr1":        "OLMo2-1B-RLVR1",
+    "olmo2-1b-instruct":     "OLMo2-1B-RLVR2",   # allenai ships this as -Instruct
 }
 
 MODEL_LINESTYLES_LIST = ["-", "-.", ":", "--"]
@@ -168,6 +242,11 @@ def _attack_label(a: str) -> str:
     m = re.match(r"transfer_(\w+)_from_(.*)", a)
     if m:
         return f"{m.group(1).upper()} Transfer"
+    # Attacker ablation: pair__<attacker config> / rl__<attacker config>. Separator is an
+    # em dash, not parentheses, so "RL (GRPO)" does not come out double-parenthesised.
+    base, sep, attacker = a.partition("__")
+    if sep:
+        return f"{ATTACK_DISPLAY.get(base, base)} — {ATTACKER_DISPLAY.get(attacker, attacker)}"
     return a
 
 
@@ -230,6 +309,13 @@ def _style_axes(ax: plt.Axes, title: str, x_max: float, x_axis: str) -> None:
 
 
 def load_cost_csv(paths: list[Path], skip_missing: bool = False) -> pd.DataFrame:
+    """Load and concatenate cost_metrics.csv files.
+
+    With skip_missing, a set of paths that are *all* missing yields an empty
+    frame rather than an error: under a partially-populated judge tree whole
+    model families may not have been cost-evaluated, and one such block must
+    not abort the surrounding `set -e` driver script.
+    """
     frames = []
     for p in paths:
         if not p.exists():
@@ -239,6 +325,8 @@ def load_cost_csv(paths: list[Path], skip_missing: bool = False) -> pd.DataFrame
             raise FileNotFoundError(f"Cost CSV not found: {p}")
         frames.append(pd.read_csv(p))
     if not frames:
+        if skip_missing:
+            return pd.DataFrame()
         raise FileNotFoundError("No cost CSV files could be loaded (all paths missing)")
     return pd.concat(frames, ignore_index=True)
 
@@ -970,9 +1058,16 @@ def parse_args() -> argparse.Namespace:
         help="Directory where plots are written",
     )
     p.add_argument(
-        "--x-axis", default="tokens", choices=["tokens", "flops"],
-        help="X-axis: 'tokens' = mean total token count (default), "
-             "'flops' = mean total TFLOPs",
+        "--x-axis", default="tokens",
+        choices=["tokens", "flops", "seconds", "dollars",
+                 "tokens_nojudge", "flops_nojudge", "dollars_nojudge"],
+        help="X-axis cost measure. 'tokens' (default) / 'flops' / 'dollars' charge "
+             "target + judge + attacker — the cost of REPRODUCING the measurement. The "
+             "'*_nojudge' variants charge target + attacker only — the cost of mounting the "
+             "ATTACK, since a real adversary never runs an LLM judge over every reply. Use "
+             "the _nojudge axes to compare runs measured under different judges; they are "
+             "invariant to the judge. 'seconds' is measured L40S wall-clock and has no "
+             "_nojudge variant (the judge sits inside the timed region).",
     )
     p.add_argument(
         "--format", default="png", choices=["png", "pdf", "svg"],
@@ -1016,6 +1111,10 @@ def main() -> None:
     paths    = [Path(p) for p in args.cost_csv]
     df_raw   = load_cost_csv(paths, skip_missing=args.skip_missing)
 
+    if df_raw.empty:
+        print("No cost data found for any requested path — nothing to plot.")
+        return
+
     required = {"model_id", "attack_id", "lambda", "risk"}
     missing  = required - set(df_raw.columns)
     if missing:
@@ -1033,7 +1132,12 @@ def main() -> None:
     if args.attacks:
         df_raw = df_raw[df_raw["attack_id"].isin(args.attacks)]
         if df_raw.empty:
-            raise ValueError(f"No data after filtering to attacks: {args.attacks}")
+            msg = f"No data after filtering to attacks: {args.attacks}"
+            if args.skip_missing:
+                # e.g. --attacks rl on a judge tree where RL was never run.
+                print(f"{msg} — nothing to plot.")
+                return
+            raise ValueError(msg)
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)

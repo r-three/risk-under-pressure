@@ -1,0 +1,48 @@
+# Safety judge — Flow-Judge-v0.1 (Flow AI, 2024-09).
+#
+# Purpose-trained LLM evaluator rather than a general instruct model pressed into service, and
+# lineage-clean for this ablation: it derives from Phi-3.5-mini-instruct (Microsoft), so it shares
+# no ancestry with the incumbent judge (Llama-3.1-8B), with the Tulu3 targets (Llama-3.1-8B
+# post-trained), or with the Qwen / Gemma / Olmo target families.
+#
+# params_b is the whole checkpoint: plain causal LM, no vision tower. 3.8B per the model card.
+#
+# THIS JUDGE DOES NOT SPEAK THE SAFE/UNSAFE PROTOCOL. It emits
+#   <feedback>...</feedback><score>N</score>
+# and expects a structured XML prompt with no system role. It is therefore driven by
+# rup.judges.flow_judge.FlowJudge, selected via `extra.judge_kind` below — the shared LLMJudge
+# parser would return "unparsed" for every single call.
+model_id: "flow-judge-v0.1"
+backend: "huggingface"
+hf_name: "flowaicom/Flow-Judge-v0.1"
+hf_tokenizer_id: "flowaicom/Flow-Judge-v0.1"
+params_b: 3.82
+model_type: "instruct"
+model_class: "causal_lm"
+quantization: "4bit"
+
+# REQUIRED, not optional. The checkpoint is bfloat16-native and ModelConfig defaults to float16,
+# which is what silently produced multilingual token soup from Gemma 3 and cost a full sweep.
+torch_dtype: "bfloat16"
+
+# REQUIRED. The repo vendors Phi-3's `modeling_phi3.py`, which calls
+# `DynamicCache.seen_tokens` — removed in transformers 4.5x — so with remote code enabled every
+# generate() raises `'DynamicCache' object has no attribute 'seen_tokens'` and the judge returns
+# nothing at all. transformers 4.57 has native Phi3 support, so declining the remote code loads a
+# maintained implementation of the same architecture. Verified by scripts/diagnose_judge.py, which
+# went from 0/23 (all `branch=error`) to a working judge with this set.
+trust_remote_code: false
+
+device: "cuda"
+
+# Flow-Judge writes its verbal feedback BEFORE the <score> tag, so unlike the SAFE/UNSAFE judges
+# a small budget truncates before the verdict *every* time rather than occasionally. 384 covers
+# the feedback plus the score; FlowJudge escalates to 768 if no score is found.
+generation:
+  temperature: 0.2
+  do_sample: true
+  top_p: 0.9
+  max_new_tokens: 384
+
+extra:
+  judge_kind: "flow"

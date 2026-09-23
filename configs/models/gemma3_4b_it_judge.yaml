@@ -1,0 +1,29 @@
+# Safety judge — Gemma 3 4B Instruction-Tuned (Google, released 2025-03).
+# Smallest judge in the set; included to test whether judge capacity changes the
+# measured risk curves.
+#
+# Checkpoint is Gemma3ForConditionalGeneration (multimodal), so it needs the
+# image_text_to_text loader path even though we only ever feed it text.
+#
+# params_b is the TEXT language model only, not the 4.30B full checkpoint: judging
+# is text-only, so the SigLIP vision tower (~0.42B) never runs and must not be
+# billed into the FLOP axis (FLOPs = 2 x params_b x tokens).
+#   text LM: 34 layers x (attn 15.7M + mlp 78.6M) + 262144 x 2560 tied embed = 3.88B
+#   + vision tower 0.42B = 4.30B safetensors total
+model_id: "gemma3-4b-it"
+backend: "huggingface"
+hf_name: "google/gemma-3-4b-it"
+params_b: 3.88
+model_type: "instruct"
+model_class: "image_text_to_text"
+quantization: "4bit"
+# Gemma 3 activations exceed the float16 range: in float16 this checkpoint emits
+# multilingual token soup instead of text, silently (generation raises nothing).
+# bfloat16 is the dtype Google ships it for and is required for coherent output.
+torch_dtype: "bfloat16"
+device: "cuda"
+generation:
+  temperature: 0.2
+  do_sample: true
+  top_p: 0.9
+  max_new_tokens: 64

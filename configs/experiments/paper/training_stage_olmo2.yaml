@@ -1,0 +1,39 @@
+# Paper §4 — Training Stage Study, second ladder (companion to training_stage.yaml)
+# OLMo 2 1B: base -> SFT -> DPO -> RLVR1 -> Instruct(RLVR2), on HarmBench.
+#
+# training_stage.yaml runs the same study on Tulu3 8B (base -> SFT -> DPO -> RLVR). This
+# ladder adds two things that one cannot answer:
+#
+#   1. A SECOND family, so a stage effect is a claim about post-training rather than about
+#      Llama-3.1 derivatives. Different pre-training corpus (OLMo-mix / Dolma), different
+#      tokenizer, fully open training data at every rung.
+#   2. A FIFTH rung. allenai's `-Instruct` is a second RLVR round (on RLVR-MATH) applied on
+#      top of `-RLVR1` (on RLVR-GSM-MATH-IF-Mixed-Constraints), not a rename of it. So this
+#      is the only place in the repo where the marginal effect of one further round of RLVR
+#      is visible: if RLVR1 -> Instruct moves the risk curve as much as DPO -> RLVR1 did,
+#      the effect is still compounding; if it flattens, it has saturated.
+#
+# Size caveat for cross-ladder reading: this ladder is 1.48B and Tulu3's is 8B, so absolute
+# risk is not comparable between them. What is comparable is the SHAPE of each progression —
+# which stage moves the curve, and by how much relative to that ladder's own base rung.
+# All five rungs load unquantized so no stage differs from another in precision.
+name: "paper_training_stage_olmo2"
+benchmark: "harmbench"
+n_prompts: 200
+pressure_levels: [0, 1, 2, 4, 6, 8, 10]
+lambda_max: 10
+models:
+  - "olmo2_1b_base"
+  - "olmo2_1b_sft"
+  - "olmo2_1b_dpo"
+  - "olmo2_1b_rlvr1"
+  - "olmo2_1b_instruct"
+attacks:
+  - "pair"
+  - "jailbroken"
+  - "gcg"
+  - "rl"          # per-prompt GRPO adaptive attack (expensive; see configs/attacks/rl.yaml + run_rl_HB_experiments.sh)
+judge_model: "llama3.1_8b_instruct_judge"
+seeds: [1997, 2, 100, 42, 5431, 2002, 256, 512, 123, 5]
+tau: 0.5
+n_bootstrap: 1000

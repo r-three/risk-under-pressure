@@ -1,0 +1,136 @@
+# Hosted per-token pricing for the dollar cost axis (--x-axis dollars).
+#
+# Provider: OpenRouter (https://openrouter.ai), cheapest serving provider.
+# Snapshot: 2026-07-26, from https://openrouter.ai/api/v1/models and the
+#           per-model /endpoints route; cross-checked against deepinfra.com/pricing
+#           and together.ai/pricing.
+#
+# Convention: min across providers, not OpenRouter's default listing. The spread
+# is wide enough to matter — llama-3.1-8b ranges 0.02-0.22 in / 0.04-0.29 out
+# across its 5 providers, and qwen-2.5-7b is 0.04/0.10 on Phala vs 0.30/0.30 on
+# Together. Taking the floor is the right read for "what would an attacker pay".
+#
+# EXACT lines use the model's own listing. ESTIMATED lines are for models no
+# provider serves; each is anchored on the nearest listing by REGION, then SIZE,
+# then RELEASE YEAR, and scaled linearly in parameter count from that anchor.
+# The anchor and the arithmetic are given per line so the number is reproducible.
+#
+# Why region is the first key: origin does not move price directly, but it
+# proxies two things that do — who hosts the model, and whether it is a
+# hybrid-reasoning model. Both are family properties. Same size, same vendor,
+# same provider, reasoning mode alone: qwen3-vl-8b-instruct 0.455/1M output vs
+# qwen3-vl-8b-thinking 1.365/1M output. Pricing Qwen3-4B off a US 4B (gemma-3-4b,
+# 0.05/0.10) would silently strip that premium; pricing it off Qwen3-8B keeps it.
+#
+# Reference points behind the anchors, min across providers, USD/1M in -> out,
+# n = serving providers:
+#   0.5-3B  no Chinese-origin listing exists at any size below 7B
+#   1B      meta-llama/llama-3.2-1b-instruct   US 2024-09  n=1   0.027 / 0.201
+#   3B      meta-llama/llama-3.2-3b-instruct   US 2024-09  n=2   0.050 / 0.330
+#   4B      google/gemma-3-4b-it               US 2025-03  n=1   0.050 / 0.100
+#   7B      qwen/qwen-2.5-7b-instruct          CN 2024-10  n=2   0.040 / 0.100
+#   8B      meta-llama/llama-3.1-8b-instruct   US 2024-07  n=5   0.020 / 0.040
+#   8B      qwen/qwen3-8b                      CN 2025-04  n=1   0.117 / 0.455
+#   9B      qwen/qwen3.5-9b                    CN 2026-03  n=5   0.100 / 0.150
+#
+# Caveat to state wherever these curves are reported: within a family the rates
+# are monotone in size, but across families they are not (qwen3-4b lands above
+# tulu3-8b). That is a real property of the hosted market — provider count and
+# reasoning mode dominate size below ~10B — not an artifact of these estimates.
+# Cross-family dollar comparisons should be read with that in mind; the TFLOPs
+# axis is the size-clean one.
+#
+# Keys are model_id (as in configs/models/*.yaml). Must cover every target, every
+# safety judge in the judge ablation (see run_judge_ablation.sh), and every PAIR/RL
+# attacker (qwen2.5-7b-instruct plus the arms of run_attacker_ablation.sh).
+# Any model missing here is priced at $0 (with a warning) in cost_mapper._price.
+
+models:
+  # --- Qwen2.5 targets (and the attacker) ---
+  # No Chinese-origin model under 7B is served anywhere, so 0.5B and 3B scale
+  # linearly in params off their own family anchor, qwen-2.5-7b (CN, 2024-10):
+  #   3B   -> 0.04 * 3/7   = 0.017,  0.10 * 3/7   = 0.043
+  #   0.5B -> 0.04 * 0.5/7 = 0.0029, 0.10 * 0.5/7 = 0.0071
+  qwen2.5-0.5b-instruct: {usd_per_1m_input: 0.003, usd_per_1m_output: 0.007}  # ESTIMATED from qwen-2.5-7b
+  qwen2.5-3b-instruct:   {usd_per_1m_input: 0.017, usd_per_1m_output: 0.043}  # ESTIMATED from qwen-2.5-7b
+  qwen2.5-7b-instruct:   {usd_per_1m_input: 0.04,  usd_per_1m_output: 0.10}   # EXACT: qwen/qwen-2.5-7b-instruct, Phala (also the attacker)
+
+  # --- Tulu3 8B training-stage targets ---
+  # Strongest anchor in the file: same region (US), same size (8B), adjacent
+  # release (2024-07 vs 2024-11), and all four are literally Llama-3.1-8B
+  # derivatives (tulu3-8b-base IS meta-llama/Llama-3.1-8B). No size scaling.
+  tulu3-8b-base: {usd_per_1m_input: 0.02, usd_per_1m_output: 0.04}  # ESTIMATED from llama-3.1-8b-instruct, DeepInfra
+  tulu3-8b-sft:  {usd_per_1m_input: 0.02, usd_per_1m_output: 0.04}  # ESTIMATED from llama-3.1-8b-instruct, DeepInfra
+  tulu3-8b-dpo:  {usd_per_1m_input: 0.02, usd_per_1m_output: 0.04}  # ESTIMATED from llama-3.1-8b-instruct, DeepInfra
+  tulu3-8b-rlvr: {usd_per_1m_input: 0.02, usd_per_1m_output: 0.04}  # ESTIMATED from llama-3.1-8b-instruct, DeepInfra
+
+  # --- OLMo 2 1B training-stage targets (second stage ladder, see training_stage_olmo2.yaml) ---
+  # No OLMo checkpoint is served at any size (the sole Olmo listing, olmo-3-32b-think, has
+  # zero active endpoints), so this is an estimate. Applying the documented key order
+  # REGION -> SIZE -> YEAR: US narrows to llama-3.2-1b (2024-09), llama-3.2-3b (2024-09) and
+  # gemma-3-4b (2025-03); SIZE then picks llama-3.2-1b-instruct at 1.24B as the nearest to
+  # 1.48B, and YEAR never gets consulted. Scale by params off that anchor:
+  #   0.027 * 1.48/1.24 = 0.032,  0.201 * 1.48/1.24 = 0.240
+  # That 0.240 output rate is high for the size, and deliberately so — it is the same
+  # single-provider 1B anomaly this file flags up top (an 8B undercuts a 1B 5x on output).
+  # Swap all five lines to 0.019 / 0.037 to anchor on gemma-3-4b-it instead (nearest by YEAR,
+  # scaled 0.05 * 1.48/3.88), which is ~6x cheaper on output; that is what choosing year over
+  # size costs here, and it is the mirror of the call made for gemma3-1b-it-abliterated below.
+  # All five rungs take one rate: they are full finetunes of each other, identical in size and
+  # architecture — same convention as the four Tulu3 stages sharing llama-3.1-8b's rate.
+  olmo2-1b-base:     {usd_per_1m_input: 0.032, usd_per_1m_output: 0.240}  # ESTIMATED from meta-llama/llama-3.2-1b-instruct
+  olmo2-1b-sft:      {usd_per_1m_input: 0.032, usd_per_1m_output: 0.240}  # ESTIMATED from meta-llama/llama-3.2-1b-instruct
+  olmo2-1b-dpo:      {usd_per_1m_input: 0.032, usd_per_1m_output: 0.240}  # ESTIMATED from meta-llama/llama-3.2-1b-instruct
+  olmo2-1b-rlvr1:    {usd_per_1m_input: 0.032, usd_per_1m_output: 0.240}  # ESTIMATED from meta-llama/llama-3.2-1b-instruct
+  olmo2-1b-instruct: {usd_per_1m_input: 0.032, usd_per_1m_output: 0.240}  # ESTIMATED from meta-llama/llama-3.2-1b-instruct
+
+  # --- Qwen3 targets ---
+  # Qwen3-4B is unserved. Anchor is qwen3-8b: same region, same family, same
+  # release month (2025-04), same hybrid-reasoning behaviour — only size differs.
+  #   4B -> 0.117 * 4/8 = 0.059,  0.455 * 4/8 = 0.228
+  # SafeRL is a finetune of Qwen3-4B, so it takes the same rate.
+  qwen3-4b:        {usd_per_1m_input: 0.059, usd_per_1m_output: 0.228}  # ESTIMATED from qwen3-8b
+  qwen3-4b-saferl: {usd_per_1m_input: 0.059, usd_per_1m_output: 0.228}  # ESTIMATED from qwen3-8b
+  qwen3-8b:        {usd_per_1m_input: 0.117, usd_per_1m_output: 0.455}  # EXACT: qwen/qwen3-8b, Alibaba (sole provider)
+
+  # --- Gemma 3 targets (second family in the model-size study: 270M -> 1B -> 4B) ---
+  # The 4B rung is served and priced below with the judges — it is the SAME model_id
+  # (gemma3-4b-it), since the target config and the judge config name one checkpoint.
+  # That EXACT listing is the family anchor: US, 2025-03, and quoted for the 3.88B text
+  # LM this project actually runs (the SigLIP tower never executes on a text-only call).
+  # Nothing below 4B in this family is served anywhere, so both smaller rungs scale
+  # linearly in params off it — the same convention the abliterated attackers use:
+  #   1B    -> 0.05 * 1.00/3.88  = 0.013,  0.10 * 1.00/3.88  = 0.026
+  #   270M  -> 0.05 * 0.268/3.88 = 0.0035, 0.10 * 0.268/3.88 = 0.0069
+  # The 1B rate therefore matches gemma3-1b-it-abliterated exactly, which is correct:
+  # abliteration changes weights, not size, so both are the same rung of the same ladder.
+  gemma3-270m-it: {usd_per_1m_input: 0.003, usd_per_1m_output: 0.007}  # ESTIMATED from google/gemma-3-4b-it
+  gemma3-1b-it:   {usd_per_1m_input: 0.013, usd_per_1m_output: 0.026}  # ESTIMATED from google/gemma-3-4b-it
+
+  # --- Safety judges (judge ablation: one run tree per judge) ---
+  # Note these are per-TOKEN rates, so they are independent of the judge's parameter
+  # count; the size difference between judges shows up on the TFLOPs axis via
+  # params_b in configs/models/*_judge.yaml, not here.
+  llama3.1-8b-instruct: {usd_per_1m_input: 0.02,  usd_per_1m_output: 0.04}  # EXACT: meta-llama/llama-3.1-8b-instruct, DeepInfra
+  gemma3-4b-it:         {usd_per_1m_input: 0.05,  usd_per_1m_output: 0.10}  # EXACT: google/gemma-3-4b-it, DeepInfra (sole provider)
+  # Olmo 3 7B Instruct is unserved (the only Olmo listing, olmo-3-32b-think, currently
+  # has zero active endpoints). Anchor by region -> size -> year: US labs at ~8B are
+  # llama-3.1-8b (2024-07) and granite-4.1-8b (2026-04); Olmo 3 shipped 2025-11, so
+  # granite is the closer year. 0.05 * 7.30/8 = 0.046, 0.10 * 7.30/8 = 0.091.
+  # Swap to 0.018 / 0.036 to anchor on llama-3.1-8b instead (2.5x cheaper).
+  olmo3-7b-instruct:    {usd_per_1m_input: 0.046, usd_per_1m_output: 0.091}  # ESTIMATED from ibm-granite/granite-4.1-8b
+
+  # --- PAIR attackers (attacker ablation: see configs/experiments/paper/attacker_size.yaml) ---
+  # The incumbent attacker is qwen2.5-7b-instruct, priced above with the Qwen2.5 targets.
+  # Nobody serves an abliterated checkpoint, so both of these are estimates. Abliteration
+  # edits weights in place without changing size or architecture, so the base model is the
+  # right anchor and the ablated variant takes its rate unchanged — same convention as
+  # qwen3-4b-saferl taking qwen3-4b's rate.
+  #   4B -> google/gemma-3-4b-it (US, 2025-03, same family, same size): 0.05 / 0.10 as-is
+  #   1B -> unserved at 1B in this family; scale the 4B anchor by params, using the 3.88B
+  #         text LM that rate is quoted for: 0.05 * 1.00/3.88 = 0.013, 0.10 * 1.00/3.88 = 0.026
+  # Swap the 1B line to 0.027 / 0.201 to anchor on meta-llama/llama-3.2-1b-instruct instead
+  # (same size and region, different family — and ~8x the output rate, which is what picking
+  # size over family costs you here).
+  gemma3-4b-it-abliterated: {usd_per_1m_input: 0.05,  usd_per_1m_output: 0.10}   # ESTIMATED from google/gemma-3-4b-it
+  gemma3-1b-it-abliterated: {usd_per_1m_input: 0.013, usd_per_1m_output: 0.026}  # ESTIMATED from google/gemma-3-4b-it

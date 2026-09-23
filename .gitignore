@@ -221,3 +221,4 @@ results/
 .env.example
 logs/*
 .nfs*
+.env.example

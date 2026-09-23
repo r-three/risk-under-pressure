@@ -52,11 +52,24 @@ PALETTE = ["#f6511d", "#ffb400", "#00a6ed", "#7fb800", "#8338ec", "#ff4365", "#0
 ATTACK_MARKERS = {"gcg": "o", "pair": "s", "jailbroken": "^"}
 ATTACK_LINESTYLES = {"gcg": "-", "pair": "--", "jailbroken": ":"}
 
-ATTACK_DISPLAY = {"gcg": "GCG", "pair": "PAIR", "jailbroken": "Jailbroken"}
+ATTACK_DISPLAY = {"gcg": "GCG", "pair": "PAIR", "jailbroken": "Jailbroken", "rl": "RL (GRPO)"}
+
+# Attacker-ablation arms arrive as pair__<attacker config> (run_inference.py names the
+# results dir after the attacker; see configs/experiments/paper/attacker_size.yaml).
+ATTACKER_DISPLAY = {
+    "qwen2.5_7b":               "Qwen2.5-7B",
+    "gemma3_4b_it_abliterated": "Gemma3-4B-abl",
+    "gemma3_1b_it_abliterated": "Gemma3-1B-abl",
+}
 
 
 def _attack_label(attack_id: str) -> str:
-    return ATTACK_DISPLAY.get(attack_id, attack_id)
+    if attack_id in ATTACK_DISPLAY:
+        return ATTACK_DISPLAY[attack_id]
+    base, sep, attacker = attack_id.partition("__")
+    if sep:
+        return f"{ATTACK_DISPLAY.get(base, base)} — {ATTACKER_DISPLAY.get(attacker, attacker)}"
+    return attack_id
 
 
 def _model_color(model_ids: list[str]) -> dict[str, str]:
@@ -119,10 +132,21 @@ def _plot_risk_curve(
         )
 
 
+# Two cost framings on the non-lambda axes. tokens/flops/dollars charge target + judge +
+# attacker (the cost of REPRODUCING the measurement); the *_nojudge variants charge target +
+# attacker only (the cost of mounting the ATTACK — a real adversary never runs an LLM judge
+# over every reply). Prefer *_nojudge when comparing runs measured under different judges:
+# it is invariant to the judge. No seconds_nojudge — that axis is measured wall-clock with
+# the judge inside the timed region. See scripts/plot_cost_curves.py for the full note.
 _X_AXIS_META = {
     "lambda":  {"col": "lambda",             "label": r"Pressure level $\lambda$",        "integer_ticks": True,  "k_scale": False},
     "tokens":  {"col": "mean_total_tokens",  "label": "Attack token budget (total tokens)", "integer_ticks": False, "k_scale": True},
     "flops":   {"col": "mean_total_tflops",  "label": "Attack compute budget (TFLOPs)",     "integer_ticks": False, "k_scale": False},
+    "seconds": {"col": "mean_total_seconds", "label": "Attack wall-clock budget (s, L40S)", "integer_ticks": False, "k_scale": False},
+    "dollars": {"col": "mean_total_dollars", "label": "Attack cost budget (USD)",           "integer_ticks": False, "k_scale": False},
+    "tokens_nojudge":  {"col": "mean_nojudge_tokens",  "label": "Attack token budget (attacker only, no judge)", "integer_ticks": False, "k_scale": True},
+    "flops_nojudge":   {"col": "mean_nojudge_tflops",  "label": "Attack compute budget (TFLOPs, no judge)",      "integer_ticks": False, "k_scale": False},
+    "dollars_nojudge": {"col": "mean_nojudge_dollars", "label": "Attack cost budget (USD, no judge)",            "integer_ticks": False, "k_scale": False},
 }
 
 
@@ -597,8 +621,10 @@ def plot_efficiency_summary(df: pd.DataFrame, output_dir: Path, fmt: str) -> Non
 _SEED_RE = re.compile(r"_seed\d+$")
 
 COST_COLS = [
-    "mean_target_tokens", "mean_total_tokens",
+    "mean_target_tokens", "mean_attacker_tokens", "mean_total_tokens",
     "mean_target_tflops", "mean_total_tflops",
+    "mean_total_seconds",
+    "mean_target_dollars", "mean_judge_dollars", "mean_attacker_dollars", "mean_total_dollars",
 ]
 
 
@@ -684,12 +710,17 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--format", default="png", choices=["png", "pdf", "svg"],
                    help="Output image format (default: png)")
     p.add_argument(
-        "--x-axis", default="lambda", choices=["lambda", "tokens", "flops"],
+        "--x-axis", default="lambda",
+        choices=["lambda", "tokens", "flops", "seconds", "dollars",
+                 "tokens_nojudge", "flops_nojudge", "dollars_nojudge"],
         help=(
             "X-axis for risk curves. "
             "'lambda' = pressure steps (default); "
-            "'tokens' = mean total tokens (requires cost_metrics.csv); "
-            "'flops'  = mean total TFLOPs (requires cost_metrics.csv)"
+            "'tokens' / 'flops' / 'dollars' = cumulative cost of target + judge + attacker, "
+            "i.e. what it costs to reproduce the measurement (requires cost_metrics.csv); "
+            "'*_nojudge' = the same axes charging target + attacker only, i.e. what the attack "
+            "costs an adversary — use these when comparing runs measured under different "
+            "judges, since they are invariant to the judge. 'seconds' has no _nojudge variant."
         ),
     )
     p.add_argument(

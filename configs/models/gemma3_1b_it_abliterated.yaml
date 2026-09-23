@@ -1,0 +1,29 @@
+# PAIR attacker — Gemma 3 1B IT, abliterated v2 (mlabonne).
+#
+# 1B arm of the attacker-size ablation (configs/experiments/paper/attacker_size.yaml):
+# same family, same abliteration recipe as gemma3_4b_it_abliterated, ~3.9x smaller
+# (999,885,952 params). The question it answers: does a cheap uncensored attacker buy
+# the same risk curve as an expensive one, once both are charged on the cost axes?
+#
+# quantization is 4bit rather than the `none` this repo normally uses at 1B (see the GPU
+# memory guide in the README). That is deliberate: the seconds axis measures wall-clock,
+# so if the two arms loaded through different precision paths the measured gap would mix
+# attacker size with quantization. The FLOP and dollar axes read params_b and are
+# unaffected either way.
+model_id: "gemma3-1b-it-abliterated"
+backend: "huggingface"
+hf_name: "mlabonne/gemma-3-1b-it-abliterated-v2"
+params_b: 1.00
+model_type: "instruct"
+model_class: "causal_lm"
+quantization: "4bit"
+# Gemma 3 activations exceed the float16 range: in float16 this checkpoint emits
+# multilingual token soup instead of text, silently (generation raises nothing).
+# bfloat16 is the dtype Google ships it for and is required for coherent output.
+torch_dtype: "bfloat16"
+device: "cuda"
+generation:
+  max_new_tokens: 512
+  temperature: 0.7        # PAIR overrides this to 1.0 per refine() call
+  do_sample: true
+  top_p: 0.9

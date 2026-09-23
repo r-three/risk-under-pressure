@@ -51,6 +51,8 @@ dependencies = [
     "google-genai>=1.70.0",
     # Attack framework
     "easyjailbreak>=0.1.0",
+    # Per-prompt GRPO adaptive attack (LoRA attacker; GRPO loop is hand-rolled)
+    "peft>=0.11.0",
 ]
 
 [project.urls]

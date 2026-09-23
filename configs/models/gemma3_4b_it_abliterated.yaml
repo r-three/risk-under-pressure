@@ -1,0 +1,30 @@
+# PAIR attacker — Gemma 3 4B IT, abliterated v2 (mlabonne).
+#
+# "Abliterated" = the refusal direction is ablated from the residual stream, so the model
+# does not refuse to write jailbreak prompts. The incumbent attacker (Qwen2.5-7B-Instruct)
+# is safety-tuned and sometimes refuses its own red-teaming instructions, which silently
+# wastes queries in the pressure budget. This is the 4B arm of the attacker-size ablation
+# (see configs/experiments/paper/attacker_size.yaml); the 1B arm is the same model family
+# and the same abliteration recipe, so size is the only thing that moves.
+#
+# NOTE: unlike google/gemma-3-4b-it (Gemma3ForConditionalGeneration, 4.30B incl. the SigLIP
+# tower), the abliterated checkpoint is a TEXT-ONLY Gemma3ForCausalLM of 3,880,263,168
+# params — the vision tower is gone. So this takes the causal_lm loader, and params_b is
+# the whole checkpoint, not a text-LM subset. Weights ship as F32 (~15.5 GB to download).
+model_id: "gemma3-4b-it-abliterated"
+backend: "huggingface"
+hf_name: "mlabonne/gemma-3-4b-it-abliterated-v2"
+params_b: 3.88
+model_type: "instruct"
+model_class: "causal_lm"
+quantization: "4bit"      # matches the 1B arm on purpose — see that config for why
+# Gemma 3 activations exceed the float16 range: in float16 this checkpoint emits
+# multilingual token soup instead of text, silently (generation raises nothing).
+# bfloat16 is the dtype Google ships it for and is required for coherent output.
+torch_dtype: "bfloat16"
+device: "cuda"
+generation:
+  max_new_tokens: 512
+  temperature: 0.7        # PAIR overrides this to 1.0 per refine() call
+  do_sample: true
+  top_p: 0.9
