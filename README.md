@@ -217,7 +217,7 @@ round. Formulas live in `src/rup/metrics/cost_mapper.py`.
 HarmBench (200 behaviors, 6 categories) and JailbreakBench (100, 10). The judge defines what counts
 as a jailbreak, so every number is conditioned on it — which is why three are wired in:
 
-| `JUDGE=` | Model | `params_b` |s
+| `JUDGE=` | Model | `params_b` |
 |---|---|---|
 | `llama3.1_8b_instruct_judge` | Llama-3.1-8B-Instruct | 8.03 (default) |
 | `flow_judge_v01` | Flow-Judge-v0.1 (Phi-3.5 lineage) | 3.82 |
