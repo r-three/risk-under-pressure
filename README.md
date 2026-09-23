@@ -25,20 +25,7 @@ two metrics: compute to reach a target risk level (`C@τ`) and risk gained per F
 
 ---
 
-## Contents
-
-| Where | What |
-|---|---|
-| [Install](#install) · [Quickstart](#quickstart) | Get one attack running in ~10 minutes |
-| [**Reproducing the paper**](#reproducing-the-paper) | Every table and figure → the exact command |
-| [Where results land](#where-results-land) | Directory layout of `$RUN_ROOT` |
-| [Reference](#reference) | Models, attacks, benchmarks, judges |
-| [Extending](#extending-the-framework) | Add a model / attack / benchmark |
-| [`CONTRIBUTING.md`](CONTRIBUTING.md) | Code conventions, cost-model requirements |
-
----
-
-## Install
+## Environment Setup
 
 ```bash
 git clone https://github.com/r-three/risk-under-pressure.git && cd risk-under-pressure
@@ -93,9 +80,9 @@ python scripts/plot_cost_curves.py \
 
 ---
 
-## Reproducing the paper
+## Reproducing the Paper Results
 
-### The four phases
+### The Four Phases
 
 Every result in the paper is produced by the same pipeline. Only Phase 1 needs a GPU.
 
@@ -111,7 +98,7 @@ Phases 2 and 2.5 also emit per-harm-category variants of every file automaticall
 
 Every command passes `--resume`, so a job that hits the 23 h limit is simply resubmitted.
 
-### Step by step on SLURM
+### Step by Step on SLURM
 
 ```bash
 # Phase 1 — edit the driver to uncomment your study's block, then:
@@ -150,7 +137,7 @@ python scripts/run_inference.py \
 `attacker_size.yaml`, plus the `_gemma3` / `_olmo2` second families) if you prefer one command per
 study over one per cell.  Pass `--seeds` explicitly to match the published runs.
 
-### Before you burn GPU-hours
+### Smoke Tests Before Burning GPUs
 
 ```bash
 pytest tests/                              # 163 CPU-only unit tests, no downloads, ~seconds
@@ -168,7 +155,7 @@ every downstream curve.
 
 ---
 
-## Where results land
+## Output Directory
 
 `RUN_ROOT` is `$SCRATCH/rup` for the default judge, `$SCRATCH/rup/judges/<judge_id>` otherwise;
 `PLOT_ROOT` is `$RUN_ROOT/plots`.
@@ -225,17 +212,17 @@ N = target params, N_A = attacker, N_J = judge, L = tokens. RL's attacker term i
 billed per candidate: `0` for the raw probe, `8N` on a GRPO-updated round, `2N` on the winning
 round. Formulas live in `src/rup/metrics/cost_mapper.py`.
 
-### Benchmarks and judges
+### Benchmarks and Judge Models
 
 HarmBench (200 behaviors, 6 categories) and JailbreakBench (100, 10). The judge defines what counts
 as a jailbreak, so every number is conditioned on it — which is why three are wired in:
 
-| `JUDGE=` | Model | `params_b` |
+| `JUDGE=` | Model | `params_b` |s
 |---|---|---|
 | `llama3.1_8b_instruct_judge` | Llama-3.1-8B-Instruct | 8.03 (default) |
 | `flow_judge_v01` | Flow-Judge-v0.1 (Phi-3.5 lineage) | 3.82 |
 
-### Cost axes
+### Cost Axes
 
 `--x-axis {flops,tokens,seconds,dollars}` plus a `_nojudge` variant of each except `seconds`:
 
