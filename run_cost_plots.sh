@@ -91,29 +91,29 @@ done
 # --- MODEL SIZE STUDY (2nd family) — Gemma 3 Instruction-Tuned: 270M, 1B, 4B ---
 # Companion to the Qwen2.5 ladder above
 
-# for axis in $AXES; do
-#     $COST_PLOT \
-#         --cost-csv  $OUTPUT/harmbench/gemma3-270m-it/cost/cost_metrics.csv \
-#         --cost-category-csv $OUTPUT/harmbench/gemma3-270m-it/cost/cost_metrics_by_category.csv \
-#         --output-dir $OUTPUT/harmbench/gemma3-270m-it/$axis \
-#         --x-axis $axis --skip-missing
-# done
+for axis in $AXES; do
+    $COST_PLOT \
+        --cost-csv  $OUTPUT/harmbench/gemma3-270m-it/cost/cost_metrics.csv \
+        --cost-category-csv $OUTPUT/harmbench/gemma3-270m-it/cost/cost_metrics_by_category.csv \
+        --output-dir $OUTPUT/harmbench/gemma3-270m-it/$axis \
+        --x-axis $axis --skip-missing
+done
 
-# for axis in $AXES; do
-#     $COST_PLOT \
-#         --cost-csv  $OUTPUT/harmbench/gemma3-1b-it/cost/cost_metrics.csv \
-#         --cost-category-csv $OUTPUT/harmbench/gemma3-1b-it/cost/cost_metrics_by_category.csv \
-#         --output-dir $OUTPUT/harmbench/gemma3-1b-it/$axis \
-#         --x-axis $axis --skip-missing
-# done
+for axis in $AXES; do
+    $COST_PLOT \
+        --cost-csv  $OUTPUT/harmbench/gemma3-1b-it/cost/cost_metrics.csv \
+        --cost-category-csv $OUTPUT/harmbench/gemma3-1b-it/cost/cost_metrics_by_category.csv \
+        --output-dir $OUTPUT/harmbench/gemma3-1b-it/$axis \
+        --x-axis $axis --skip-missing
+done
 
-# for axis in $AXES; do
-#     $COST_PLOT \
-#         --cost-csv  $OUTPUT/harmbench/gemma3-4b-it/cost/cost_metrics.csv \
-#         --cost-category-csv $OUTPUT/harmbench/gemma3-4b-it/cost/cost_metrics_by_category.csv \
-#         --output-dir $OUTPUT/harmbench/gemma3-4b-it/$axis \
-#         --x-axis $axis --skip-missing
-# done
+for axis in $AXES; do
+    $COST_PLOT \
+        --cost-csv  $OUTPUT/harmbench/gemma3-4b-it/cost/cost_metrics.csv \
+        --cost-category-csv $OUTPUT/harmbench/gemma3-4b-it/cost/cost_metrics_by_category.csv \
+        --output-dir $OUTPUT/harmbench/gemma3-4b-it/$axis \
+        --x-axis $axis --skip-missing
+done
 
 # --- TRAINING STAGE STUDY — Tulu3 8B: Base → SFT → DPO → RLVR ---
 # Paper: Table 1, Figure 1 left
@@ -153,45 +153,45 @@ done
 # --- TRAINING STAGE STUDY (2nd ladder) — OLMo 2 1B: Base → SFT → DPO → RLVR1 → Instruct ---
 # Companion to the Tulu3 8B ladder above
 
-# for axis in $AXES; do
-#     $COST_PLOT \
-#         --cost-csv  $OUTPUT/harmbench/olmo2-1b-base/cost/cost_metrics.csv \
-#         --cost-category-csv $OUTPUT/harmbench/olmo2-1b-base/cost/cost_metrics_by_category.csv \
-#         --output-dir $OUTPUT/harmbench/olmo2-1b-base/$axis \
-#         --x-axis $axis --skip-missing
-# done
+for axis in $AXES; do
+    $COST_PLOT \
+        --cost-csv  $OUTPUT/harmbench/olmo2-1b-base/cost/cost_metrics.csv \
+        --cost-category-csv $OUTPUT/harmbench/olmo2-1b-base/cost/cost_metrics_by_category.csv \
+        --output-dir $OUTPUT/harmbench/olmo2-1b-base/$axis \
+        --x-axis $axis --skip-missing
+done
 
-# for axis in $AXES; do
-#     $COST_PLOT \
-#         --cost-csv  $OUTPUT/harmbench/olmo2-1b-sft/cost/cost_metrics.csv \
-#         --cost-category-csv $OUTPUT/harmbench/olmo2-1b-sft/cost/cost_metrics_by_category.csv \
-#         --output-dir $OUTPUT/harmbench/olmo2-1b-sft/$axis \
-#         --x-axis $axis --skip-missing
-# done
+for axis in $AXES; do
+    $COST_PLOT \
+        --cost-csv  $OUTPUT/harmbench/olmo2-1b-sft/cost/cost_metrics.csv \
+        --cost-category-csv $OUTPUT/harmbench/olmo2-1b-sft/cost/cost_metrics_by_category.csv \
+        --output-dir $OUTPUT/harmbench/olmo2-1b-sft/$axis \
+        --x-axis $axis --skip-missing
+done
 
-# for axis in $AXES; do
-#     $COST_PLOT \
-#         --cost-csv  $OUTPUT/harmbench/olmo2-1b-dpo/cost/cost_metrics.csv \
-#         --cost-category-csv $OUTPUT/harmbench/olmo2-1b-dpo/cost/cost_metrics_by_category.csv \
-#         --output-dir $OUTPUT/harmbench/olmo2-1b-dpo/$axis \
-#         --x-axis $axis --skip-missing
-# done
+for axis in $AXES; do
+    $COST_PLOT \
+        --cost-csv  $OUTPUT/harmbench/olmo2-1b-dpo/cost/cost_metrics.csv \
+        --cost-category-csv $OUTPUT/harmbench/olmo2-1b-dpo/cost/cost_metrics_by_category.csv \
+        --output-dir $OUTPUT/harmbench/olmo2-1b-dpo/$axis \
+        --x-axis $axis --skip-missing
+done
 
-# for axis in $AXES; do
-#     $COST_PLOT \
-#         --cost-csv  $OUTPUT/harmbench/olmo2-1b-rlvr1/cost/cost_metrics.csv \
-#         --cost-category-csv $OUTPUT/harmbench/olmo2-1b-rlvr1/cost/cost_metrics_by_category.csv \
-#         --output-dir $OUTPUT/harmbench/olmo2-1b-rlvr1/$axis \
-#         --x-axis $axis --skip-missing
-# done
+for axis in $AXES; do
+    $COST_PLOT \
+        --cost-csv  $OUTPUT/harmbench/olmo2-1b-rlvr1/cost/cost_metrics.csv \
+        --cost-category-csv $OUTPUT/harmbench/olmo2-1b-rlvr1/cost/cost_metrics_by_category.csv \
+        --output-dir $OUTPUT/harmbench/olmo2-1b-rlvr1/$axis \
+        --x-axis $axis --skip-missing
+done
 
-# for axis in $AXES; do
-#     $COST_PLOT \
-#         --cost-csv  $OUTPUT/harmbench/olmo2-1b-instruct/cost/cost_metrics.csv \
-#         --cost-category-csv $OUTPUT/harmbench/olmo2-1b-instruct/cost/cost_metrics_by_category.csv \
-#         --output-dir $OUTPUT/harmbench/olmo2-1b-instruct/$axis \
-#         --x-axis $axis --skip-missing
-# done
+for axis in $AXES; do
+    $COST_PLOT \
+        --cost-csv  $OUTPUT/harmbench/olmo2-1b-instruct/cost/cost_metrics.csv \
+        --cost-category-csv $OUTPUT/harmbench/olmo2-1b-instruct/cost/cost_metrics_by_category.csv \
+        --output-dir $OUTPUT/harmbench/olmo2-1b-instruct/$axis \
+        --x-axis $axis --skip-missing
+done
 
 # --- SAFETY ALIGNMENT STUDY — Qwen3-4B base vs Qwen3-4B-SafeRL ---
 # Paper: Table 1 (Qwen3 rows)
@@ -246,29 +246,29 @@ done
 # --- MODEL SIZE STUDY (2nd family) — Gemma 3 Instruction-Tuned: 270M, 1B, 4B ---
 # Companion to the Qwen2.5 ladder above
 
-# for axis in $AXES; do
-#     $COST_PLOT \
-#         --cost-csv  $OUTPUT/jailbreakbench/gemma3-270m-it/cost/cost_metrics.csv \
-#         --cost-category-csv $OUTPUT/jailbreakbench/gemma3-270m-it/cost/cost_metrics_by_category.csv \
-#         --output-dir $OUTPUT/jailbreakbench/gemma3-270m-it/$axis \
-#         --x-axis $axis --skip-missing
-# done
+for axis in $AXES; do
+    $COST_PLOT \
+        --cost-csv  $OUTPUT/jailbreakbench/gemma3-270m-it/cost/cost_metrics.csv \
+        --cost-category-csv $OUTPUT/jailbreakbench/gemma3-270m-it/cost/cost_metrics_by_category.csv \
+        --output-dir $OUTPUT/jailbreakbench/gemma3-270m-it/$axis \
+        --x-axis $axis --skip-missing
+done
 
-# for axis in $AXES; do
-#     $COST_PLOT \
-#         --cost-csv  $OUTPUT/jailbreakbench/gemma3-1b-it/cost/cost_metrics.csv \
-#         --cost-category-csv $OUTPUT/jailbreakbench/gemma3-1b-it/cost/cost_metrics_by_category.csv \
-#         --output-dir $OUTPUT/jailbreakbench/gemma3-1b-it/$axis \
-#         --x-axis $axis --skip-missing
-# done
+for axis in $AXES; do
+    $COST_PLOT \
+        --cost-csv  $OUTPUT/jailbreakbench/gemma3-1b-it/cost/cost_metrics.csv \
+        --cost-category-csv $OUTPUT/jailbreakbench/gemma3-1b-it/cost/cost_metrics_by_category.csv \
+        --output-dir $OUTPUT/jailbreakbench/gemma3-1b-it/$axis \
+        --x-axis $axis --skip-missing
+done
 
-# for axis in $AXES; do
-#     $COST_PLOT \
-#         --cost-csv  $OUTPUT/jailbreakbench/gemma3-4b-it/cost/cost_metrics.csv \
-#         --cost-category-csv $OUTPUT/jailbreakbench/gemma3-4b-it/cost/cost_metrics_by_category.csv \
-#         --output-dir $OUTPUT/jailbreakbench/gemma3-4b-it/$axis \
-#         --x-axis $axis --skip-missing
-# done
+for axis in $AXES; do
+    $COST_PLOT \
+        --cost-csv  $OUTPUT/jailbreakbench/gemma3-4b-it/cost/cost_metrics.csv \
+        --cost-category-csv $OUTPUT/jailbreakbench/gemma3-4b-it/cost/cost_metrics_by_category.csv \
+        --output-dir $OUTPUT/jailbreakbench/gemma3-4b-it/$axis \
+        --x-axis $axis --skip-missing
+done
 
 # --- TRAINING STAGE STUDY — Tulu3 8B: Base → SFT → DPO → RLVR ---
 # Paper: Table 1, Figure 1 left
@@ -308,45 +308,45 @@ done
 # --- TRAINING STAGE STUDY (2nd ladder) — OLMo 2 1B: Base → SFT → DPO → RLVR1 → Instruct ---
 # Companion to the Tulu3 8B ladder above
 
-# for axis in $AXES; do
-#     $COST_PLOT \
-#         --cost-csv  $OUTPUT/jailbreakbench/olmo2-1b-base/cost/cost_metrics.csv \
-#         --cost-category-csv $OUTPUT/jailbreakbench/olmo2-1b-base/cost/cost_metrics_by_category.csv \
-#         --output-dir $OUTPUT/jailbreakbench/olmo2-1b-base/$axis \
-#         --x-axis $axis --skip-missing
-# done
+for axis in $AXES; do
+    $COST_PLOT \
+        --cost-csv  $OUTPUT/jailbreakbench/olmo2-1b-base/cost/cost_metrics.csv \
+        --cost-category-csv $OUTPUT/jailbreakbench/olmo2-1b-base/cost/cost_metrics_by_category.csv \
+        --output-dir $OUTPUT/jailbreakbench/olmo2-1b-base/$axis \
+        --x-axis $axis --skip-missing
+done
 
-# for axis in $AXES; do
-#     $COST_PLOT \
-#         --cost-csv  $OUTPUT/jailbreakbench/olmo2-1b-sft/cost/cost_metrics.csv \
-#         --cost-category-csv $OUTPUT/jailbreakbench/olmo2-1b-sft/cost/cost_metrics_by_category.csv \
-#         --output-dir $OUTPUT/jailbreakbench/olmo2-1b-sft/$axis \
-#         --x-axis $axis --skip-missing
-# done
+for axis in $AXES; do
+    $COST_PLOT \
+        --cost-csv  $OUTPUT/jailbreakbench/olmo2-1b-sft/cost/cost_metrics.csv \
+        --cost-category-csv $OUTPUT/jailbreakbench/olmo2-1b-sft/cost/cost_metrics_by_category.csv \
+        --output-dir $OUTPUT/jailbreakbench/olmo2-1b-sft/$axis \
+        --x-axis $axis --skip-missing
+done
 
-# for axis in $AXES; do
-#     $COST_PLOT \
-#         --cost-csv  $OUTPUT/jailbreakbench/olmo2-1b-dpo/cost/cost_metrics.csv \
-#         --cost-category-csv $OUTPUT/jailbreakbench/olmo2-1b-dpo/cost/cost_metrics_by_category.csv \
-#         --output-dir $OUTPUT/jailbreakbench/olmo2-1b-dpo/$axis \
-#         --x-axis $axis --skip-missing
-# done
+for axis in $AXES; do
+    $COST_PLOT \
+        --cost-csv  $OUTPUT/jailbreakbench/olmo2-1b-dpo/cost/cost_metrics.csv \
+        --cost-category-csv $OUTPUT/jailbreakbench/olmo2-1b-dpo/cost/cost_metrics_by_category.csv \
+        --output-dir $OUTPUT/jailbreakbench/olmo2-1b-dpo/$axis \
+        --x-axis $axis --skip-missing
+done
 
-# for axis in $AXES; do
-#     $COST_PLOT \
-#         --cost-csv  $OUTPUT/jailbreakbench/olmo2-1b-rlvr1/cost/cost_metrics.csv \
-#         --cost-category-csv $OUTPUT/jailbreakbench/olmo2-1b-rlvr1/cost/cost_metrics_by_category.csv \
-#         --output-dir $OUTPUT/jailbreakbench/olmo2-1b-rlvr1/$axis \
-#         --x-axis $axis --skip-missing
-# done
+for axis in $AXES; do
+    $COST_PLOT \
+        --cost-csv  $OUTPUT/jailbreakbench/olmo2-1b-rlvr1/cost/cost_metrics.csv \
+        --cost-category-csv $OUTPUT/jailbreakbench/olmo2-1b-rlvr1/cost/cost_metrics_by_category.csv \
+        --output-dir $OUTPUT/jailbreakbench/olmo2-1b-rlvr1/$axis \
+        --x-axis $axis --skip-missing
+done
 
-# for axis in $AXES; do
-#     $COST_PLOT \
-#         --cost-csv  $OUTPUT/jailbreakbench/olmo2-1b-instruct/cost/cost_metrics.csv \
-#         --cost-category-csv $OUTPUT/jailbreakbench/olmo2-1b-instruct/cost/cost_metrics_by_category.csv \
-#         --output-dir $OUTPUT/jailbreakbench/olmo2-1b-instruct/$axis \
-#         --x-axis $axis --skip-missing
-# done
+for axis in $AXES; do
+    $COST_PLOT \
+        --cost-csv  $OUTPUT/jailbreakbench/olmo2-1b-instruct/cost/cost_metrics.csv \
+        --cost-category-csv $OUTPUT/jailbreakbench/olmo2-1b-instruct/cost/cost_metrics_by_category.csv \
+        --output-dir $OUTPUT/jailbreakbench/olmo2-1b-instruct/$axis \
+        --x-axis $axis --skip-missing
+done
 
 # --- SAFETY ALIGNMENT STUDY — Qwen3-4B base vs Qwen3-4B-SafeRL ---
 
@@ -370,30 +370,30 @@ done
 # Cross-model comparison plots
 # =============================================================================
 
-# for bench in harmbench jailbreakbench; do
-#     case $bench in
-#         harmbench)      bench_title="HarmBench" ;;
-#         jailbreakbench) bench_title="JailbreakBench" ;;
-#     esac
+for bench in harmbench jailbreakbench; do
+    case $bench in
+        harmbench)      bench_title="HarmBench" ;;
+        jailbreakbench) bench_title="JailbreakBench" ;;
+    esac
 
-#     for axis in $AXES; do
-#         echo "=== Comparison plots: $bench_title ($axis) ==="
-#         $COST_PLOT \
-#             --cost-csv \
-#                 $OUTPUT/$bench/qwen2.5-0.5b-instruct/cost/cost_metrics.csv \
-#                 $OUTPUT/$bench/qwen2.5-3b-instruct/cost/cost_metrics.csv \
-#                 $OUTPUT/$bench/qwen2.5-7b-instruct/cost/cost_metrics.csv \
-#                 $OUTPUT/$bench/tulu3-8b-base/cost/cost_metrics.csv \
-#                 $OUTPUT/$bench/tulu3-8b-sft/cost/cost_metrics.csv \
-#                 $OUTPUT/$bench/tulu3-8b-dpo/cost/cost_metrics.csv \
-#                 $OUTPUT/$bench/tulu3-8b-rlvr/cost/cost_metrics.csv \
-#                 $OUTPUT/$bench/qwen3-4b/cost/cost_metrics.csv \
-#                 $OUTPUT/$bench/qwen3-4b-saferl/cost/cost_metrics.csv \
-#             --output-dir $OUTPUT/$bench/comparison_plots/$axis \
-#             --x-axis $axis --title "$bench_title — All Models" \
-#             --mode comparison --skip-missing
-#     done
-# done
+    for axis in $AXES; do
+        echo "=== Comparison plots: $bench_title ($axis) ==="
+        $COST_PLOT \
+            --cost-csv \
+                $OUTPUT/$bench/qwen2.5-0.5b-instruct/cost/cost_metrics.csv \
+                $OUTPUT/$bench/qwen2.5-3b-instruct/cost/cost_metrics.csv \
+                $OUTPUT/$bench/qwen2.5-7b-instruct/cost/cost_metrics.csv \
+                $OUTPUT/$bench/tulu3-8b-base/cost/cost_metrics.csv \
+                $OUTPUT/$bench/tulu3-8b-sft/cost/cost_metrics.csv \
+                $OUTPUT/$bench/tulu3-8b-dpo/cost/cost_metrics.csv \
+                $OUTPUT/$bench/tulu3-8b-rlvr/cost/cost_metrics.csv \
+                $OUTPUT/$bench/qwen3-4b/cost/cost_metrics.csv \
+                $OUTPUT/$bench/qwen3-4b-saferl/cost/cost_metrics.csv \
+            --output-dir $OUTPUT/$bench/comparison_plots/$axis \
+            --x-axis $axis --title "$bench_title — All Models" \
+            --mode comparison --skip-missing
+    done
+done
 
 # =============================================================================
 # Ablation plots
@@ -434,35 +434,35 @@ done
 
 # --- Ablation 1b: Gemma 3 model size (2nd family) ---
 
-# for axis in $AXES; do
-#     $COST_PLOT \
-#         --cost-csv \
-#             $OUTPUT/harmbench/gemma3-270m-it/cost/cost_metrics.csv \
-#             $OUTPUT/harmbench/gemma3-1b-it/cost/cost_metrics.csv \
-#             $OUTPUT/harmbench/gemma3-4b-it/cost/cost_metrics.csv \
-#         --cost-category-csv \
-#             $OUTPUT/harmbench/gemma3-270m-it/cost/cost_metrics_by_category.csv \
-#             $OUTPUT/harmbench/gemma3-1b-it/cost/cost_metrics_by_category.csv \
-#             $OUTPUT/harmbench/gemma3-4b-it/cost/cost_metrics_by_category.csv \
-#         --output-dir $OUTPUT/harmbench/ablations/gemma_size/$axis \
-#         --x-axis $axis --title "HarmBench — Gemma 3 Model Size" \
-#         --mode comparison --skip-missing
-# done
+for axis in $AXES; do
+    $COST_PLOT \
+        --cost-csv \
+            $OUTPUT/harmbench/gemma3-270m-it/cost/cost_metrics.csv \
+            $OUTPUT/harmbench/gemma3-1b-it/cost/cost_metrics.csv \
+            $OUTPUT/harmbench/gemma3-4b-it/cost/cost_metrics.csv \
+        --cost-category-csv \
+            $OUTPUT/harmbench/gemma3-270m-it/cost/cost_metrics_by_category.csv \
+            $OUTPUT/harmbench/gemma3-1b-it/cost/cost_metrics_by_category.csv \
+            $OUTPUT/harmbench/gemma3-4b-it/cost/cost_metrics_by_category.csv \
+        --output-dir $OUTPUT/harmbench/ablations/gemma_size/$axis \
+        --x-axis $axis --title "HarmBench — Gemma 3 Model Size" \
+        --mode comparison --skip-missing
+done
 
-# for axis in $AXES; do
-#     $COST_PLOT \
-#         --cost-csv \
-#             $OUTPUT/jailbreakbench/gemma3-270m-it/cost/cost_metrics.csv \
-#             $OUTPUT/jailbreakbench/gemma3-1b-it/cost/cost_metrics.csv \
-#             $OUTPUT/jailbreakbench/gemma3-4b-it/cost/cost_metrics.csv \
-#         --cost-category-csv \
-#             $OUTPUT/jailbreakbench/gemma3-270m-it/cost/cost_metrics_by_category.csv \
-#             $OUTPUT/jailbreakbench/gemma3-1b-it/cost/cost_metrics_by_category.csv \
-#             $OUTPUT/jailbreakbench/gemma3-4b-it/cost/cost_metrics_by_category.csv \
-#         --output-dir $OUTPUT/jailbreakbench/ablations/gemma_size/$axis \
-#         --x-axis $axis --title "JailbreakBench — Gemma 3 Model Size" \
-#         --mode comparison --skip-missing
-# done
+for axis in $AXES; do
+    $COST_PLOT \
+        --cost-csv \
+            $OUTPUT/jailbreakbench/gemma3-270m-it/cost/cost_metrics.csv \
+            $OUTPUT/jailbreakbench/gemma3-1b-it/cost/cost_metrics.csv \
+            $OUTPUT/jailbreakbench/gemma3-4b-it/cost/cost_metrics.csv \
+        --cost-category-csv \
+            $OUTPUT/jailbreakbench/gemma3-270m-it/cost/cost_metrics_by_category.csv \
+            $OUTPUT/jailbreakbench/gemma3-1b-it/cost/cost_metrics_by_category.csv \
+            $OUTPUT/jailbreakbench/gemma3-4b-it/cost/cost_metrics_by_category.csv \
+        --output-dir $OUTPUT/jailbreakbench/ablations/gemma_size/$axis \
+        --x-axis $axis --title "JailbreakBench — Gemma 3 Model Size" \
+        --mode comparison --skip-missing
+done
 
 # --- Ablation 2: Tulu3 training stages ---
 # Paper: Table 1, Figure 1 left
@@ -503,43 +503,43 @@ done
 
 # --- Ablation 2b: OLMo 2 1B training stages (2nd ladder, 5 rungs) ---
 
-# for axis in $AXES; do
-#     $COST_PLOT \
-#         --cost-csv \
-#             $OUTPUT/harmbench/olmo2-1b-base/cost/cost_metrics.csv \
-#             $OUTPUT/harmbench/olmo2-1b-sft/cost/cost_metrics.csv \
-#             $OUTPUT/harmbench/olmo2-1b-dpo/cost/cost_metrics.csv \
-#             $OUTPUT/harmbench/olmo2-1b-rlvr1/cost/cost_metrics.csv \
-#             $OUTPUT/harmbench/olmo2-1b-instruct/cost/cost_metrics.csv \
-#         --cost-category-csv \
-#             $OUTPUT/harmbench/olmo2-1b-base/cost/cost_metrics_by_category.csv \
-#             $OUTPUT/harmbench/olmo2-1b-sft/cost/cost_metrics_by_category.csv \
-#             $OUTPUT/harmbench/olmo2-1b-dpo/cost/cost_metrics_by_category.csv \
-#             $OUTPUT/harmbench/olmo2-1b-rlvr1/cost/cost_metrics_by_category.csv \
-#             $OUTPUT/harmbench/olmo2-1b-instruct/cost/cost_metrics_by_category.csv \
-#         --output-dir $OUTPUT/harmbench/ablations/olmo2_training/$axis \
-#         --x-axis $axis --title "HarmBench — OLMo 2 1B Training Stages" \
-#         --mode comparison --skip-missing
-# done
+for axis in $AXES; do
+    $COST_PLOT \
+        --cost-csv \
+            $OUTPUT/harmbench/olmo2-1b-base/cost/cost_metrics.csv \
+            $OUTPUT/harmbench/olmo2-1b-sft/cost/cost_metrics.csv \
+            $OUTPUT/harmbench/olmo2-1b-dpo/cost/cost_metrics.csv \
+            $OUTPUT/harmbench/olmo2-1b-rlvr1/cost/cost_metrics.csv \
+            $OUTPUT/harmbench/olmo2-1b-instruct/cost/cost_metrics.csv \
+        --cost-category-csv \
+            $OUTPUT/harmbench/olmo2-1b-base/cost/cost_metrics_by_category.csv \
+            $OUTPUT/harmbench/olmo2-1b-sft/cost/cost_metrics_by_category.csv \
+            $OUTPUT/harmbench/olmo2-1b-dpo/cost/cost_metrics_by_category.csv \
+            $OUTPUT/harmbench/olmo2-1b-rlvr1/cost/cost_metrics_by_category.csv \
+            $OUTPUT/harmbench/olmo2-1b-instruct/cost/cost_metrics_by_category.csv \
+        --output-dir $OUTPUT/harmbench/ablations/olmo2_training/$axis \
+        --x-axis $axis --title "HarmBench — OLMo 2 1B Training Stages" \
+        --mode comparison --skip-missing
+done
 
-# for axis in $AXES; do
-#     $COST_PLOT \
-#         --cost-csv \
-#             $OUTPUT/jailbreakbench/olmo2-1b-base/cost/cost_metrics.csv \
-#             $OUTPUT/jailbreakbench/olmo2-1b-sft/cost/cost_metrics.csv \
-#             $OUTPUT/jailbreakbench/olmo2-1b-dpo/cost/cost_metrics.csv \
-#             $OUTPUT/jailbreakbench/olmo2-1b-rlvr1/cost/cost_metrics.csv \
-#             $OUTPUT/jailbreakbench/olmo2-1b-instruct/cost/cost_metrics.csv \
-#         --cost-category-csv \
-#             $OUTPUT/jailbreakbench/olmo2-1b-base/cost/cost_metrics_by_category.csv \
-#             $OUTPUT/jailbreakbench/olmo2-1b-sft/cost/cost_metrics_by_category.csv \
-#             $OUTPUT/jailbreakbench/olmo2-1b-dpo/cost/cost_metrics_by_category.csv \
-#             $OUTPUT/jailbreakbench/olmo2-1b-rlvr1/cost/cost_metrics_by_category.csv \
-#             $OUTPUT/jailbreakbench/olmo2-1b-instruct/cost/cost_metrics_by_category.csv \
-#         --output-dir $OUTPUT/jailbreakbench/ablations/olmo2_training/$axis \
-#         --x-axis $axis --title "JailbreakBench — OLMo 2 1B Training Stages" \
-#         --mode comparison --skip-missing
-# done
+for axis in $AXES; do
+    $COST_PLOT \
+        --cost-csv \
+            $OUTPUT/jailbreakbench/olmo2-1b-base/cost/cost_metrics.csv \
+            $OUTPUT/jailbreakbench/olmo2-1b-sft/cost/cost_metrics.csv \
+            $OUTPUT/jailbreakbench/olmo2-1b-dpo/cost/cost_metrics.csv \
+            $OUTPUT/jailbreakbench/olmo2-1b-rlvr1/cost/cost_metrics.csv \
+            $OUTPUT/jailbreakbench/olmo2-1b-instruct/cost/cost_metrics.csv \
+        --cost-category-csv \
+            $OUTPUT/jailbreakbench/olmo2-1b-base/cost/cost_metrics_by_category.csv \
+            $OUTPUT/jailbreakbench/olmo2-1b-sft/cost/cost_metrics_by_category.csv \
+            $OUTPUT/jailbreakbench/olmo2-1b-dpo/cost/cost_metrics_by_category.csv \
+            $OUTPUT/jailbreakbench/olmo2-1b-rlvr1/cost/cost_metrics_by_category.csv \
+            $OUTPUT/jailbreakbench/olmo2-1b-instruct/cost/cost_metrics_by_category.csv \
+        --output-dir $OUTPUT/jailbreakbench/ablations/olmo2_training/$axis \
+        --x-axis $axis --title "JailbreakBench — OLMo 2 1B Training Stages" \
+        --mode comparison --skip-missing
+done
 
 # --- Ablation 3: Safety alignment — Qwen3-4B base vs Qwen3-4B-SafeRL ---
 # Paper: Table 1 (Qwen3 rows)
@@ -572,98 +572,98 @@ done
 
 # --- Ablation 4: Best per family ---
 
-# BEST_HB_QWEN25=$(python scripts/select_best_model.py --metrics-dir $OUTPUT/harmbench \
-#     --models qwen2.5-0.5b-instruct qwen2.5-3b-instruct qwen2.5-7b-instruct)
-# BEST_HB_TULU3=$(python scripts/select_best_model.py --metrics-dir $OUTPUT/harmbench \
-#     --models tulu3-8b-base tulu3-8b-sft tulu3-8b-dpo tulu3-8b-rlvr)
-# BEST_JB_QWEN25=$(python scripts/select_best_model.py --metrics-dir $OUTPUT/jailbreakbench \
-#     --models qwen2.5-0.5b-instruct qwen2.5-3b-instruct qwen2.5-7b-instruct)
-# BEST_JB_TULU3=$(python scripts/select_best_model.py --metrics-dir $OUTPUT/jailbreakbench \
-#     --models tulu3-8b-base tulu3-8b-sft tulu3-8b-dpo tulu3-8b-rlvr)
+BEST_HB_QWEN25=$(python scripts/select_best_model.py --metrics-dir $OUTPUT/harmbench \
+    --models qwen2.5-0.5b-instruct qwen2.5-3b-instruct qwen2.5-7b-instruct)
+BEST_HB_TULU3=$(python scripts/select_best_model.py --metrics-dir $OUTPUT/harmbench \
+    --models tulu3-8b-base tulu3-8b-sft tulu3-8b-dpo tulu3-8b-rlvr)
+BEST_JB_QWEN25=$(python scripts/select_best_model.py --metrics-dir $OUTPUT/jailbreakbench \
+    --models qwen2.5-0.5b-instruct qwen2.5-3b-instruct qwen2.5-7b-instruct)
+BEST_JB_TULU3=$(python scripts/select_best_model.py --metrics-dir $OUTPUT/jailbreakbench \
+    --models tulu3-8b-base tulu3-8b-sft tulu3-8b-dpo tulu3-8b-rlvr)
 
-# for axis in $AXES; do
-#     $COST_PLOT \
-#         --cost-csv \
-#             $OUTPUT/harmbench/$BEST_HB_QWEN25/cost/cost_metrics.csv \
-#             $OUTPUT/harmbench/$BEST_HB_TULU3/cost/cost_metrics.csv \
-#             $OUTPUT/harmbench/qwen3-4b/cost/cost_metrics.csv \
-#             $OUTPUT/harmbench/qwen3-4b-saferl/cost/cost_metrics.csv \
-#         --cost-category-csv \
-#             $OUTPUT/harmbench/$BEST_HB_QWEN25/cost/cost_metrics_by_category.csv \
-#             $OUTPUT/harmbench/$BEST_HB_TULU3/cost/cost_metrics_by_category.csv \
-#             $OUTPUT/harmbench/qwen3-4b/cost/cost_metrics_by_category.csv \
-#             $OUTPUT/harmbench/qwen3-4b-saferl/cost/cost_metrics_by_category.csv \
-#         --output-dir $OUTPUT/harmbench/ablations/best_per_family/$axis \
-#         --x-axis $axis --title "HarmBench — Best per Family" \
-#         --mode comparison --skip-missing
-# done
+for axis in $AXES; do
+    $COST_PLOT \
+        --cost-csv \
+            $OUTPUT/harmbench/$BEST_HB_QWEN25/cost/cost_metrics.csv \
+            $OUTPUT/harmbench/$BEST_HB_TULU3/cost/cost_metrics.csv \
+            $OUTPUT/harmbench/qwen3-4b/cost/cost_metrics.csv \
+            $OUTPUT/harmbench/qwen3-4b-saferl/cost/cost_metrics.csv \
+        --cost-category-csv \
+            $OUTPUT/harmbench/$BEST_HB_QWEN25/cost/cost_metrics_by_category.csv \
+            $OUTPUT/harmbench/$BEST_HB_TULU3/cost/cost_metrics_by_category.csv \
+            $OUTPUT/harmbench/qwen3-4b/cost/cost_metrics_by_category.csv \
+            $OUTPUT/harmbench/qwen3-4b-saferl/cost/cost_metrics_by_category.csv \
+        --output-dir $OUTPUT/harmbench/ablations/best_per_family/$axis \
+        --x-axis $axis --title "HarmBench — Best per Family" \
+        --mode comparison --skip-missing
+done
 
-# for axis in $AXES; do
-#     $COST_PLOT \
-#         --cost-csv \
-#             $OUTPUT/jailbreakbench/$BEST_JB_QWEN25/cost/cost_metrics.csv \
-#             $OUTPUT/jailbreakbench/$BEST_JB_TULU3/cost/cost_metrics.csv \
-#             $OUTPUT/jailbreakbench/qwen3-4b/cost/cost_metrics.csv \
-#             $OUTPUT/jailbreakbench/qwen3-4b-saferl/cost/cost_metrics.csv \
-#         --cost-category-csv \
-#             $OUTPUT/jailbreakbench/$BEST_JB_QWEN25/cost/cost_metrics_by_category.csv \
-#             $OUTPUT/jailbreakbench/$BEST_JB_TULU3/cost/cost_metrics_by_category.csv \
-#             $OUTPUT/jailbreakbench/qwen3-4b/cost/cost_metrics_by_category.csv \
-#             $OUTPUT/jailbreakbench/qwen3-4b-saferl/cost/cost_metrics_by_category.csv \
-#         --output-dir $OUTPUT/jailbreakbench/ablations/best_per_family/$axis \
-#         --x-axis $axis --title "JailbreakBench — Best per Family" \
-#         --mode comparison --skip-missing
-# done
+for axis in $AXES; do
+    $COST_PLOT \
+        --cost-csv \
+            $OUTPUT/jailbreakbench/$BEST_JB_QWEN25/cost/cost_metrics.csv \
+            $OUTPUT/jailbreakbench/$BEST_JB_TULU3/cost/cost_metrics.csv \
+            $OUTPUT/jailbreakbench/qwen3-4b/cost/cost_metrics.csv \
+            $OUTPUT/jailbreakbench/qwen3-4b-saferl/cost/cost_metrics.csv \
+        --cost-category-csv \
+            $OUTPUT/jailbreakbench/$BEST_JB_QWEN25/cost/cost_metrics_by_category.csv \
+            $OUTPUT/jailbreakbench/$BEST_JB_TULU3/cost/cost_metrics_by_category.csv \
+            $OUTPUT/jailbreakbench/qwen3-4b/cost/cost_metrics_by_category.csv \
+            $OUTPUT/jailbreakbench/qwen3-4b-saferl/cost/cost_metrics_by_category.csv \
+        --output-dir $OUTPUT/jailbreakbench/ablations/best_per_family/$axis \
+        --x-axis $axis --title "JailbreakBench — Best per Family" \
+        --mode comparison --skip-missing
+done
 
 # --- Ablation 5: Attack transfer (GCG surrogate: qwen2.5-0.5b → qwen3-4b) ---
 
-# _normalize_attack() {
-#     local src="$1" dst="$2"
-#     python3 -c "
-# import pandas as pd
-# df = pd.read_csv('$src')
-# df['attack_id'] = df['attack_id'].str.replace(r'transfer_gcg_from_.*', 'gcg', regex=True)
-# df.to_csv('$dst', index=False)
-# " 2>/dev/null || cp "$src" "$dst"
-# }
+_normalize_attack() {
+    local src="$1" dst="$2"
+    python3 -c "
+import pandas as pd
+df = pd.read_csv('$src')
+df['attack_id'] = df['attack_id'].str.replace(r'transfer_gcg_from_.*', 'gcg', regex=True)
+df.to_csv('$dst', index=False)
+" 2>/dev/null || cp "$src" "$dst"
+}
 #
-# NORM_HB_Q3=/tmp/norm_hb_qwen3_cost.csv
-# NORM_JB_Q3=/tmp/norm_jb_qwen3_cost.csv
-# NORM_HB_Q3_CAT=/tmp/norm_hb_qwen3_cost_cat.csv
-# NORM_JB_Q3_CAT=/tmp/norm_jb_qwen3_cost_cat.csv
+NORM_HB_Q3=/tmp/norm_hb_qwen3_cost.csv
+NORM_JB_Q3=/tmp/norm_jb_qwen3_cost.csv
+NORM_HB_Q3_CAT=/tmp/norm_hb_qwen3_cost_cat.csv
+NORM_JB_Q3_CAT=/tmp/norm_jb_qwen3_cost_cat.csv
 #
-# _normalize_attack $OUTPUT/harmbench/qwen3-4b/cost/cost_metrics.csv             $NORM_HB_Q3
-# _normalize_attack $OUTPUT/jailbreakbench/qwen3-4b/cost/cost_metrics.csv         $NORM_JB_Q3
-# _normalize_attack $OUTPUT/harmbench/qwen3-4b/cost/cost_metrics_by_category.csv  $NORM_HB_Q3_CAT
-# _normalize_attack $OUTPUT/jailbreakbench/qwen3-4b/cost/cost_metrics_by_category.csv $NORM_JB_Q3_CAT
+_normalize_attack $OUTPUT/harmbench/qwen3-4b/cost/cost_metrics.csv             $NORM_HB_Q3
+_normalize_attack $OUTPUT/jailbreakbench/qwen3-4b/cost/cost_metrics.csv         $NORM_JB_Q3
+_normalize_attack $OUTPUT/harmbench/qwen3-4b/cost/cost_metrics_by_category.csv  $NORM_HB_Q3_CAT
+_normalize_attack $OUTPUT/jailbreakbench/qwen3-4b/cost/cost_metrics_by_category.csv $NORM_JB_Q3_CAT
 #
-# for axis in tokens flops; do
-#     $COST_PLOT \
-#         --cost-csv \
-#             $OUTPUT/harmbench/qwen2.5-0.5b-instruct/cost/cost_metrics.csv \
-#             $NORM_HB_Q3 \
-#         --cost-category-csv \
-#             $OUTPUT/harmbench/qwen2.5-0.5b-instruct/cost/cost_metrics_by_category.csv \
-#             $NORM_HB_Q3_CAT \
-#         --output-dir $OUTPUT/harmbench/ablations/attack_transfer_gcg/$axis \
-#         --x-axis $axis --attacks gcg \
-#         --title "HarmBench — GCG Transfer: Qwen2.5-0.5B → Qwen3-4B" \
-#         --mode comparison --skip-missing
-# done
+for axis in tokens flops; do
+    $COST_PLOT \
+        --cost-csv \
+            $OUTPUT/harmbench/qwen2.5-0.5b-instruct/cost/cost_metrics.csv \
+            $NORM_HB_Q3 \
+        --cost-category-csv \
+            $OUTPUT/harmbench/qwen2.5-0.5b-instruct/cost/cost_metrics_by_category.csv \
+            $NORM_HB_Q3_CAT \
+        --output-dir $OUTPUT/harmbench/ablations/attack_transfer_gcg/$axis \
+        --x-axis $axis --attacks gcg \
+        --title "HarmBench — GCG Transfer: Qwen2.5-0.5B → Qwen3-4B" \
+        --mode comparison --skip-missing
+done
 #
-# for axis in tokens flops; do
-#     $COST_PLOT \
-#         --cost-csv \
-#             $OUTPUT/jailbreakbench/qwen2.5-0.5b-instruct/cost/cost_metrics.csv \
-#             $NORM_JB_Q3 \
-#         --cost-category-csv \
-#             $OUTPUT/jailbreakbench/qwen2.5-0.5b-instruct/cost/cost_metrics_by_category.csv \
-#             $NORM_JB_Q3_CAT \
-#         --output-dir $OUTPUT/jailbreakbench/ablations/attack_transfer_gcg/$axis \
-#         --x-axis $axis --attacks gcg \
-#         --title "JailbreakBench — GCG Transfer: Qwen2.5-0.5B → Qwen3-4B" \
-#         --mode comparison --skip-missing
-# done
+for axis in tokens flops; do
+    $COST_PLOT \
+        --cost-csv \
+            $OUTPUT/jailbreakbench/qwen2.5-0.5b-instruct/cost/cost_metrics.csv \
+            $NORM_JB_Q3 \
+        --cost-category-csv \
+            $OUTPUT/jailbreakbench/qwen2.5-0.5b-instruct/cost/cost_metrics_by_category.csv \
+            $NORM_JB_Q3_CAT \
+        --output-dir $OUTPUT/jailbreakbench/ablations/attack_transfer_gcg/$axis \
+        --x-axis $axis --attacks gcg \
+        --title "JailbreakBench — GCG Transfer: Qwen2.5-0.5B → Qwen3-4B" \
+        --mode comparison --skip-missing
+done
 
 # =============================================================================
 # RL model comparison — how different targets fare under the RL (GRPO) attack.
@@ -673,107 +673,107 @@ done
 # =============================================================================
 
 # --- RL across Qwen2.5 model sizes (0.5B / 3B / 7B) ---
-# for axis in $AXES; do
-#     $COST_PLOT \
-#         --cost-csv \
-#             $OUTPUT/harmbench/qwen2.5-0.5b-instruct/cost/cost_metrics.csv \
-#             $OUTPUT/harmbench/qwen2.5-3b-instruct/cost/cost_metrics.csv \
-#             $OUTPUT/harmbench/qwen2.5-7b-instruct/cost/cost_metrics.csv \
-#         --cost-category-csv \
-#             $OUTPUT/harmbench/qwen2.5-0.5b-instruct/cost/cost_metrics_by_category.csv \
-#             $OUTPUT/harmbench/qwen2.5-3b-instruct/cost/cost_metrics_by_category.csv \
-#             $OUTPUT/harmbench/qwen2.5-7b-instruct/cost/cost_metrics_by_category.csv \
-#         --output-dir $OUTPUT/harmbench/ablations/rl_qwen_size/$axis \
-#         --x-axis $axis --attacks rl \
-#         --title "HarmBench — RL (GRPO): Qwen2.5 Model Size" \
-#         --mode comparison --skip-missing
-# done
+for axis in $AXES; do
+    $COST_PLOT \
+        --cost-csv \
+            $OUTPUT/harmbench/qwen2.5-0.5b-instruct/cost/cost_metrics.csv \
+            $OUTPUT/harmbench/qwen2.5-3b-instruct/cost/cost_metrics.csv \
+            $OUTPUT/harmbench/qwen2.5-7b-instruct/cost/cost_metrics.csv \
+        --cost-category-csv \
+            $OUTPUT/harmbench/qwen2.5-0.5b-instruct/cost/cost_metrics_by_category.csv \
+            $OUTPUT/harmbench/qwen2.5-3b-instruct/cost/cost_metrics_by_category.csv \
+            $OUTPUT/harmbench/qwen2.5-7b-instruct/cost/cost_metrics_by_category.csv \
+        --output-dir $OUTPUT/harmbench/ablations/rl_qwen_size/$axis \
+        --x-axis $axis --attacks rl \
+        --title "HarmBench — RL (GRPO): Qwen2.5 Model Size" \
+        --mode comparison --skip-missing
+done
 
 # --- RL across Gemma 3 model sizes (270M / 1B / 4B) ---
 # The cross-family read: does the adaptive attacker's advantage track size the same
 # way outside Qwen? Compare against ablations/rl_qwen_size on the same axis.
-# for axis in $AXES; do
-#     $COST_PLOT \
-#         --cost-csv \
-#             $OUTPUT/harmbench/gemma3-270m-it/cost/cost_metrics.csv \
-#             $OUTPUT/harmbench/gemma3-1b-it/cost/cost_metrics.csv \
-#             $OUTPUT/harmbench/gemma3-4b-it/cost/cost_metrics.csv \
-#         --cost-category-csv \
-#             $OUTPUT/harmbench/gemma3-270m-it/cost/cost_metrics_by_category.csv \
-#             $OUTPUT/harmbench/gemma3-1b-it/cost/cost_metrics_by_category.csv \
-#             $OUTPUT/harmbench/gemma3-4b-it/cost/cost_metrics_by_category.csv \
-#         --output-dir $OUTPUT/harmbench/ablations/rl_gemma_size/$axis \
-#         --x-axis $axis --attacks rl \
-#         --title "HarmBench — RL (GRPO): Gemma 3 Model Size" \
-#         --mode comparison --skip-missing
-# done
+for axis in $AXES; do
+    $COST_PLOT \
+        --cost-csv \
+            $OUTPUT/harmbench/gemma3-270m-it/cost/cost_metrics.csv \
+            $OUTPUT/harmbench/gemma3-1b-it/cost/cost_metrics.csv \
+            $OUTPUT/harmbench/gemma3-4b-it/cost/cost_metrics.csv \
+        --cost-category-csv \
+            $OUTPUT/harmbench/gemma3-270m-it/cost/cost_metrics_by_category.csv \
+            $OUTPUT/harmbench/gemma3-1b-it/cost/cost_metrics_by_category.csv \
+            $OUTPUT/harmbench/gemma3-4b-it/cost/cost_metrics_by_category.csv \
+        --output-dir $OUTPUT/harmbench/ablations/rl_gemma_size/$axis \
+        --x-axis $axis --attacks rl \
+        --title "HarmBench — RL (GRPO): Gemma 3 Model Size" \
+        --mode comparison --skip-missing
+done
 
 # --- RL across Tulu3 training stages (Base / SFT / DPO / RLVR) ---
-# for axis in $AXES; do
-#     $COST_PLOT \
-#         --cost-csv \
-#             $OUTPUT/harmbench/tulu3-8b-base/cost/cost_metrics.csv \
-#             $OUTPUT/harmbench/tulu3-8b-sft/cost/cost_metrics.csv \
-#             $OUTPUT/harmbench/tulu3-8b-dpo/cost/cost_metrics.csv \
-#             $OUTPUT/harmbench/tulu3-8b-rlvr/cost/cost_metrics.csv \
-#         --cost-category-csv \
-#             $OUTPUT/harmbench/tulu3-8b-base/cost/cost_metrics_by_category.csv \
-#             $OUTPUT/harmbench/tulu3-8b-sft/cost/cost_metrics_by_category.csv \
-#             $OUTPUT/harmbench/tulu3-8b-dpo/cost/cost_metrics_by_category.csv \
-#             $OUTPUT/harmbench/tulu3-8b-rlvr/cost/cost_metrics_by_category.csv \
-#         --output-dir $OUTPUT/harmbench/ablations/rl_tulu3_training/$axis \
-#         --x-axis $axis --attacks rl \
-#         --title "HarmBench — RL (GRPO): Tulu3 Training Stages" \
-#         --mode comparison --skip-missing
-# done
+for axis in $AXES; do
+    $COST_PLOT \
+        --cost-csv \
+            $OUTPUT/harmbench/tulu3-8b-base/cost/cost_metrics.csv \
+            $OUTPUT/harmbench/tulu3-8b-sft/cost/cost_metrics.csv \
+            $OUTPUT/harmbench/tulu3-8b-dpo/cost/cost_metrics.csv \
+            $OUTPUT/harmbench/tulu3-8b-rlvr/cost/cost_metrics.csv \
+        --cost-category-csv \
+            $OUTPUT/harmbench/tulu3-8b-base/cost/cost_metrics_by_category.csv \
+            $OUTPUT/harmbench/tulu3-8b-sft/cost/cost_metrics_by_category.csv \
+            $OUTPUT/harmbench/tulu3-8b-dpo/cost/cost_metrics_by_category.csv \
+            $OUTPUT/harmbench/tulu3-8b-rlvr/cost/cost_metrics_by_category.csv \
+        --output-dir $OUTPUT/harmbench/ablations/rl_tulu3_training/$axis \
+        --x-axis $axis --attacks rl \
+        --title "HarmBench — RL (GRPO): Tulu3 Training Stages" \
+        --mode comparison --skip-missing
+done
 
 # --- RL across OLMo 2 1B training stages (Base / SFT / DPO / RLVR1 / Instruct) ---
 # The five-rung read: compare against ablations/rl_tulu3_training on the same axis.
 # The RLVR1 -> Instruct segment is the marginal effect of a second RLVR round, which the
 # four-rung Tulu3 ladder cannot show.
-# for axis in $AXES; do
-#     $COST_PLOT \
-#         --cost-csv \
-#             $OUTPUT/harmbench/olmo2-1b-base/cost/cost_metrics.csv \
-#             $OUTPUT/harmbench/olmo2-1b-sft/cost/cost_metrics.csv \
-#             $OUTPUT/harmbench/olmo2-1b-dpo/cost/cost_metrics.csv \
-#             $OUTPUT/harmbench/olmo2-1b-rlvr1/cost/cost_metrics.csv \
-#             $OUTPUT/harmbench/olmo2-1b-instruct/cost/cost_metrics.csv \
-#         --cost-category-csv \
-#             $OUTPUT/harmbench/olmo2-1b-base/cost/cost_metrics_by_category.csv \
-#             $OUTPUT/harmbench/olmo2-1b-sft/cost/cost_metrics_by_category.csv \
-#             $OUTPUT/harmbench/olmo2-1b-dpo/cost/cost_metrics_by_category.csv \
-#             $OUTPUT/harmbench/olmo2-1b-rlvr1/cost/cost_metrics_by_category.csv \
-#             $OUTPUT/harmbench/olmo2-1b-instruct/cost/cost_metrics_by_category.csv \
-#         --output-dir $OUTPUT/harmbench/ablations/rl_olmo2_training/$axis \
-#         --x-axis $axis --attacks rl \
-#         --title "HarmBench — RL (GRPO): OLMo 2 1B Training Stages" \
-#         --mode comparison --skip-missing
-# done
+for axis in $AXES; do
+    $COST_PLOT \
+        --cost-csv \
+            $OUTPUT/harmbench/olmo2-1b-base/cost/cost_metrics.csv \
+            $OUTPUT/harmbench/olmo2-1b-sft/cost/cost_metrics.csv \
+            $OUTPUT/harmbench/olmo2-1b-dpo/cost/cost_metrics.csv \
+            $OUTPUT/harmbench/olmo2-1b-rlvr1/cost/cost_metrics.csv \
+            $OUTPUT/harmbench/olmo2-1b-instruct/cost/cost_metrics.csv \
+        --cost-category-csv \
+            $OUTPUT/harmbench/olmo2-1b-base/cost/cost_metrics_by_category.csv \
+            $OUTPUT/harmbench/olmo2-1b-sft/cost/cost_metrics_by_category.csv \
+            $OUTPUT/harmbench/olmo2-1b-dpo/cost/cost_metrics_by_category.csv \
+            $OUTPUT/harmbench/olmo2-1b-rlvr1/cost/cost_metrics_by_category.csv \
+            $OUTPUT/harmbench/olmo2-1b-instruct/cost/cost_metrics_by_category.csv \
+        --output-dir $OUTPUT/harmbench/ablations/rl_olmo2_training/$axis \
+        --x-axis $axis --attacks rl \
+        --title "HarmBench — RL (GRPO): OLMo 2 1B Training Stages" \
+        --mode comparison --skip-missing
+done
 
 # --- RL across ALL HarmBench targets (Qwen2.5 sizes + Tulu3 stages) on one canvas ---
-# for axis in $AXES; do
-#     $COST_PLOT \
-#         --cost-csv \
-#             $OUTPUT/harmbench/qwen2.5-0.5b-instruct/cost/cost_metrics.csv \
-#             $OUTPUT/harmbench/qwen2.5-3b-instruct/cost/cost_metrics.csv \
-#             $OUTPUT/harmbench/qwen2.5-7b-instruct/cost/cost_metrics.csv \
-#             $OUTPUT/harmbench/tulu3-8b-base/cost/cost_metrics.csv \
-#             $OUTPUT/harmbench/tulu3-8b-sft/cost/cost_metrics.csv \
-#             $OUTPUT/harmbench/tulu3-8b-dpo/cost/cost_metrics.csv \
-#             $OUTPUT/harmbench/tulu3-8b-rlvr/cost/cost_metrics.csv \
-#             $OUTPUT/harmbench/gemma3-270m-it/cost/cost_metrics.csv \
-#             $OUTPUT/harmbench/gemma3-1b-it/cost/cost_metrics.csv \
-#             $OUTPUT/harmbench/gemma3-4b-it/cost/cost_metrics.csv \
-#             $OUTPUT/harmbench/olmo2-1b-base/cost/cost_metrics.csv \
-#             $OUTPUT/harmbench/olmo2-1b-sft/cost/cost_metrics.csv \
-#             $OUTPUT/harmbench/olmo2-1b-dpo/cost/cost_metrics.csv \
-#             $OUTPUT/harmbench/olmo2-1b-rlvr1/cost/cost_metrics.csv \
-#             $OUTPUT/harmbench/olmo2-1b-instruct/cost/cost_metrics.csv \
-#         --output-dir $OUTPUT/harmbench/ablations/rl_all_models/$axis \
-#         --x-axis $axis --attacks rl \
-#         --title "HarmBench — RL (GRPO): All Models" \
-#         --mode comparison --skip-missing
-# done
+for axis in $AXES; do
+    $COST_PLOT \
+        --cost-csv \
+            $OUTPUT/harmbench/qwen2.5-0.5b-instruct/cost/cost_metrics.csv \
+            $OUTPUT/harmbench/qwen2.5-3b-instruct/cost/cost_metrics.csv \
+            $OUTPUT/harmbench/qwen2.5-7b-instruct/cost/cost_metrics.csv \
+            $OUTPUT/harmbench/tulu3-8b-base/cost/cost_metrics.csv \
+            $OUTPUT/harmbench/tulu3-8b-sft/cost/cost_metrics.csv \
+            $OUTPUT/harmbench/tulu3-8b-dpo/cost/cost_metrics.csv \
+            $OUTPUT/harmbench/tulu3-8b-rlvr/cost/cost_metrics.csv \
+            $OUTPUT/harmbench/gemma3-270m-it/cost/cost_metrics.csv \
+            $OUTPUT/harmbench/gemma3-1b-it/cost/cost_metrics.csv \
+            $OUTPUT/harmbench/gemma3-4b-it/cost/cost_metrics.csv \
+            $OUTPUT/harmbench/olmo2-1b-base/cost/cost_metrics.csv \
+            $OUTPUT/harmbench/olmo2-1b-sft/cost/cost_metrics.csv \
+            $OUTPUT/harmbench/olmo2-1b-dpo/cost/cost_metrics.csv \
+            $OUTPUT/harmbench/olmo2-1b-rlvr1/cost/cost_metrics.csv \
+            $OUTPUT/harmbench/olmo2-1b-instruct/cost/cost_metrics.csv \
+        --output-dir $OUTPUT/harmbench/ablations/rl_all_models/$axis \
+        --x-axis $axis --attacks rl \
+        --title "HarmBench — RL (GRPO): All Models" \
+        --mode comparison --skip-missing
+done
 
 echo "Done."

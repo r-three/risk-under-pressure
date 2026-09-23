@@ -63,11 +63,13 @@ RL_HB="python scripts/run_inference.py --experiment configs/experiments/base.yam
 # Override to run a subset:  SEEDS="1394 42" bash run_rl_HB_experiments.sh
 SEEDS="${SEEDS:-1394 42 123 256 512 1024 1997 2002 5431 7919}"
 
-# submit_rl <job-short-name> <model-config>
-# Fans one model out into one job per seed.
+# submit_rl <job-short-name> <model-config> [seeds]
+# Fans one model out into one job per seed. The optional third argument overrides $SEEDS for
+# that model only — used to requeue just the seeds that hit the 23h TIMEOUT (--resume picks
+# each one up from its last saved prompt).
 submit_rl() {
-    local short="$1" cfg="$2" seed
-    for seed in $SEEDS; do
+    local short="$1" cfg="$2" seeds="${3:-$SEEDS}" seed
+    for seed in $seeds; do
         submit "rup_HB_rl_${short}_s${seed}$JUDGE_TAG" \
             "$RL_HB --model $cfg --seeds $seed"
     done
@@ -75,6 +77,7 @@ submit_rl() {
 
 # =============================================================================
 # MODEL SIZE STUDY — Qwen2.5-Instruct: 0.5B, 3B, 7B
+# =============================================================================
 # =============================================================================
 submit_rl "qwen2.5_0.5b" "qwen2.5_0.5b"
 submit_rl "qwen2.5_3b" "qwen2.5_3b"

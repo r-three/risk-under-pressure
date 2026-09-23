@@ -34,7 +34,6 @@ two metrics: compute to reach a target risk level (`C@τ`) and risk gained per F
 | [Where results land](#where-results-land) | Directory layout of `$RUN_ROOT` |
 | [Reference](#reference) | Models, attacks, benchmarks, judges |
 | [Extending](#extending-the-framework) | Add a model / attack / benchmark |
-| [Known gotchas](#known-gotchas) | Read before launching a sweep |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | Code conventions, cost-model requirements |
 
 ---

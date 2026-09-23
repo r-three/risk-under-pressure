@@ -26,9 +26,9 @@
 # passes --resume, so run_inference.py skips prompts already present in results.jsonl and
 # exits almost immediately if there is nothing left to do.
 #
-# WHAT IS CURRENTLY ENABLED: only the Gemma 3 size ladder and the OLMo 2 1B training-stage
-# ladder. The Qwen2.5, Tulu3 and Qwen3 blocks are commented out — uncomment a submit_model
-# line to bring one back.
+# WHAT IS CURRENTLY ENABLED: everything — all 17 targets (Qwen2.5, Gemma 3, Tulu3,
+# OLMo 2, Qwen3) x 3 attacks x 10 seeds = 510 jobs. Comment out a submit_model line
+# to drop a target, or narrow the sweep with ATTACKS=... (see above).
 #
 # JUDGE selects the safety judge (a config name under configs/models/, without .yaml).
 # It defaults to llama3.1_8b_instruct_judge, which keeps every path exactly as it was before
@@ -66,44 +66,43 @@ submit_model() {
 # =============================================================================
 # MODEL SIZE STUDY — Qwen2.5-Instruct: 0.5B, 3B, 7B
 # Paper: Figure 1 right
-# DISABLED for now — uncomment to run this study.
 # =============================================================================
 
 # --- Qwen2.5-0.5B (also gcg surrogate for attack transfer) ---
 submit_model qwen2.5_0.5b qwen2.5_0.5b 1394
-# submit_model qwen2.5_0.5b qwen2.5_0.5b 2
-# submit_model qwen2.5_0.5b qwen2.5_0.5b 100
-# submit_model qwen2.5_0.5b qwen2.5_0.5b 42
-# submit_model qwen2.5_0.5b qwen2.5_0.5b 5431
-# submit_model qwen2.5_0.5b qwen2.5_0.5b 2002
-# submit_model qwen2.5_0.5b qwen2.5_0.5b 256
-# submit_model qwen2.5_0.5b qwen2.5_0.5b 512
-# submit_model qwen2.5_0.5b qwen2.5_0.5b 123
-# submit_model qwen2.5_0.5b qwen2.5_0.5b 5
+submit_model qwen2.5_0.5b qwen2.5_0.5b 2
+submit_model qwen2.5_0.5b qwen2.5_0.5b 100
+submit_model qwen2.5_0.5b qwen2.5_0.5b 42
+submit_model qwen2.5_0.5b qwen2.5_0.5b 5431
+submit_model qwen2.5_0.5b qwen2.5_0.5b 2002
+submit_model qwen2.5_0.5b qwen2.5_0.5b 256
+submit_model qwen2.5_0.5b qwen2.5_0.5b 512
+submit_model qwen2.5_0.5b qwen2.5_0.5b 123
+submit_model qwen2.5_0.5b qwen2.5_0.5b 5
 
 # --- Qwen2.5-3B ---
 submit_model qwen2.5_3b qwen2.5_3b 1394
-# submit_model qwen2.5_3b qwen2.5_3b 2
-# submit_model qwen2.5_3b qwen2.5_3b 100
-# submit_model qwen2.5_3b qwen2.5_3b 42
-# submit_model qwen2.5_3b qwen2.5_3b 5431
-# submit_model qwen2.5_3b qwen2.5_3b 2002
-# submit_model qwen2.5_3b qwen2.5_3b 256
-# submit_model qwen2.5_3b qwen2.5_3b 512
-# submit_model qwen2.5_3b qwen2.5_3b 123
-# submit_model qwen2.5_3b qwen2.5_3b 5
+submit_model qwen2.5_3b qwen2.5_3b 2
+submit_model qwen2.5_3b qwen2.5_3b 100
+submit_model qwen2.5_3b qwen2.5_3b 42
+submit_model qwen2.5_3b qwen2.5_3b 5431
+submit_model qwen2.5_3b qwen2.5_3b 2002
+submit_model qwen2.5_3b qwen2.5_3b 256
+submit_model qwen2.5_3b qwen2.5_3b 512
+submit_model qwen2.5_3b qwen2.5_3b 123
+submit_model qwen2.5_3b qwen2.5_3b 5
 
 # --- Qwen2.5-7B ---
 submit_model qwen2.5_7b qwen2.5_7b 1394
-# submit_model qwen2.5_7b qwen2.5_7b 2
-# submit_model qwen2.5_7b qwen2.5_7b 100
-# submit_model qwen2.5_7b qwen2.5_7b 42
-# submit_model qwen2.5_7b qwen2.5_7b 5431
-# submit_model qwen2.5_7b qwen2.5_7b 2002
-# submit_model qwen2.5_7b qwen2.5_7b 256
-# submit_model qwen2.5_7b qwen2.5_7b 512
-# submit_model qwen2.5_7b qwen2.5_7b 123
-# submit_model qwen2.5_7b qwen2.5_7b 5
+submit_model qwen2.5_7b qwen2.5_7b 2
+submit_model qwen2.5_7b qwen2.5_7b 100
+submit_model qwen2.5_7b qwen2.5_7b 42
+submit_model qwen2.5_7b qwen2.5_7b 5431
+submit_model qwen2.5_7b qwen2.5_7b 2002
+submit_model qwen2.5_7b qwen2.5_7b 256
+submit_model qwen2.5_7b qwen2.5_7b 512
+submit_model qwen2.5_7b qwen2.5_7b 123
+submit_model qwen2.5_7b qwen2.5_7b 5
 
 
 # =============================================================================
@@ -119,95 +118,94 @@ submit_model qwen2.5_7b qwen2.5_7b 1394
 # =============================================================================
 
 # --- Gemma3-270M ---
-# submit_model gemma3_270m gemma3_270m_it 1394
-# submit_model gemma3_270m gemma3_270m_it 2
-# submit_model gemma3_270m gemma3_270m_it 100
-# submit_model gemma3_270m gemma3_270m_it 42
-# submit_model gemma3_270m gemma3_270m_it 5431
-# submit_model gemma3_270m gemma3_270m_it 2002
-# submit_model gemma3_270m gemma3_270m_it 256
-# submit_model gemma3_270m gemma3_270m_it 512
-# submit_model gemma3_270m gemma3_270m_it 123
-# submit_model gemma3_270m gemma3_270m_it 5
+submit_model gemma3_270m gemma3_270m_it 1394
+submit_model gemma3_270m gemma3_270m_it 2
+submit_model gemma3_270m gemma3_270m_it 100
+submit_model gemma3_270m gemma3_270m_it 42
+submit_model gemma3_270m gemma3_270m_it 5431
+submit_model gemma3_270m gemma3_270m_it 2002
+submit_model gemma3_270m gemma3_270m_it 256
+submit_model gemma3_270m gemma3_270m_it 512
+submit_model gemma3_270m gemma3_270m_it 123
+submit_model gemma3_270m gemma3_270m_it 5
 
 # --- Gemma3-1B ---
-# submit_model gemma3_1b gemma3_1b_it 1394
-# submit_model gemma3_1b gemma3_1b_it 2
-# submit_model gemma3_1b gemma3_1b_it 100
-# submit_model gemma3_1b gemma3_1b_it 42
-# submit_model gemma3_1b gemma3_1b_it 5431
-# submit_model gemma3_1b gemma3_1b_it 2002
-# submit_model gemma3_1b gemma3_1b_it 256
-# submit_model gemma3_1b gemma3_1b_it 512
-# submit_model gemma3_1b gemma3_1b_it 123
-# submit_model gemma3_1b gemma3_1b_it 5
+submit_model gemma3_1b gemma3_1b_it 1394
+submit_model gemma3_1b gemma3_1b_it 2
+submit_model gemma3_1b gemma3_1b_it 100
+submit_model gemma3_1b gemma3_1b_it 42
+submit_model gemma3_1b gemma3_1b_it 5431
+submit_model gemma3_1b gemma3_1b_it 2002
+submit_model gemma3_1b gemma3_1b_it 256
+submit_model gemma3_1b gemma3_1b_it 512
+submit_model gemma3_1b gemma3_1b_it 123
+submit_model gemma3_1b gemma3_1b_it 5
 
 # --- Gemma3-4B ---
-# submit_model gemma3_4b gemma3_4b_it 1394
-# submit_model gemma3_4b gemma3_4b_it 2
-# submit_model gemma3_4b gemma3_4b_it 100
-# submit_model gemma3_4b gemma3_4b_it 42
-# submit_model gemma3_4b gemma3_4b_it 5431
-# submit_model gemma3_4b gemma3_4b_it 2002
-# submit_model gemma3_4b gemma3_4b_it 256
-# submit_model gemma3_4b gemma3_4b_it 512
-# submit_model gemma3_4b gemma3_4b_it 123
-# submit_model gemma3_4b gemma3_4b_it 5
+submit_model gemma3_4b gemma3_4b_it 1394
+submit_model gemma3_4b gemma3_4b_it 2
+submit_model gemma3_4b gemma3_4b_it 100
+submit_model gemma3_4b gemma3_4b_it 42
+submit_model gemma3_4b gemma3_4b_it 5431
+submit_model gemma3_4b gemma3_4b_it 2002
+submit_model gemma3_4b gemma3_4b_it 256
+submit_model gemma3_4b gemma3_4b_it 512
+submit_model gemma3_4b gemma3_4b_it 123
+submit_model gemma3_4b gemma3_4b_it 5
 
 
 # =============================================================================
 # TRAINING STAGE STUDY — Tulu3 8B: Base -> SFT -> DPO -> RLVR
 # Paper: Table 1, Figure 1 left
-# DISABLED for now — uncomment to run this study.
 # =============================================================================
 
 # --- Tulu3-8B Base ---
 submit_model tulu3_8b_base tulu3_8b_base 1394
-# submit_model tulu3_8b_base tulu3_8b_base 2
-# submit_model tulu3_8b_base tulu3_8b_base 100
-# submit_model tulu3_8b_base tulu3_8b_base 42
-# submit_model tulu3_8b_base tulu3_8b_base 5431
-# submit_model tulu3_8b_base tulu3_8b_base 2002
-# submit_model tulu3_8b_base tulu3_8b_base 256
-# submit_model tulu3_8b_base tulu3_8b_base 512
-# submit_model tulu3_8b_base tulu3_8b_base 123
-# submit_model tulu3_8b_base tulu3_8b_base 5
+submit_model tulu3_8b_base tulu3_8b_base 2
+submit_model tulu3_8b_base tulu3_8b_base 100
+submit_model tulu3_8b_base tulu3_8b_base 42
+submit_model tulu3_8b_base tulu3_8b_base 5431
+submit_model tulu3_8b_base tulu3_8b_base 2002
+submit_model tulu3_8b_base tulu3_8b_base 256
+submit_model tulu3_8b_base tulu3_8b_base 512
+submit_model tulu3_8b_base tulu3_8b_base 123
+submit_model tulu3_8b_base tulu3_8b_base 5
 
 # --- Tulu3-8B SFT ---
 submit_model tulu3_8b_sft tulu3_8b_sft 1394
-# submit_model tulu3_8b_sft tulu3_8b_sft 2
-# submit_model tulu3_8b_sft tulu3_8b_sft 100
-# submit_model tulu3_8b_sft tulu3_8b_sft 42
-# submit_model tulu3_8b_sft tulu3_8b_sft 5431
-# submit_model tulu3_8b_sft tulu3_8b_sft 2002
-# submit_model tulu3_8b_sft tulu3_8b_sft 256
-# submit_model tulu3_8b_sft tulu3_8b_sft 512
-# submit_model tulu3_8b_sft tulu3_8b_sft 123
-# submit_model tulu3_8b_sft tulu3_8b_sft 5
+submit_model tulu3_8b_sft tulu3_8b_sft 2
+submit_model tulu3_8b_sft tulu3_8b_sft 100
+submit_model tulu3_8b_sft tulu3_8b_sft 42
+submit_model tulu3_8b_sft tulu3_8b_sft 5431
+submit_model tulu3_8b_sft tulu3_8b_sft 2002
+submit_model tulu3_8b_sft tulu3_8b_sft 256
+submit_model tulu3_8b_sft tulu3_8b_sft 512
+submit_model tulu3_8b_sft tulu3_8b_sft 123
+submit_model tulu3_8b_sft tulu3_8b_sft 5
 
 # --- Tulu3-8B DPO ---
 submit_model tulu3_8b_dpo tulu3_8b_dpo 1394
-# submit_model tulu3_8b_dpo tulu3_8b_dpo 2
-# submit_model tulu3_8b_dpo tulu3_8b_dpo 100
-# submit_model tulu3_8b_dpo tulu3_8b_dpo 42
-# submit_model tulu3_8b_dpo tulu3_8b_dpo 5431
-# submit_model tulu3_8b_dpo tulu3_8b_dpo 2002
-# submit_model tulu3_8b_dpo tulu3_8b_dpo 256
-# submit_model tulu3_8b_dpo tulu3_8b_dpo 512
-# submit_model tulu3_8b_dpo tulu3_8b_dpo 123
-# submit_model tulu3_8b_dpo tulu3_8b_dpo 5
+submit_model tulu3_8b_dpo tulu3_8b_dpo 2
+submit_model tulu3_8b_dpo tulu3_8b_dpo 100
+submit_model tulu3_8b_dpo tulu3_8b_dpo 42
+submit_model tulu3_8b_dpo tulu3_8b_dpo 5431
+submit_model tulu3_8b_dpo tulu3_8b_dpo 2002
+submit_model tulu3_8b_dpo tulu3_8b_dpo 256
+submit_model tulu3_8b_dpo tulu3_8b_dpo 512
+submit_model tulu3_8b_dpo tulu3_8b_dpo 123
+submit_model tulu3_8b_dpo tulu3_8b_dpo 5
 
 # --- Tulu3-8B RLVR ---
 submit_model tulu3_8b_rlvr tulu3_8b_rlvr 1394
-# submit_model tulu3_8b_rlvr tulu3_8b_rlvr 2
-# submit_model tulu3_8b_rlvr tulu3_8b_rlvr 100
-# submit_model tulu3_8b_rlvr tulu3_8b_rlvr 42
-# submit_model tulu3_8b_rlvr tulu3_8b_rlvr 5431
-# submit_model tulu3_8b_rlvr tulu3_8b_rlvr 2002
-# submit_model tulu3_8b_rlvr tulu3_8b_rlvr 256
-# submit_model tulu3_8b_rlvr tulu3_8b_rlvr 512
-# submit_model tulu3_8b_rlvr tulu3_8b_rlvr 123
-# submit_model tulu3_8b_rlvr tulu3_8b_rlvr 5
+submit_model tulu3_8b_rlvr tulu3_8b_rlvr 2
+submit_model tulu3_8b_rlvr tulu3_8b_rlvr 100
+submit_model tulu3_8b_rlvr tulu3_8b_rlvr 42
+submit_model tulu3_8b_rlvr tulu3_8b_rlvr 5431
+submit_model tulu3_8b_rlvr tulu3_8b_rlvr 2002
+submit_model tulu3_8b_rlvr tulu3_8b_rlvr 256
+submit_model tulu3_8b_rlvr tulu3_8b_rlvr 512
+submit_model tulu3_8b_rlvr tulu3_8b_rlvr 123
+submit_model tulu3_8b_rlvr tulu3_8b_rlvr 5
 
 
 # =============================================================================
@@ -225,95 +223,94 @@ submit_model tulu3_8b_rlvr tulu3_8b_rlvr 1394
 # =============================================================================
 
 # --- OLMo2-1B Base (pre-trained only) ---
-# submit_model olmo2_1b_base olmo2_1b_base 1394
-# submit_model olmo2_1b_base olmo2_1b_base 2
-# submit_model olmo2_1b_base olmo2_1b_base 100
-# submit_model olmo2_1b_base olmo2_1b_base 42
-# submit_model olmo2_1b_base olmo2_1b_base 5431
-# submit_model olmo2_1b_base olmo2_1b_base 2002
-# submit_model olmo2_1b_base olmo2_1b_base 256
-# submit_model olmo2_1b_base olmo2_1b_base 512
-# submit_model olmo2_1b_base olmo2_1b_base 123
-# submit_model olmo2_1b_base olmo2_1b_base 5
+submit_model olmo2_1b_base olmo2_1b_base 1394
+submit_model olmo2_1b_base olmo2_1b_base 2
+submit_model olmo2_1b_base olmo2_1b_base 100
+submit_model olmo2_1b_base olmo2_1b_base 42
+submit_model olmo2_1b_base olmo2_1b_base 5431
+submit_model olmo2_1b_base olmo2_1b_base 2002
+submit_model olmo2_1b_base olmo2_1b_base 256
+submit_model olmo2_1b_base olmo2_1b_base 512
+submit_model olmo2_1b_base olmo2_1b_base 123
+submit_model olmo2_1b_base olmo2_1b_base 5
 
 # --- OLMo2-1B SFT ---
-# submit_model olmo2_1b_sft olmo2_1b_sft 1394
-# submit_model olmo2_1b_sft olmo2_1b_sft 2
-# submit_model olmo2_1b_sft olmo2_1b_sft 100
-# submit_model olmo2_1b_sft olmo2_1b_sft 42
-# submit_model olmo2_1b_sft olmo2_1b_sft 5431
-# submit_model olmo2_1b_sft olmo2_1b_sft 2002
-# submit_model olmo2_1b_sft olmo2_1b_sft 256
-# submit_model olmo2_1b_sft olmo2_1b_sft 512
-# submit_model olmo2_1b_sft olmo2_1b_sft 123
-# submit_model olmo2_1b_sft olmo2_1b_sft 5
+submit_model olmo2_1b_sft olmo2_1b_sft 1394
+submit_model olmo2_1b_sft olmo2_1b_sft 2
+submit_model olmo2_1b_sft olmo2_1b_sft 100
+submit_model olmo2_1b_sft olmo2_1b_sft 42
+submit_model olmo2_1b_sft olmo2_1b_sft 5431
+submit_model olmo2_1b_sft olmo2_1b_sft 2002
+submit_model olmo2_1b_sft olmo2_1b_sft 256
+submit_model olmo2_1b_sft olmo2_1b_sft 512
+submit_model olmo2_1b_sft olmo2_1b_sft 123
+submit_model olmo2_1b_sft olmo2_1b_sft 5
 
 # --- OLMo2-1B DPO ---
-# submit_model olmo2_1b_dpo olmo2_1b_dpo 1394
-# submit_model olmo2_1b_dpo olmo2_1b_dpo 2
-# submit_model olmo2_1b_dpo olmo2_1b_dpo 100
-# submit_model olmo2_1b_dpo olmo2_1b_dpo 42
-# submit_model olmo2_1b_dpo olmo2_1b_dpo 5431
-# submit_model olmo2_1b_dpo olmo2_1b_dpo 2002
-# submit_model olmo2_1b_dpo olmo2_1b_dpo 256
-# submit_model olmo2_1b_dpo olmo2_1b_dpo 512
-# submit_model olmo2_1b_dpo olmo2_1b_dpo 123
-# submit_model olmo2_1b_dpo olmo2_1b_dpo 5
+submit_model olmo2_1b_dpo olmo2_1b_dpo 1394
+submit_model olmo2_1b_dpo olmo2_1b_dpo 2
+submit_model olmo2_1b_dpo olmo2_1b_dpo 100
+submit_model olmo2_1b_dpo olmo2_1b_dpo 42
+submit_model olmo2_1b_dpo olmo2_1b_dpo 5431
+submit_model olmo2_1b_dpo olmo2_1b_dpo 2002
+submit_model olmo2_1b_dpo olmo2_1b_dpo 256
+submit_model olmo2_1b_dpo olmo2_1b_dpo 512
+submit_model olmo2_1b_dpo olmo2_1b_dpo 123
+submit_model olmo2_1b_dpo olmo2_1b_dpo 5
 
 # --- OLMo2-1B RLVR round 1 ---
-# submit_model olmo2_1b_rlvr1 olmo2_1b_rlvr1 1394
-# submit_model olmo2_1b_rlvr1 olmo2_1b_rlvr1 2
-# submit_model olmo2_1b_rlvr1 olmo2_1b_rlvr1 100
-# submit_model olmo2_1b_rlvr1 olmo2_1b_rlvr1 42
-# submit_model olmo2_1b_rlvr1 olmo2_1b_rlvr1 5431
-# submit_model olmo2_1b_rlvr1 olmo2_1b_rlvr1 2002
-# submit_model olmo2_1b_rlvr1 olmo2_1b_rlvr1 256
-# submit_model olmo2_1b_rlvr1 olmo2_1b_rlvr1 512
-# submit_model olmo2_1b_rlvr1 olmo2_1b_rlvr1 123
-# submit_model olmo2_1b_rlvr1 olmo2_1b_rlvr1 5
+submit_model olmo2_1b_rlvr1 olmo2_1b_rlvr1 1394
+submit_model olmo2_1b_rlvr1 olmo2_1b_rlvr1 2
+submit_model olmo2_1b_rlvr1 olmo2_1b_rlvr1 100
+submit_model olmo2_1b_rlvr1 olmo2_1b_rlvr1 42
+submit_model olmo2_1b_rlvr1 olmo2_1b_rlvr1 5431
+submit_model olmo2_1b_rlvr1 olmo2_1b_rlvr1 2002
+submit_model olmo2_1b_rlvr1 olmo2_1b_rlvr1 256
+submit_model olmo2_1b_rlvr1 olmo2_1b_rlvr1 512
+submit_model olmo2_1b_rlvr1 olmo2_1b_rlvr1 123
+submit_model olmo2_1b_rlvr1 olmo2_1b_rlvr1 5
 
 # --- OLMo2-1B Instruct = RLVR round 2 (final release) ---
-# submit_model olmo2_1b_instruct olmo2_1b_instruct 1394
-# submit_model olmo2_1b_instruct olmo2_1b_instruct 2
-# submit_model olmo2_1b_instruct olmo2_1b_instruct 100
-# submit_model olmo2_1b_instruct olmo2_1b_instruct 42
-# submit_model olmo2_1b_instruct olmo2_1b_instruct 5431
-# submit_model olmo2_1b_instruct olmo2_1b_instruct 2002
-# submit_model olmo2_1b_instruct olmo2_1b_instruct 256
-# submit_model olmo2_1b_instruct olmo2_1b_instruct 512
-# submit_model olmo2_1b_instruct olmo2_1b_instruct 123
-# submit_model olmo2_1b_instruct olmo2_1b_instruct 5
+submit_model olmo2_1b_instruct olmo2_1b_instruct 1394
+submit_model olmo2_1b_instruct olmo2_1b_instruct 2
+submit_model olmo2_1b_instruct olmo2_1b_instruct 100
+submit_model olmo2_1b_instruct olmo2_1b_instruct 42
+submit_model olmo2_1b_instruct olmo2_1b_instruct 5431
+submit_model olmo2_1b_instruct olmo2_1b_instruct 2002
+submit_model olmo2_1b_instruct olmo2_1b_instruct 256
+submit_model olmo2_1b_instruct olmo2_1b_instruct 512
+submit_model olmo2_1b_instruct olmo2_1b_instruct 123
+submit_model olmo2_1b_instruct olmo2_1b_instruct 5
 
 
 # =============================================================================
 # SAFETY ALIGNMENT STUDY — Qwen3-4B base vs Qwen3-4B-SafeRL
 # Paper: Table 1 (Qwen3 rows)
-# DISABLED for now — uncomment to run this study.
 # =============================================================================
 
 # --- Qwen3-4B ---
 submit_model qwen3_4b qwen3_4b 1394
-# submit_model qwen3_4b qwen3_4b 2
-# submit_model qwen3_4b qwen3_4b 100
-# submit_model qwen3_4b qwen3_4b 42
-# submit_model qwen3_4b qwen3_4b 5431
-# submit_model qwen3_4b qwen3_4b 2002
-# submit_model qwen3_4b qwen3_4b 256
-# submit_model qwen3_4b qwen3_4b 512
-# submit_model qwen3_4b qwen3_4b 123
-# submit_model qwen3_4b qwen3_4b 5
+submit_model qwen3_4b qwen3_4b 2
+submit_model qwen3_4b qwen3_4b 100
+submit_model qwen3_4b qwen3_4b 42
+submit_model qwen3_4b qwen3_4b 5431
+submit_model qwen3_4b qwen3_4b 2002
+submit_model qwen3_4b qwen3_4b 256
+submit_model qwen3_4b qwen3_4b 512
+submit_model qwen3_4b qwen3_4b 123
+submit_model qwen3_4b qwen3_4b 5
 
 # --- Qwen3-4B-SafeRL ---
 submit_model qwen3_4b_saferl qwen3_4b_saferl 1394
-# submit_model qwen3_4b_saferl qwen3_4b_saferl 2
-# submit_model qwen3_4b_saferl qwen3_4b_saferl 100
-# submit_model qwen3_4b_saferl qwen3_4b_saferl 42
-# submit_model qwen3_4b_saferl qwen3_4b_saferl 5431
-# submit_model qwen3_4b_saferl qwen3_4b_saferl 2002
-# submit_model qwen3_4b_saferl qwen3_4b_saferl 256
-# submit_model qwen3_4b_saferl qwen3_4b_saferl 512
-# submit_model qwen3_4b_saferl qwen3_4b_saferl 123
-# submit_model qwen3_4b_saferl qwen3_4b_saferl 5
+submit_model qwen3_4b_saferl qwen3_4b_saferl 2
+submit_model qwen3_4b_saferl qwen3_4b_saferl 100
+submit_model qwen3_4b_saferl qwen3_4b_saferl 42
+submit_model qwen3_4b_saferl qwen3_4b_saferl 5431
+submit_model qwen3_4b_saferl qwen3_4b_saferl 2002
+submit_model qwen3_4b_saferl qwen3_4b_saferl 256
+submit_model qwen3_4b_saferl qwen3_4b_saferl 512
+submit_model qwen3_4b_saferl qwen3_4b_saferl 123
+submit_model qwen3_4b_saferl qwen3_4b_saferl 5
 
 
 echo
